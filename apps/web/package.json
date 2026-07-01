@@ -1,0 +1,17 @@
+{
+  "name": "web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite"
+  },
+  "dependencies": {
+    "@repo/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@total-typescript/tsconfig": "catalog:",
+    "typescript": "catalog:",
+    "vite": "^8.1.2"
+  }
+}

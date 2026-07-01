@@ -1,0 +1,9 @@
+# Dependencies
+node_modules
+
+# Turborepo
+dist
+.turbo
+
+# direnv
+.direnv
