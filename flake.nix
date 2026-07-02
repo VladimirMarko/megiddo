@@ -18,10 +18,14 @@
         devShells.default = pkgs.mkShell {
 
           packages = with pkgs; [
+            git
+            gh
+            jq
             nodejs
             pnpm
             nixfmt
             opencode
+            xdg-utils
           ];
 
           shellHook = ''
