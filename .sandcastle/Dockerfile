@@ -30,7 +30,7 @@ RUN npm install -g opencode-ai@latest
 # Install the package manager used by this workspace.
 RUN npm install -g pnpm@latest
 
-USER ${AGENT_UID}:${AGENT_GID}
+USER 0:0
 
 WORKDIR /home/agent
 

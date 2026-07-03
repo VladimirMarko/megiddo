@@ -41,17 +41,12 @@ const planSchema = z.object({
 // Raise this if your backlog is large; lower it for a quick smoke-test run.
 const MAX_ITERATIONS = 10
 
-const dockerSandbox = () => docker({ imageName: 'sandcastle:megiddo' })
+const dockerSandbox = () => docker({ imageName: 'sandcastle:megiddo', containerUid: 0, containerGid: 0 })
 
-// Hooks run inside the sandbox before the agent starts each iteration.
-// Keep dependency installation aligned with packageManager and pnpm-lock.yaml.
-const hooks = {
-  sandbox: { onSandboxReady: [{ command: 'pnpm install --frozen-lockfile' }] },
-}
+const hooks = {}
 
 // Copy node_modules from the host into the worktree before each sandbox
-// starts. Avoids a full npm install from scratch; the hook above handles
-// platform-specific binaries and any packages added since the last copy.
+// starts. Avoids a full install from inside the bind-mounted sandbox.
 const copyToWorktree = ['node_modules']
 
 // ---------------------------------------------------------------------------
