@@ -57,6 +57,21 @@ const dockerSandbox = () =>
 
 const hooks = {}
 
+// Available models (2024-07-03):
+// - `opencode/big-pickle`
+// - `opencode/deepseek-v4-flash-free`
+// - `opencode/mimo-v2.5-free`
+// - `opencode/nemotron-3-ultra-free`
+// - `opencode/north-mini-code-free`
+// - `openai/gpt-5.3-codex-spark`
+// - `openai/gpt-5.4`
+// - `openai/gpt-5.4-fast`
+// - `openai/gpt-5.4-mini`
+// - `openai/gpt-5.4-mini-fast`
+// - `openai/gpt-5.5`
+// - `openai/gpt-5.5-fast`
+const defaultModel = 'openai/gpt-5.5' // The model used for planning, implementing, reviewing, and merging
+
 // Copy node_modules from the host into the worktree before each sandbox
 // starts. Avoids a full install from inside the bind-mounted sandbox.
 const copyToWorktree = ['node_modules']
@@ -85,7 +100,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     // not write code. (Structured output requires maxIterations: 1.)
     maxIterations: 1,
     // Opus for planning: dependency analysis benefits from deeper reasoning.
-    agent: sandcastle.opencode('opencode/big-pickle'),
+    agent: sandcastle.opencode(defaultModel),
     promptFile: './.sandcastle/plan-prompt.md',
     // Extract and validate the <plan> JSON into a typed object. Throws
     // StructuredOutputError if the tag is missing, the JSON is malformed, or
@@ -130,7 +145,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
         const implement = await sandbox.run({
           name: 'implementer',
           maxIterations: 100,
-          agent: sandcastle.opencode('opencode/big-pickle'),
+          agent: sandcastle.opencode(defaultModel),
           promptFile: './.sandcastle/implement-prompt.md',
           promptArgs: {
             TASK_ID: issue.id,
@@ -144,7 +159,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
           const review = await sandbox.run({
             name: 'reviewer',
             maxIterations: 1,
-            agent: sandcastle.opencode('opencode/big-pickle'),
+            agent: sandcastle.opencode(defaultModel),
             promptFile: './.sandcastle/review-prompt.md',
             promptArgs: {
               BRANCH: issue.branch,
@@ -207,7 +222,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     sandbox: dockerSandbox(),
     name: 'merger',
     maxIterations: 1,
-    agent: sandcastle.opencode('opencode/big-pickle'),
+    agent: sandcastle.opencode(defaultModel),
     promptFile: './.sandcastle/merge-prompt.md',
     promptArgs: {
       // A markdown list of branch names, one per line.
