@@ -4,7 +4,8 @@
   "scripts": {
     "build": "turbo build",
     "check": "biome check --write",
-    "dev": "turbo dev"
+    "dev": "turbo dev",
+    "sandcastle": "tsx .sandcastle/main.mts"
   },
   "dependencies": {
     "zod": "^4.4.3"
@@ -12,6 +13,7 @@
   "devDependencies": {
     "@ai-hero/sandcastle": "^0.12.0",
     "@biomejs/biome": "2.5.1",
+    "tsx": "^4.22.5",
     "turbo": "^2.10.2"
   },
   "packageManager": "pnpm@11.9.0"
