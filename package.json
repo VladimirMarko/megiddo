@@ -5,7 +5,8 @@
     "build": "turbo build",
     "check": "biome check --write",
     "dev": "turbo dev",
-    "sandcastle": "tsx .sandcastle/main.mts"
+    "sandcastle": "tsx .sandcastle/main.mts",
+    "sandcastle:build-image": "sandcastle docker build-image"
   },
   "dependencies": {
     "zod": "^4.4.3"
