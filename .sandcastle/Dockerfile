@@ -30,6 +30,9 @@ RUN npm install -g opencode-ai@latest
 # Install the package manager used by this workspace.
 RUN npm install -g pnpm@latest
 
+# OpenCode auth.json is mounted here read-only by the Sandcastle Docker provider.
+RUN mkdir -p /home/agent/.local/share/opencode
+
 USER 0:0
 
 WORKDIR /home/agent

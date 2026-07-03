@@ -41,7 +41,19 @@ const planSchema = z.object({
 // Raise this if your backlog is large; lower it for a quick smoke-test run.
 const MAX_ITERATIONS = 10
 
-const dockerSandbox = () => docker({ imageName: 'sandcastle:megiddo', containerUid: 0, containerGid: 0 })
+const dockerSandbox = () =>
+  docker({
+    imageName: 'sandcastle:megiddo',
+    containerUid: 0,
+    containerGid: 0,
+    mounts: [
+      {
+        hostPath: '~/.local/share/opencode/auth.json',
+        sandboxPath: '/home/agent/.local/share/opencode/auth.json',
+        readonly: true,
+      },
+    ],
+  })
 
 const hooks = {}
 
