@@ -27,6 +27,9 @@ RUN groupmod -o -g $AGENT_GID node && usermod -o -u $AGENT_UID -g $AGENT_GID -d 
 # Install OpenCode CLI (run as root before USER agent)
 RUN npm install -g opencode-ai@latest
 
+# Install the package manager used by this workspace.
+RUN npm install -g pnpm@latest
+
 USER ${AGENT_UID}:${AGENT_GID}
 
 WORKDIR /home/agent

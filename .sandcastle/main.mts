@@ -42,9 +42,9 @@ const planSchema = z.object({
 const MAX_ITERATIONS = 10
 
 // Hooks run inside the sandbox before the agent starts each iteration.
-// npm install ensures the sandbox always has fresh dependencies.
+// Keep dependency installation aligned with packageManager and pnpm-lock.yaml.
 const hooks = {
-  sandbox: { onSandboxReady: [{ command: 'npm install' }] },
+  sandbox: { onSandboxReady: [{ command: 'pnpm install --frozen-lockfile' }] },
 }
 
 // Copy node_modules from the host into the worktree before each sandbox
