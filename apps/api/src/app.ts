@@ -11,7 +11,8 @@ export const createApiGatewayApp = () => {
   app.get('/health', context => context.json(gatewayStatus))
   app.use(`${apiGatewayRpcMountPath}/*`, async (context, next) => {
     const url = new URL(context.req.raw.url)
-    url.pathname = url.pathname.replace(apiGatewayRpcMountPath, '') || '/'
+    url.pathname = url.pathname.slice(apiGatewayRpcMountPath.length) || '/'
+
     const request = new Request(url, context.req.raw)
     const { matched, response } = await handler.handle(request)
 

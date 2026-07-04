@@ -9,11 +9,14 @@ if (!root) {
 const api = createFrontendApi()
 root.textContent = 'Loading API Gateway status...'
 
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : 'API Gateway status request failed'
+
 api
   .getGatewayStatus()
   .then(status => {
     root.textContent = `${status.service}: ${status.message}`
   })
   .catch((error: unknown) => {
-    root.textContent = error instanceof Error ? error.message : 'API Gateway status request failed'
+    root.textContent = getErrorMessage(error)
   })

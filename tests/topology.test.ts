@@ -7,16 +7,21 @@ const root = process.cwd()
 
 const readJson = (path: string) => JSON.parse(readFileSync(join(root, path), 'utf8')) as Record<string, unknown>
 
-test('repo exposes the first Sandcastle service topology', () => {
-  assert.equal(existsSync(join(root, 'apps/web')), false)
-  assert.equal(existsSync(join(root, 'packages/shared')), false)
+const removedWorkspacePaths = ['apps/web', 'packages/shared']
 
-  for (const path of [
-    'apps/frontend/package.json',
-    'apps/api/package.json',
-    'packages/contracts/package.json',
-    'packages/platform/package.json',
-  ]) {
+const packageJsonPaths = [
+  'apps/frontend/package.json',
+  'apps/api/package.json',
+  'packages/contracts/package.json',
+  'packages/platform/package.json',
+]
+
+test('repo exposes the first Sandcastle service topology', () => {
+  for (const path of removedWorkspacePaths) {
+    assert.equal(existsSync(join(root, path)), false, `${path} should not exist`)
+  }
+
+  for (const path of packageJsonPaths) {
     assert.equal(existsSync(join(root, path)), true, `${path} should exist`)
   }
 
