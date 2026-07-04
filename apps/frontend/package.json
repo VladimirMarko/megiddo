@@ -1,13 +1,15 @@
 {
-  "name": "web",
+  "name": "@megiddo/frontend",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite --host 0.0.0.0"
   },
   "dependencies": {
-    "@repo/shared": "workspace:*"
+    "@megiddo/contracts": "workspace:*",
+    "@megiddo/platform": "workspace:*",
+    "@orpc/client": "^1.14.6"
   },
   "devDependencies": {
     "@total-typescript/tsconfig": "catalog:",

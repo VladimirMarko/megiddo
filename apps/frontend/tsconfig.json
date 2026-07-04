@@ -2,5 +2,6 @@
   "extends": "@total-typescript/tsconfig/bundler/dom/app",
   "compilerOptions": {
     "outDir": "dist"
-  }
+  },
+  "include": ["src"]
 }

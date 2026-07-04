@@ -1,0 +1,24 @@
+{
+  "name": "@megiddo/api",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/app.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.8",
+    "@megiddo/contracts": "workspace:*",
+    "@megiddo/platform": "workspace:*",
+    "@orpc/server": "^1.14.6",
+    "hono": "^4.12.27"
+  },
+  "devDependencies": {
+    "@total-typescript/tsconfig": "catalog:",
+    "@types/node": "^26.1.0",
+    "typescript": "catalog:"
+  }
+}
