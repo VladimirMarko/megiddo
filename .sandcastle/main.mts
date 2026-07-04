@@ -43,6 +43,8 @@ const MAX_ITERATIONS = 10
 
 const dockerSandbox = () =>
   docker({
+    // Matches `pnpm sandcastle:build-image`; Sandcastle's default would also
+    // resolve to this for a repo directory named "megiddo".
     imageName: 'sandcastle:megiddo',
     containerUid: 0,
     containerGid: 0,
@@ -184,16 +186,21 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // Log any agents that threw (network error, sandbox crash, etc.).
   for (const [i, outcome] of settled.entries()) {
     if (outcome.status === 'rejected') {
-      console.error(`  ✗ ${issues[i]!.id} (${issues[i]!.branch}) failed: ${outcome.reason}`)
+      const issue = issues[i]
+      console.error(`  ✗ ${issue?.id ?? 'unknown'} (${issue?.branch ?? 'unknown'}) failed: ${outcome.reason}`)
     }
   }
 
   // Only pass branches that actually produced commits to the merge phase.
   // An agent that ran successfully but made no commits has nothing to merge.
-  const completedIssues = settled
-    .map((outcome, i) => ({ outcome, issue: issues[i]! }))
-    .filter(entry => entry.outcome.status === 'fulfilled' && entry.outcome.value.commits.length > 0)
-    .map(entry => entry.issue)
+  const completedIssues = settled.flatMap((outcome, i) => {
+    const issue = issues[i]
+    if (issue === undefined || outcome.status !== 'fulfilled' || outcome.value.commits.length === 0) {
+      return []
+    }
+
+    return [issue]
+  })
 
   const completedBranches = completedIssues.map(i => i.branch)
 
@@ -222,6 +229,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     sandbox: dockerSandbox(),
     name: 'merger',
     maxIterations: 1,
+    idleTimeoutSeconds: 1200,
     agent: sandcastle.opencode(defaultModel),
     promptFile: './.sandcastle/merge-prompt.md',
     promptArgs: {

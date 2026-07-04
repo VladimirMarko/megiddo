@@ -6,7 +6,7 @@ Pull in the issue using `gh issue view <ID>`. If it has a parent PRD, pull that 
 
 Only work on the issue specified.
 
-Work on branch {{BRANCH}}. Make commits and run tests.
+Work on branch {{BRANCH}}. Make commits and run the relevant verification commands.
 
 # CONTEXT
 
@@ -35,7 +35,7 @@ If applicable, use RGR to complete the task.
 
 # FEEDBACK LOOPS
 
-Before committing, run `npm run typecheck` and `npm run test` to ensure the tests pass.
+Before committing, run `pnpm build` and `pnpm check` to ensure the repo still passes verification.
 
 # COMMIT
 
