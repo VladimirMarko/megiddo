@@ -5,6 +5,13 @@ import { createInMemoryTodoRepository } from './in-memory-todo-repository'
 import { createTodoRouter } from './router'
 import { createTodoUseCases } from './todo-use-cases'
 
+const requestWithoutTodoRpcMountPath = (request: Request) => {
+  const url = new URL(request.url)
+  url.pathname = url.pathname.slice(todoRpcMountPath.length) || '/'
+
+  return new Request(url, request)
+}
+
 export const createTodoApp = () => {
   const app = new Hono()
   const todos = createTodoUseCases({ repository: createInMemoryTodoRepository() })
@@ -12,10 +19,7 @@ export const createTodoApp = () => {
 
   app.get('/health', context => context.json({ service: 'todo', message: 'todo service is running' }))
   app.use(`${todoRpcMountPath}/*`, async (context, next) => {
-    const url = new URL(context.req.raw.url)
-    url.pathname = url.pathname.slice(todoRpcMountPath.length) || '/'
-
-    const request = new Request(url, context.req.raw)
+    const request = requestWithoutTodoRpcMountPath(context.req.raw)
     const { matched, response } = await handler.handle(request)
 
     if (matched) {

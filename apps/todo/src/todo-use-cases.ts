@@ -1,5 +1,25 @@
 const developmentTodoOwnerId = 'development-owner'
 
+export interface TodoIdInput {
+  id: string
+}
+
+export interface CreateTodoInput {
+  title: string
+}
+
+export interface RenameTodoInput extends TodoIdInput {
+  title: string
+}
+
+export interface OwnedTodoInput extends TodoIdInput {
+  ownerId: string
+}
+
+export interface CreateOwnedTodoInput extends CreateTodoInput {
+  ownerId: string
+}
+
 export interface TodoRecord {
   id: string
   ownerId: string
@@ -9,8 +29,8 @@ export interface TodoRecord {
 
 export interface TodoRepository {
   listByOwner(ownerId: string): Promise<TodoRecord[]>
-  create(input: { ownerId: string; title: string }): Promise<TodoRecord>
-  findByOwner(input: { ownerId: string; id: string }): Promise<TodoRecord | undefined>
+  create(input: CreateOwnedTodoInput): Promise<TodoRecord>
+  findByOwner(input: OwnedTodoInput): Promise<TodoRecord | undefined>
   save(todo: TodoRecord): Promise<TodoRecord>
 }
 
@@ -34,10 +54,10 @@ export class CompletedTodoRenameError extends Error {
 
 export interface TodoUseCases {
   list(): Promise<TodoView[]>
-  create(input: { title: string }): Promise<TodoView>
-  complete(input: { id: string }): Promise<TodoView>
-  reopen(input: { id: string }): Promise<TodoView>
-  rename(input: { id: string; title: string }): Promise<TodoView>
+  create(input: CreateTodoInput): Promise<TodoView>
+  complete(input: TodoIdInput): Promise<TodoView>
+  reopen(input: TodoIdInput): Promise<TodoView>
+  rename(input: RenameTodoInput): Promise<TodoView>
 }
 
 const toView = (todo: TodoRecord): TodoView => ({

@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { todoContractV1 } from '@megiddo/contracts'
+import { type TodoResourceV1, todoContractV1 } from '@megiddo/contracts'
 import { createTodoApp } from '@megiddo/todo'
+
+interface TodoResponseBody {
+  json: TodoResourceV1
+}
 
 test('contracts package exports the explicit Todo v1 contract surface', () => {
   assert.equal(typeof todoContractV1.v1.todos.list, 'object')
@@ -21,7 +25,7 @@ test('Todo Service exposes representative v1 todo behavior through its Hono app'
   })
 
   assert.equal(createResponse.status, 200)
-  const created = (await createResponse.json()) as { json: { id: string; title: string; completed: boolean } }
+  const created = (await createResponse.json()) as TodoResponseBody
   assert.match(created.json.id, /^todo-/)
   assert.deepEqual(created.json, { id: created.json.id, title: 'Ship Todo Service', completed: false })
 
