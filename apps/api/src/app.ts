@@ -2,11 +2,19 @@ import { gatewayStatus } from '@megiddo/contracts'
 import { apiGatewayRpcMountPath } from '@megiddo/platform'
 import { RPCHandler } from '@orpc/server/fetch'
 import { Hono } from 'hono'
-import { apiGatewayRouter } from './router'
+import { createApiGatewayRouter } from './router'
+import { createTodoServiceClient, type TodoServiceClient } from './todo-service-client'
 
-export const createApiGatewayApp = () => {
+export type { TodoServiceClient } from './todo-service-client'
+export { createTodoServiceClient } from './todo-service-client'
+
+export const createApiGatewayApp = ({
+  todoClient = createTodoServiceClient({ baseUrl: process.env.TODO_SERVICE_URL }),
+}: {
+  todoClient?: TodoServiceClient
+} = {}) => {
   const app = new Hono()
-  const handler = new RPCHandler(apiGatewayRouter)
+  const handler = new RPCHandler(createApiGatewayRouter({ todoClient }))
 
   app.get('/health', context => context.json(gatewayStatus))
   app.use(`${apiGatewayRpcMountPath}/*`, async (context, next) => {

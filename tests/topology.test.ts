@@ -42,3 +42,16 @@ test('repo exposes the first Sandcastle service topology', () => {
   assert.deepEqual(Object.keys(api.scripts as Record<string, string>).sort(), ['build', 'dev'])
   assert.deepEqual(Object.keys(todo.scripts as Record<string, string>).sort(), ['build', 'dev'])
 })
+
+test('service packages do not depend on another service implementation package', () => {
+  const servicePackageJsonPaths = ['apps/api/package.json', 'apps/todo/package.json']
+  const servicePackageNames = servicePackageJsonPaths.map(path => readJson(path).name)
+
+  for (const path of servicePackageJsonPaths) {
+    const packageJson = readJson(path)
+    const dependencies = packageJson.dependencies as Record<string, string> | undefined
+    const illegalDependencies = servicePackageNames.filter(name => name !== packageJson.name && dependencies?.[name])
+
+    assert.deepEqual(illegalDependencies, [], `${path} should not depend on another service implementation package`)
+  }
+})

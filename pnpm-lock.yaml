@@ -54,6 +54,9 @@ importers:
       '@megiddo/platform':
         specifier: workspace:*
         version: link:../../packages/platform
+      '@orpc/client':
+        specifier: ^1.14.6
+        version: 1.14.6
       '@orpc/server':
         specifier: ^1.14.6
         version: 1.14.6

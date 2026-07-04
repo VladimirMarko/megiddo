@@ -1,3 +1,4 @@
+import type { ContractRouterClient } from '@orpc/contract'
 import { oc } from '@orpc/contract'
 import { z } from 'zod'
 
@@ -31,10 +32,20 @@ export const apiGatewayContractV1 = {
     gateway: {
       status: oc.input(GatewayStatusInputSchemaV1).output(GatewayStatusResourceSchemaV1),
     },
+    viewer: {
+      todos: {
+        list: oc.input(TodoListInputSchemaV1).output(z.array(TodoResourceSchemaV1)),
+        create: oc.input(TodoCreateInputSchemaV1).output(TodoResourceSchemaV1),
+        complete: oc.input(TodoByIdInputSchemaV1).output(TodoResourceSchemaV1),
+        reopen: oc.input(TodoByIdInputSchemaV1).output(TodoResourceSchemaV1),
+        rename: oc.input(TodoRenameInputSchemaV1).output(TodoResourceSchemaV1),
+      },
+    },
   },
 }
 
 export type ApiGatewayContractV1 = typeof apiGatewayContractV1
+export type ApiGatewayContractClientV1 = ContractRouterClient<ApiGatewayContractV1>
 
 export const todoContractV1 = {
   v1: {
@@ -49,3 +60,4 @@ export const todoContractV1 = {
 }
 
 export type TodoContractV1 = typeof todoContractV1
+export type TodoContractClientV1 = ContractRouterClient<TodoContractV1>
