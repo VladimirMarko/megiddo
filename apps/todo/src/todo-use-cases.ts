@@ -18,6 +18,10 @@ export interface CreateOwnedTodoInput extends CreateTodoInput {
   ownerId: string
 }
 
+export interface RenameOwnedTodoInput extends RenameTodoInput {
+  ownerId: string
+}
+
 export interface TodoRecord {
   id: string
   ownerId: string
@@ -55,7 +59,7 @@ export interface TodoUseCases {
   create(input: CreateOwnedTodoInput): Promise<TodoView>
   complete(input: OwnedTodoInput): Promise<TodoView>
   reopen(input: OwnedTodoInput): Promise<TodoView>
-  rename(input: RenameTodoInput & { ownerId: string }): Promise<TodoView>
+  rename(input: RenameOwnedTodoInput): Promise<TodoView>
 }
 
 const toView = (todo: TodoRecord): TodoView => ({

@@ -13,29 +13,32 @@ const verifyTodoCaller = async (tokenVerifier: IdentityTokenVerifier, identityTo
   }
 }
 
+const verifyTodoOwnerId = async (tokenVerifier: IdentityTokenVerifier, identityToken: string) =>
+  (await verifyTodoCaller(tokenVerifier, identityToken)).subject
+
 export const createTodoRouter = (todos: TodoUseCases, tokenVerifier: IdentityTokenVerifier) =>
   todoV1.router({
     v1: {
       todos: {
         list: todoV1.v1.todos.list.handler(async ({ input }) => {
-          const caller = await verifyTodoCaller(tokenVerifier, input.identityToken)
-          return todos.list(caller.subject)
+          const ownerId = await verifyTodoOwnerId(tokenVerifier, input.identityToken)
+          return todos.list(ownerId)
         }),
         create: todoV1.v1.todos.create.handler(async ({ input }) => {
-          const caller = await verifyTodoCaller(tokenVerifier, input.identityToken)
-          return todos.create({ ownerId: caller.subject, title: input.title })
+          const ownerId = await verifyTodoOwnerId(tokenVerifier, input.identityToken)
+          return todos.create({ ownerId, title: input.title })
         }),
         complete: todoV1.v1.todos.complete.handler(async ({ input }) => {
-          const caller = await verifyTodoCaller(tokenVerifier, input.identityToken)
-          return todos.complete({ id: input.id, ownerId: caller.subject })
+          const ownerId = await verifyTodoOwnerId(tokenVerifier, input.identityToken)
+          return todos.complete({ id: input.id, ownerId })
         }),
         reopen: todoV1.v1.todos.reopen.handler(async ({ input }) => {
-          const caller = await verifyTodoCaller(tokenVerifier, input.identityToken)
-          return todos.reopen({ id: input.id, ownerId: caller.subject })
+          const ownerId = await verifyTodoOwnerId(tokenVerifier, input.identityToken)
+          return todos.reopen({ id: input.id, ownerId })
         }),
         rename: todoV1.v1.todos.rename.handler(async ({ input }) => {
-          const caller = await verifyTodoCaller(tokenVerifier, input.identityToken)
-          return todos.rename({ id: input.id, ownerId: caller.subject, title: input.title })
+          const ownerId = await verifyTodoOwnerId(tokenVerifier, input.identityToken)
+          return todos.rename({ id: input.id, ownerId, title: input.title })
         }),
       },
     },

@@ -8,6 +8,8 @@ export const apiGatewayRpcUrl = (baseUrl: string) => `${baseUrl.replace(/\/$/, '
 export const identityRpcUrl = (baseUrl: string) => `${baseUrl.replace(/\/$/, '')}${identityRpcMountPath}`
 export const todoRpcUrl = (baseUrl: string) => `${baseUrl.replace(/\/$/, '')}${todoRpcMountPath}`
 
+const identityTokenHeader = { alg: 'EdDSA', typ: 'megiddo.identity-token.v1' }
+
 export interface IdentityTokenSigner {
   issueIdentityToken(claims: Omit<IdentityTokenClaimsV1, 'issuedAt'>): Promise<string>
 }
@@ -23,15 +25,15 @@ const base64UrlEncode = (input: Buffer | string) => Buffer.from(input).toString(
 const base64UrlDecode = (input: string) => Buffer.from(input, 'base64url')
 
 export const createDevelopmentIdentityTokenCodec = (): IdentityTokenSigner & IdentityTokenVerifier => {
-  let keyPair: { privateKeyPem: string | Buffer; publicKeyPem: string | Buffer } | undefined
+  let keyPair: { privateKeyPem: string; publicKeyPem: string } | undefined
 
   const ensureKeyPair = async () => {
     if (!keyPair) {
       const { generateKeyPairSync } = await import('node:crypto')
       const { privateKey, publicKey } = generateKeyPairSync('ed25519')
       keyPair = {
-        privateKeyPem: privateKey.export({ format: 'pem', type: 'pkcs8' }),
-        publicKeyPem: publicKey.export({ format: 'pem', type: 'spki' }),
+        privateKeyPem: privateKey.export({ format: 'pem', type: 'pkcs8' }).toString(),
+        publicKeyPem: publicKey.export({ format: 'pem', type: 'spki' }).toString(),
       }
     }
 
@@ -42,7 +44,7 @@ export const createDevelopmentIdentityTokenCodec = (): IdentityTokenSigner & Ide
     async issueIdentityToken(claims) {
       const { createPrivateKey, sign } = await import('node:crypto')
       const { privateKeyPem } = await ensureKeyPair()
-      const header = base64UrlEncode(JSON.stringify({ alg: 'EdDSA', typ: 'megiddo.identity-token.v1' }))
+      const header = base64UrlEncode(JSON.stringify(identityTokenHeader))
       const payload = base64UrlEncode(JSON.stringify({ ...claims, issuedAt: Date.now() }))
       const signedContent = `${header}.${payload}`
       const signature = sign(null, Buffer.from(signedContent), createPrivateKey(privateKeyPem))
