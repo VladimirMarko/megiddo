@@ -2,6 +2,10 @@
   "name": "@megiddo/frontend",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/todo-app.tsx",
+    "./api": "./src/api/frontend-api-adapter.ts"
+  },
   "scripts": {
     "build": "vite build",
     "dev": "vite --host 0.0.0.0"
@@ -9,7 +13,12 @@
   "dependencies": {
     "@megiddo/contracts": "workspace:*",
     "@megiddo/platform": "workspace:*",
-    "@orpc/client": "^1.14.6"
+    "@orpc/client": "^1.14.6",
+    "@tanstack/react-form": "^1.33.0",
+    "@tanstack/react-router": "^1.170.17",
+    "jotai": "^2.20.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@total-typescript/tsconfig": "catalog:",
