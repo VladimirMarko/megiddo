@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { createApiGatewayApp } from '@megiddo/api'
 import { apiGatewayContractV1, gatewayStatus } from '@megiddo/contracts'
 
-test('contracts package exports the explicit API Gateway v1 Contract Surface', () => {
+test('contracts package exports the explicit API Gateway v1 contract surface', () => {
   assert.equal(typeof apiGatewayContractV1.v1.gateway.status, 'object')
 })
 
