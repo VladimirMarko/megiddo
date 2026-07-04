@@ -6,6 +6,8 @@ export const GatewayStatusResourceSchemaV1 = z.object({
   message: z.literal('frontend is connected'),
 })
 
+export const GatewayStatusInputSchemaV1 = z.undefined()
+
 export type GatewayStatus = z.infer<typeof GatewayStatusResourceSchemaV1>
 
 export const gatewayStatus = GatewayStatusResourceSchemaV1.parse({
@@ -14,8 +16,10 @@ export const gatewayStatus = GatewayStatusResourceSchemaV1.parse({
 })
 
 export const apiGatewayContractV1 = {
-  gateway: {
-    status: oc.output(GatewayStatusResourceSchemaV1),
+  v1: {
+    gateway: {
+      status: oc.input(GatewayStatusInputSchemaV1).output(GatewayStatusResourceSchemaV1),
+    },
   },
 }
 

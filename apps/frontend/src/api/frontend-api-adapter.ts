@@ -13,7 +13,7 @@ export const createFrontendApi = (baseUrl = 'http://localhost:3000'): FrontendAp
 
   return {
     getGatewayStatus() {
-      return client.gateway.status()
+      return client.v1.gateway.status()
     },
   }
 }
