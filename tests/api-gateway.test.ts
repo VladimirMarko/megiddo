@@ -4,6 +4,13 @@ import { createApiGatewayApp, createTodoServiceClient, type TodoServiceClient } 
 import { apiGatewayContractV1, gatewayStatus, type TodoResourceV1 } from '@megiddo/contracts'
 import { createTodoApp } from '@megiddo/todo'
 
+const postRpc = (app: ReturnType<typeof createApiGatewayApp>, path: string, json?: unknown) =>
+  app.request(path, {
+    body: json === undefined ? '{}' : JSON.stringify({ json }),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST',
+  })
+
 test('contracts package exports the explicit API Gateway v1 contract surface', () => {
   assert.equal(typeof apiGatewayContractV1.v1.gateway.status, 'object')
   assert.equal(typeof apiGatewayContractV1.v1.viewer.todos.list, 'object')
@@ -15,11 +22,7 @@ test('contracts package exports the explicit API Gateway v1 contract surface', (
 
 test('API Gateway exposes the v1 status procedure through its Hono app', async () => {
   const app = createApiGatewayApp()
-  const response = await app.request('/rpc/v1/gateway/status', {
-    body: '{}',
-    headers: { 'content-type': 'application/json' },
-    method: 'POST',
-  })
+  const response = await postRpc(app, '/rpc/v1/gateway/status')
 
   assert.equal(response.status, 200)
   assert.deepEqual(await response.json(), { json: gatewayStatus })
@@ -27,11 +30,7 @@ test('API Gateway exposes the v1 status procedure through its Hono app', async (
 
 test('API Gateway v1 status procedure rejects invalid input', async () => {
   const app = createApiGatewayApp()
-  const response = await app.request('/rpc/v1/gateway/status', {
-    body: JSON.stringify({ json: { unexpected: true } }),
-    headers: { 'content-type': 'application/json' },
-    method: 'POST',
-  })
+  const response = await postRpc(app, '/rpc/v1/gateway/status', { unexpected: true })
 
   assert.equal(response.status, 400)
 })
@@ -64,31 +63,14 @@ test('API Gateway composes frontend-shaped todo procedures through a Todo client
   }
   const app = createApiGatewayApp({ todoClient })
 
-  const createResponse = await app.request('/rpc/v1/viewer/todos/create', {
-    body: JSON.stringify({ json: { title: 'Compose through Gateway' } }),
-    headers: { 'content-type': 'application/json' },
-    method: 'POST',
+  const createResponse = await postRpc(app, '/rpc/v1/viewer/todos/create', { title: 'Compose through Gateway' })
+  const completeResponse = await postRpc(app, '/rpc/v1/viewer/todos/complete', { id: createdTodo.id })
+  const reopenResponse = await postRpc(app, '/rpc/v1/viewer/todos/reopen', { id: createdTodo.id })
+  const renameResponse = await postRpc(app, '/rpc/v1/viewer/todos/rename', {
+    id: createdTodo.id,
+    title: 'Renamed through Gateway',
   })
-  const completeResponse = await app.request('/rpc/v1/viewer/todos/complete', {
-    body: JSON.stringify({ json: { id: createdTodo.id } }),
-    headers: { 'content-type': 'application/json' },
-    method: 'POST',
-  })
-  const reopenResponse = await app.request('/rpc/v1/viewer/todos/reopen', {
-    body: JSON.stringify({ json: { id: createdTodo.id } }),
-    headers: { 'content-type': 'application/json' },
-    method: 'POST',
-  })
-  const renameResponse = await app.request('/rpc/v1/viewer/todos/rename', {
-    body: JSON.stringify({ json: { id: createdTodo.id, title: 'Renamed through Gateway' } }),
-    headers: { 'content-type': 'application/json' },
-    method: 'POST',
-  })
-  const listResponse = await app.request('/rpc/v1/viewer/todos/list', {
-    body: '{}',
-    headers: { 'content-type': 'application/json' },
-    method: 'POST',
-  })
+  const listResponse = await postRpc(app, '/rpc/v1/viewer/todos/list')
 
   assert.equal(createResponse.status, 200)
   assert.equal(completeResponse.status, 200)
@@ -120,22 +102,14 @@ test('API Gateway production Todo client reaches Todo over the Todo oRPC contrac
   })
   const apiApp = createApiGatewayApp({ todoClient })
 
-  const createResponse = await apiApp.request('/rpc/v1/viewer/todos/create', {
-    body: JSON.stringify({ json: { title: 'Cross service Todo' } }),
-    headers: { 'content-type': 'application/json' },
-    method: 'POST',
-  })
+  const createResponse = await postRpc(apiApp, '/rpc/v1/viewer/todos/create', { title: 'Cross service Todo' })
   assert.equal(createResponse.status, 200)
 
   const created = (await createResponse.json()) as { json: TodoResourceV1 }
   assert.match(created.json.id, /^todo-/)
   assert.deepEqual(created.json, { id: created.json.id, title: 'Cross service Todo', completed: false })
 
-  const listResponse = await apiApp.request('/rpc/v1/viewer/todos/list', {
-    body: '{}',
-    headers: { 'content-type': 'application/json' },
-    method: 'POST',
-  })
+  const listResponse = await postRpc(apiApp, '/rpc/v1/viewer/todos/list')
 
   assert.equal(listResponse.status, 200)
   assert.deepEqual(await listResponse.json(), { json: [created.json] })

@@ -1,14 +1,20 @@
-import type { TodoContractClientV1, TodoResourceV1 } from '@megiddo/contracts'
+import type {
+  TodoByIdInputV1,
+  TodoContractClientV1,
+  TodoCreateInputV1,
+  TodoRenameInputV1,
+  TodoResourceV1,
+} from '@megiddo/contracts'
 import { todoRpcUrl } from '@megiddo/platform'
 import { createORPCClient } from '@orpc/client'
 import { RPCLink } from '@orpc/client/fetch'
 
 export interface TodoServiceClient {
   listTodos(): Promise<TodoResourceV1[]>
-  createTodo(input: { title: string }): Promise<TodoResourceV1>
-  completeTodo(input: { id: string }): Promise<TodoResourceV1>
-  reopenTodo(input: { id: string }): Promise<TodoResourceV1>
-  renameTodo(input: { id: string; title: string }): Promise<TodoResourceV1>
+  createTodo(input: TodoCreateInputV1): Promise<TodoResourceV1>
+  completeTodo(input: TodoByIdInputV1): Promise<TodoResourceV1>
+  reopenTodo(input: TodoByIdInputV1): Promise<TodoResourceV1>
+  renameTodo(input: TodoRenameInputV1): Promise<TodoResourceV1>
 }
 
 interface TodoServiceClientOptions {

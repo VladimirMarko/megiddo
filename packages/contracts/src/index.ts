@@ -21,6 +21,9 @@ export const TodoRenameInputSchemaV1 = TodoByIdInputSchemaV1.extend({ title: z.s
 
 export type GatewayStatus = z.infer<typeof GatewayStatusResourceSchemaV1>
 export type TodoResourceV1 = z.infer<typeof TodoResourceSchemaV1>
+export type TodoCreateInputV1 = z.infer<typeof TodoCreateInputSchemaV1>
+export type TodoByIdInputV1 = z.infer<typeof TodoByIdInputSchemaV1>
+export type TodoRenameInputV1 = z.infer<typeof TodoRenameInputSchemaV1>
 
 export const gatewayStatus = GatewayStatusResourceSchemaV1.parse({
   service: 'api-gateway',

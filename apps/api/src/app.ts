@@ -8,11 +8,13 @@ import { createTodoServiceClient, type TodoServiceClient } from './todo-service-
 export type { TodoServiceClient } from './todo-service-client'
 export { createTodoServiceClient } from './todo-service-client'
 
+interface ApiGatewayAppOptions {
+  todoClient?: TodoServiceClient
+}
+
 export const createApiGatewayApp = ({
   todoClient = createTodoServiceClient({ baseUrl: process.env.TODO_SERVICE_URL }),
-}: {
-  todoClient?: TodoServiceClient
-} = {}) => {
+}: ApiGatewayAppOptions = {}) => {
   const app = new Hono()
   const handler = new RPCHandler(createApiGatewayRouter({ todoClient }))
 
