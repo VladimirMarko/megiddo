@@ -8,7 +8,6 @@
   },
   "dependencies": {
     "@megiddo/contracts": "workspace:*",
-    "@megiddo/platform": "workspace:*",
     "@orpc/client": "^1.14.6"
   },
   "devDependencies": {

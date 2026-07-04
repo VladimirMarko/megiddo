@@ -13,17 +13,61 @@ export const TodoResourceSchemaV1 = z.object({
   completed: z.boolean(),
 })
 
+export const UserReferenceResourceSchemaV1 = z.object({
+  id: z.string().min(1),
+})
+
+export const IdentityTokenAudienceSchemaV1 = z.object({
+  service: z.string().min(1),
+})
+
+export const IdentityTokenSchemaV1 = z.string().min(1)
+
+export const IdentityTokenClaimsSchemaV1 = z.object({
+  subject: z.string().min(1),
+  audience: IdentityTokenAudienceSchemaV1,
+  contractVersion: z.string().min(1).optional(),
+  issuedAt: z.number().int().nonnegative(),
+})
+
+export const IdentityTokenIssueInputSchemaV1 = z.object({
+  subject: z.string().min(1).optional(),
+  audience: IdentityTokenAudienceSchemaV1,
+  contractVersion: z.string().min(1).optional(),
+})
+
+export const IdentityTokenIssueOutputSchemaV1 = z.object({
+  identityToken: IdentityTokenSchemaV1,
+  user: UserReferenceResourceSchemaV1,
+})
+
 export const GatewayStatusInputSchemaV1 = z.undefined()
-export const TodoListInputSchemaV1 = z.undefined()
-export const TodoCreateInputSchemaV1 = z.object({ title: z.string().min(1) })
-export const TodoByIdInputSchemaV1 = z.object({ id: z.string().min(1) })
+export const GatewayTodoListInputSchemaV1 = z.undefined()
+export const GatewayTodoCreateInputSchemaV1 = z.object({ title: z.string().min(1) })
+export const GatewayTodoByIdInputSchemaV1 = z.object({ id: z.string().min(1) })
+export const GatewayTodoRenameInputSchemaV1 = GatewayTodoByIdInputSchemaV1.extend({ title: z.string().min(1) })
+export const AuthenticatedTodoInputSchemaV1 = z.object({ identityToken: IdentityTokenSchemaV1 })
+export const TodoListInputSchemaV1 = AuthenticatedTodoInputSchemaV1
+export const TodoCreateInputSchemaV1 = AuthenticatedTodoInputSchemaV1.extend({ title: z.string().min(1) })
+export const TodoByIdInputSchemaV1 = AuthenticatedTodoInputSchemaV1.extend({ id: z.string().min(1) })
 export const TodoRenameInputSchemaV1 = TodoByIdInputSchemaV1.extend({ title: z.string().min(1) })
 
 export type GatewayStatus = z.infer<typeof GatewayStatusResourceSchemaV1>
 export type TodoResourceV1 = z.infer<typeof TodoResourceSchemaV1>
+export type UserReferenceResourceV1 = z.infer<typeof UserReferenceResourceSchemaV1>
+export type IdentityTokenAudienceV1 = z.infer<typeof IdentityTokenAudienceSchemaV1>
+export type IdentityTokenClaimsV1 = z.infer<typeof IdentityTokenClaimsSchemaV1>
+export type IdentityTokenIssueInputV1 = z.infer<typeof IdentityTokenIssueInputSchemaV1>
+export type IdentityTokenIssueOutputV1 = z.infer<typeof IdentityTokenIssueOutputSchemaV1>
+export type AuthenticatedTodoInputV1 = z.infer<typeof AuthenticatedTodoInputSchemaV1>
+export type GatewayTodoCreateInputV1 = z.infer<typeof GatewayTodoCreateInputSchemaV1>
+export type GatewayTodoByIdInputV1 = z.infer<typeof GatewayTodoByIdInputSchemaV1>
+export type GatewayTodoRenameInputV1 = z.infer<typeof GatewayTodoRenameInputSchemaV1>
 export type TodoCreateInputV1 = z.infer<typeof TodoCreateInputSchemaV1>
 export type TodoByIdInputV1 = z.infer<typeof TodoByIdInputSchemaV1>
 export type TodoRenameInputV1 = z.infer<typeof TodoRenameInputSchemaV1>
+
+export const todoServiceAudienceV1 = IdentityTokenAudienceSchemaV1.parse({ service: 'todo' })
 
 export const gatewayStatus = GatewayStatusResourceSchemaV1.parse({
   service: 'api-gateway',
@@ -37,11 +81,11 @@ export const apiGatewayContractV1 = {
     },
     viewer: {
       todos: {
-        list: oc.input(TodoListInputSchemaV1).output(z.array(TodoResourceSchemaV1)),
-        create: oc.input(TodoCreateInputSchemaV1).output(TodoResourceSchemaV1),
-        complete: oc.input(TodoByIdInputSchemaV1).output(TodoResourceSchemaV1),
-        reopen: oc.input(TodoByIdInputSchemaV1).output(TodoResourceSchemaV1),
-        rename: oc.input(TodoRenameInputSchemaV1).output(TodoResourceSchemaV1),
+        list: oc.input(GatewayTodoListInputSchemaV1).output(z.array(TodoResourceSchemaV1)),
+        create: oc.input(GatewayTodoCreateInputSchemaV1).output(TodoResourceSchemaV1),
+        complete: oc.input(GatewayTodoByIdInputSchemaV1).output(TodoResourceSchemaV1),
+        reopen: oc.input(GatewayTodoByIdInputSchemaV1).output(TodoResourceSchemaV1),
+        rename: oc.input(GatewayTodoRenameInputSchemaV1).output(TodoResourceSchemaV1),
       },
     },
   },
@@ -49,6 +93,19 @@ export const apiGatewayContractV1 = {
 
 export type ApiGatewayContractV1 = typeof apiGatewayContractV1
 export type ApiGatewayContractClientV1 = ContractRouterClient<ApiGatewayContractV1>
+
+export const identityContractV1 = {
+  v1: {
+    development: {
+      identityTokens: {
+        issue: oc.input(IdentityTokenIssueInputSchemaV1).output(IdentityTokenIssueOutputSchemaV1),
+      },
+    },
+  },
+}
+
+export type IdentityContractV1 = typeof identityContractV1
+export type IdentityContractClientV1 = ContractRouterClient<IdentityContractV1>
 
 export const todoContractV1 = {
   v1: {

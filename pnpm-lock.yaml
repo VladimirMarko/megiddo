@@ -23,6 +23,12 @@ importers:
       '@megiddo/contracts':
         specifier: workspace:*
         version: link:packages/contracts
+      '@megiddo/identity':
+        specifier: workspace:*
+        version: link:apps/identity
+      '@megiddo/platform':
+        specifier: workspace:*
+        version: link:packages/platform
       '@megiddo/todo':
         specifier: workspace:*
         version: link:apps/todo
@@ -79,9 +85,6 @@ importers:
       '@megiddo/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@megiddo/platform':
-        specifier: workspace:*
-        version: link:../../packages/platform
       '@orpc/client':
         specifier: ^1.14.6
         version: 1.14.6
@@ -95,6 +98,34 @@ importers:
       vite:
         specifier: ^8.1.2
         version: 8.1.2(@types/node@26.1.0)(esbuild@0.28.1)(tsx@4.22.5)
+
+  apps/identity:
+    dependencies:
+      '@hono/node-server':
+        specifier: ^2.0.8
+        version: 2.0.8(hono@4.12.27)
+      '@megiddo/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@megiddo/platform':
+        specifier: workspace:*
+        version: link:../../packages/platform
+      '@orpc/server':
+        specifier: ^1.14.6
+        version: 1.14.6
+      hono:
+        specifier: ^4.12.27
+        version: 4.12.27
+    devDependencies:
+      '@total-typescript/tsconfig':
+        specifier: 'catalog:'
+        version: 1.0.4
+      '@types/node':
+        specifier: ^26.1.0
+        version: 26.1.0
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
 
   apps/todo:
     dependencies:
@@ -141,10 +172,17 @@ importers:
         version: 6.0.3
 
   packages/platform:
+    dependencies:
+      '@megiddo/contracts':
+        specifier: workspace:*
+        version: link:../contracts
     devDependencies:
       '@total-typescript/tsconfig':
         specifier: 'catalog:'
         version: 1.0.4
+      '@types/node':
+        specifier: ^26.1.0
+        version: 26.1.0
       typescript:
         specifier: 'catalog:'
         version: 6.0.3

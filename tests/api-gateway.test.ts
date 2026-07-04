@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createApiGatewayApp, createTodoServiceClient, type TodoServiceClient } from '@megiddo/api'
+import {
+  createApiGatewayApp,
+  createIdentityServiceClient,
+  createTodoServiceClient,
+  type TodoServiceClient,
+} from '@megiddo/api'
 import { apiGatewayContractV1, gatewayStatus, type TodoResourceV1 } from '@megiddo/contracts'
+import { createIdentityApp } from '@megiddo/identity'
+import { createDevelopmentIdentityTokenCodec } from '@megiddo/platform'
 import { createTodoApp } from '@megiddo/todo'
 
 const postRpc = (app: ReturnType<typeof createApiGatewayApp>, path: string, json?: unknown) =>
@@ -39,9 +46,15 @@ test('API Gateway composes frontend-shaped todo procedures through a Todo client
   const calls: string[] = []
   const createdTodo: TodoResourceV1 = { id: 'todo-from-fake', title: 'Compose through Gateway', completed: false }
   const completedTodo: TodoResourceV1 = { ...createdTodo, completed: true }
+  const identityClient = {
+    async issueDevelopmentIdentityToken() {
+      return { identityToken: 'fake-token', user: { id: 'dev:viewer' } }
+    },
+  }
   const todoClient: TodoServiceClient = {
-    async listTodos() {
+    async listTodos(input) {
       calls.push('listTodos')
+      assert.equal(input.identityToken, 'fake-token')
       return [completedTodo]
     },
     async createTodo(input) {
@@ -61,7 +74,7 @@ test('API Gateway composes frontend-shaped todo procedures through a Todo client
       return { ...createdTodo, title: input.title }
     },
   }
-  const app = createApiGatewayApp({ todoClient })
+  const app = createApiGatewayApp({ identityClient, todoClient })
 
   const createResponse = await postRpc(app, '/rpc/v1/viewer/todos/create', { title: 'Compose through Gateway' })
   const completeResponse = await postRpc(app, '/rpc/v1/viewer/todos/complete', { id: createdTodo.id })
@@ -92,7 +105,16 @@ test('API Gateway composes frontend-shaped todo procedures through a Todo client
 })
 
 test('API Gateway production Todo client reaches Todo over the Todo oRPC contract', async () => {
-  const todoApp = createTodoApp()
+  const codec = createDevelopmentIdentityTokenCodec()
+  const identityApp = createIdentityApp({ tokenSigner: codec })
+  const todoApp = createTodoApp({ tokenVerifier: codec })
+  const identityClient = createIdentityServiceClient({
+    baseUrl: 'http://identity-service.test',
+    fetch(request) {
+      const url = new URL(request.url)
+      return identityApp.request(`${url.pathname}${url.search}`, request)
+    },
+  })
   const todoClient = createTodoServiceClient({
     baseUrl: 'http://todo-service.test',
     fetch(request) {
@@ -100,7 +122,7 @@ test('API Gateway production Todo client reaches Todo over the Todo oRPC contrac
       return todoApp.request(`${url.pathname}${url.search}`, request)
     },
   })
-  const apiApp = createApiGatewayApp({ todoClient })
+  const apiApp = createApiGatewayApp({ identityClient, todoClient })
 
   const createResponse = await postRpc(apiApp, '/rpc/v1/viewer/todos/create', { title: 'Cross service Todo' })
   assert.equal(createResponse.status, 200)
