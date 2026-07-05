@@ -1,6 +1,4 @@
 import { useForm } from '@tanstack/react-form'
-// biome-ignore lint/correctness/noUnusedImports: node test JSX transform expects React in scope.
-import * as React from 'react'
 import { readTitle } from './form-title'
 
 type TodoCreateFormProps = {

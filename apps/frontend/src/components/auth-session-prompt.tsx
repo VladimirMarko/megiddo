@@ -1,5 +1,3 @@
-// biome-ignore lint/correctness/noUnusedImports: node test JSX transform expects React in scope.
-import * as React from 'react'
 import { Title } from './title'
 
 type AuthSessionPromptProps = {

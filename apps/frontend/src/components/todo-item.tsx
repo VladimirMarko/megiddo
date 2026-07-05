@@ -1,5 +1,3 @@
-// biome-ignore lint/correctness/noUnusedImports: node test JSX transform expects React in scope.
-import * as React from 'react'
 import { useRef, useState } from 'react'
 import type { FrontendTodo } from '../api/frontend-api-adapter'
 

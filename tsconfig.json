@@ -21,8 +21,8 @@
 
     "verbatimModuleSyntax": false,
     "noEmit": true,
-    "jsx": "react",
+    "jsx": "react-jsx",
     "allowImportingTsExtensions": true
   },
-  "include": ["scripts", "tests"]
+  "include": ["scripts", "tests", "apps/frontend/src"]
 }
