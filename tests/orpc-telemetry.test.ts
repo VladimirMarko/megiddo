@@ -27,6 +27,13 @@ const spanFor = (spans: ReadableSpan[], attributes: Record<string, string>) =>
     Object.entries(attributes).every(([attribute, expected]) => span.attributes[attribute] === expected),
   )
 
+const assertSpan = (spans: ReadableSpan[], attributes: Record<string, string>, message: string) => {
+  const span = spanFor(spans, attributes)
+  assert.ok(span, message)
+
+  return span
+}
+
 test('backend oRPC calls export consistent spans and failed client metadata', async () => {
   const exporter = new InMemorySpanExporter()
   const provider = new BasicTracerProvider({ spanProcessors: [new SimpleSpanProcessor(exporter)] })
@@ -77,43 +84,60 @@ test('backend oRPC calls export consistent spans and failed client metadata', as
   await provider.forceFlush()
 
   const spans = exporter.getFinishedSpans()
-  const apiServerSpan = spanFor(spans, {
-    'orpc.procedure': 'v1.viewer.todos.create',
-    'orpc.role': 'server',
-    'service.name': 'api-gateway',
-  })
-  const identityClientSpan = spanFor(spans, {
-    'orpc.procedure': 'v1.development.identityTokens.issue',
-    'orpc.role': 'client',
-    'service.name': 'api-gateway',
-  })
-  const identityServerSpan = spanFor(spans, {
-    'orpc.procedure': 'v1.development.identityTokens.issue',
-    'orpc.role': 'server',
-    'service.name': 'identity',
-  })
-  const todoClientSpan = spanFor(spans, {
-    'orpc.procedure': 'v1.todos.create',
-    'orpc.role': 'client',
-    'service.name': 'api-gateway',
-  })
-  const todoServerSpan = spanFor(spans, {
-    'orpc.procedure': 'v1.todos.create',
-    'orpc.role': 'server',
-    'service.name': 'todo',
-  })
-  const failedTodoClientSpan = spanFor(spans, {
-    'orpc.procedure': 'v1.todos.complete',
-    'orpc.role': 'client',
-    'service.name': 'api-gateway',
-  })
-
-  assert.ok(apiServerSpan, 'expected an API Gateway oRPC server span')
-  assert.ok(identityClientSpan, 'expected an Identity oRPC client span')
-  assert.ok(identityServerSpan, 'expected an Identity oRPC server span')
-  assert.ok(todoClientSpan, 'expected a Todo oRPC client span')
-  assert.ok(todoServerSpan, 'expected a Todo oRPC server span')
-  assert.ok(failedTodoClientSpan, 'expected a failed Todo oRPC client span')
+  const apiServerSpan = assertSpan(
+    spans,
+    {
+      'orpc.procedure': 'v1.viewer.todos.create',
+      'orpc.role': 'server',
+      'service.name': 'api-gateway',
+    },
+    'expected an API Gateway oRPC server span',
+  )
+  const identityClientSpan = assertSpan(
+    spans,
+    {
+      'orpc.procedure': 'v1.development.identityTokens.issue',
+      'orpc.role': 'client',
+      'service.name': 'api-gateway',
+    },
+    'expected an Identity oRPC client span',
+  )
+  const identityServerSpan = assertSpan(
+    spans,
+    {
+      'orpc.procedure': 'v1.development.identityTokens.issue',
+      'orpc.role': 'server',
+      'service.name': 'identity',
+    },
+    'expected an Identity oRPC server span',
+  )
+  const todoClientSpan = assertSpan(
+    spans,
+    {
+      'orpc.procedure': 'v1.todos.create',
+      'orpc.role': 'client',
+      'service.name': 'api-gateway',
+    },
+    'expected a Todo oRPC client span',
+  )
+  const todoServerSpan = assertSpan(
+    spans,
+    {
+      'orpc.procedure': 'v1.todos.create',
+      'orpc.role': 'server',
+      'service.name': 'todo',
+    },
+    'expected a Todo oRPC server span',
+  )
+  const failedTodoClientSpan = assertSpan(
+    spans,
+    {
+      'orpc.procedure': 'v1.todos.complete',
+      'orpc.role': 'client',
+      'service.name': 'api-gateway',
+    },
+    'expected a failed Todo oRPC client span',
+  )
 
   for (const span of [apiServerSpan, identityClientSpan, identityServerSpan, todoClientSpan, todoServerSpan]) {
     assert.equal(span.attributes['orpc.status'], 'ok')

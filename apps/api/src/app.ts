@@ -17,6 +17,13 @@ export { createIdentityServiceClient } from './identity-service-client'
 export type { TodoServiceClient } from './todo-service-client'
 export { createTodoServiceClient } from './todo-service-client'
 
+const requestWithoutApiGatewayRpcMountPath = (request: Request) => {
+  const url = new URL(request.url)
+  url.pathname = url.pathname.slice(apiGatewayRpcMountPath.length) || '/'
+
+  return new Request(url, request)
+}
+
 interface ApiGatewayAppOptions {
   identityClient?: IdentityServiceClient
   serviceName?: string
@@ -35,10 +42,7 @@ export const createApiGatewayApp = ({
 
   app.get('/health', context => context.json(gatewayStatus))
   app.use(`${apiGatewayRpcMountPath}/*`, async (context, next) => {
-    const url = new URL(context.req.raw.url)
-    url.pathname = url.pathname.slice(apiGatewayRpcMountPath.length) || '/'
-
-    const request = new Request(url, context.req.raw)
+    const request = requestWithoutApiGatewayRpcMountPath(context.req.raw)
     const { matched, response } = await handleInstrumentedOrpcServerRequest({
       handle: () => handler.handle(request, { context: { request } }),
       procedure: orpcProcedureFromRequest(request),
