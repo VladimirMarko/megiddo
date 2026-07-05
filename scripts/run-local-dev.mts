@@ -51,12 +51,12 @@ console.log(`- API:      http://localhost:${apiPort}`)
 console.log(`- Frontend: http://localhost:${frontendPort}`)
 console.log(`- Data:     ${dataDirectory}`)
 
-for (const process of createLocalDevProcessDefinitions({
+for (const processDefinition of createLocalDevProcessDefinitions({
   apiPort,
   dataDirectory,
   frontendPort,
   identityPort,
   todoPort,
 })) {
-  start(process.packageName, process.env, process.args)
+  start(processDefinition.packageName, processDefinition.env, processDefinition.args)
 }

@@ -1,33 +1,30 @@
 import { propagation, trace } from '@opentelemetry/api'
 
-let localTelemetryConfigured = false
+let isLocalTelemetryConfigured = false
 
 export const configureLocalTelemetry = async () => {
-  if (localTelemetryConfigured || process.env.OTEL_TRACES_EXPORTER !== 'otlp') {
+  if (isLocalTelemetryConfigured || process.env.OTEL_TRACES_EXPORTER !== 'otlp') {
     return
   }
 
-  localTelemetryConfigured = true
+  isLocalTelemetryConfigured = true
 
   try {
-    const [
-      { W3CTraceContextPropagator },
-      { OTLPTraceExporter },
-      { resourceFromAttributes },
-      { BasicTracerProvider, BatchSpanProcessor },
-    ] = await Promise.all([
+    const [opentelemetryCore, otlpExporter, opentelemetryResources, traceSdk] = await Promise.all([
       import('@opentelemetry/core'),
       import('@opentelemetry/exporter-trace-otlp-http'),
       import('@opentelemetry/resources'),
       import('@opentelemetry/sdk-trace-base'),
     ])
-    const provider = new BasicTracerProvider({
-      resource: resourceFromAttributes({ 'service.name': process.env.OTEL_SERVICE_NAME ?? 'megiddo-service' }),
-      spanProcessors: [new BatchSpanProcessor(new OTLPTraceExporter())],
+    const provider = new traceSdk.BasicTracerProvider({
+      resource: opentelemetryResources.resourceFromAttributes({
+        'service.name': process.env.OTEL_SERVICE_NAME ?? 'megiddo-service',
+      }),
+      spanProcessors: [new traceSdk.BatchSpanProcessor(new otlpExporter.OTLPTraceExporter())],
     })
 
     trace.setGlobalTracerProvider(provider)
-    propagation.setGlobalPropagator(new W3CTraceContextPropagator())
+    propagation.setGlobalPropagator(new opentelemetryCore.W3CTraceContextPropagator())
 
     process.once('exit', () => {
       void provider.shutdown().catch(() => undefined)

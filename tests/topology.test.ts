@@ -65,7 +65,7 @@ test('root dev script runs the full local topology', () => {
 })
 
 test('root dev injects best-effort local OpenTelemetry defaults for services', () => {
-  const processes = createLocalDevProcessDefinitions({
+  const processDefinitions = createLocalDevProcessDefinitions({
     apiPort: '3100',
     dataDirectory: '/tmp/megiddo-local-data',
     frontendPort: '5174',
@@ -74,7 +74,10 @@ test('root dev injects best-effort local OpenTelemetry defaults for services', (
   })
 
   assert.deepEqual(
-    processes.map(process => [process.packageName, process.env.OTEL_SERVICE_NAME]),
+    processDefinitions.map(processDefinition => [
+      processDefinition.packageName,
+      processDefinition.env.OTEL_SERVICE_NAME,
+    ]),
     [
       ['@megiddo/identity', 'identity'],
       ['@megiddo/todo', 'todo'],
@@ -83,10 +86,12 @@ test('root dev injects best-effort local OpenTelemetry defaults for services', (
     ],
   )
 
-  for (const process of processes.filter(process => process.packageName !== '@megiddo/frontend')) {
-    assert.equal(process.env.OTEL_TRACES_EXPORTER, 'otlp')
-    assert.equal(process.env.OTEL_EXPORTER_OTLP_ENDPOINT, 'http://localhost:4318')
-    assert.equal(process.env.OTEL_EXPORTER_OTLP_PROTOCOL, 'http/protobuf')
+  for (const processDefinition of processDefinitions.filter(
+    processDefinition => processDefinition.packageName !== '@megiddo/frontend',
+  )) {
+    assert.equal(processDefinition.env.OTEL_TRACES_EXPORTER, 'otlp')
+    assert.equal(processDefinition.env.OTEL_EXPORTER_OTLP_ENDPOINT, 'http://localhost:4318')
+    assert.equal(processDefinition.env.OTEL_EXPORTER_OTLP_PROTOCOL, 'http/protobuf')
   }
 })
 

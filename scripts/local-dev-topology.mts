@@ -14,7 +14,7 @@ export interface LocalDevProcessDefinition {
   packageName: string
 }
 
-const localTelemetryEnv = (serviceName: string): NodeJS.ProcessEnv => ({
+const createLocalTelemetryEnv = (serviceName: string): NodeJS.ProcessEnv => ({
   OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318',
   OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf',
   OTEL_SERVICE_NAME: serviceName,
@@ -30,7 +30,7 @@ export const createLocalDevProcessDefinitions = ({
 }: LocalDevTopologyOptions): LocalDevProcessDefinition[] => [
   {
     env: {
-      ...localTelemetryEnv('identity'),
+      ...createLocalTelemetryEnv('identity'),
       IDENTITY_DATABASE_PATH: join(dataDirectory, 'identity.sqlite'),
       PORT: identityPort,
     },
@@ -38,7 +38,7 @@ export const createLocalDevProcessDefinitions = ({
   },
   {
     env: {
-      ...localTelemetryEnv('todo'),
+      ...createLocalTelemetryEnv('todo'),
       PORT: todoPort,
       TODO_DATABASE_PATH: join(dataDirectory, 'todo.sqlite'),
     },
@@ -46,7 +46,7 @@ export const createLocalDevProcessDefinitions = ({
   },
   {
     env: {
-      ...localTelemetryEnv('api-gateway'),
+      ...createLocalTelemetryEnv('api-gateway'),
       IDENTITY_SERVICE_URL: `http://localhost:${identityPort}`,
       PORT: apiPort,
       TODO_SERVICE_URL: `http://localhost:${todoPort}`,
