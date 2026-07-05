@@ -29,25 +29,25 @@ export const createTodoServiceClient = ({
   fetch,
   serviceName = 'api-gateway',
 }: TodoServiceClientOptions = {}): TodoServiceClient => {
-  const createClient = (procedure: string) =>
+  const createInstrumentedTodoClient = (procedure: string) =>
     createORPCClient<TodoContractClientV1>(
       new RPCLink({
         fetch: createInstrumentedOrpcClientFetch({ fetch, procedure, serviceName }),
         url: todoRpcUrl(baseUrl),
       }),
     )
-  const listClient = createClient('v1.todos.list')
-  const createClientForTodos = createClient('v1.todos.create')
-  const completeClient = createClient('v1.todos.complete')
-  const reopenClient = createClient('v1.todos.reopen')
-  const renameClient = createClient('v1.todos.rename')
+  const listClient = createInstrumentedTodoClient('v1.todos.list')
+  const createTodoClient = createInstrumentedTodoClient('v1.todos.create')
+  const completeClient = createInstrumentedTodoClient('v1.todos.complete')
+  const reopenClient = createInstrumentedTodoClient('v1.todos.reopen')
+  const renameClient = createInstrumentedTodoClient('v1.todos.rename')
 
   return {
     listTodos(input) {
       return listClient.v1.todos.list(input)
     },
     createTodo(input) {
-      return createClientForTodos.v1.todos.create(input)
+      return createTodoClient.v1.todos.create(input)
     },
     completeTodo(input) {
       return completeClient.v1.todos.complete(input)

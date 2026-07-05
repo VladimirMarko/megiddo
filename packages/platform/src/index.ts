@@ -1,5 +1,5 @@
 import type { IdentityTokenAudienceV1, IdentityTokenClaimsV1 } from '@megiddo/contracts'
-import { context, propagation, SpanKind, SpanStatusCode, trace } from '@opentelemetry/api'
+import { context, propagation, type Span, SpanKind, SpanStatusCode, trace } from '@opentelemetry/api'
 
 export const apiGatewayRpcMountPath = '/rpc'
 export const identityRpcMountPath = '/rpc'
@@ -10,6 +10,7 @@ export const identityRpcUrl = (baseUrl: string) => `${baseUrl.replace(/\/$/, '')
 export const todoRpcUrl = (baseUrl: string) => `${baseUrl.replace(/\/$/, '')}${todoRpcMountPath}`
 
 type OrpcServiceRole = 'client' | 'server'
+type OrpcStatus = 'error' | 'ok'
 
 interface OrpcSpanAttributesOptions {
   procedure: string
@@ -50,7 +51,18 @@ const headersSetter = {
 const spanName = ({ procedure, role, serviceName }: OrpcSpanAttributesOptions) =>
   `${serviceName} oRPC ${role} ${procedure}`
 
-const finishOrpcSpan = (span: ReturnType<typeof tracer.startSpan>, startTime: number, status: 'error' | 'ok') => {
+const orpcSpanAttributes = ({ procedure, role, serviceName }: OrpcSpanAttributesOptions) => ({
+  'orpc.procedure': procedure,
+  'orpc.role': role,
+  'service.name': serviceName,
+})
+
+const recordOrpcException = (span: Span, error: unknown) => {
+  span.recordException(error instanceof Error ? error : new Error(String(error)))
+  span.setAttribute('error.type', error instanceof Error ? error.name : typeof error)
+}
+
+const finishOrpcSpan = (span: Span, startTime: number, status: OrpcStatus) => {
   span.setAttribute('orpc.duration_ms', Date.now() - startTime)
   span.setAttribute('orpc.status', status)
   span.setStatus({ code: status === 'ok' ? SpanStatusCode.OK : SpanStatusCode.ERROR })
@@ -63,7 +75,7 @@ export const createInstrumentedOrpcClientFetch =
     const startTime = Date.now()
     const role = 'client'
     const span = tracer.startSpan(spanName({ procedure, role, serviceName }), {
-      attributes: { 'orpc.procedure': procedure, 'orpc.role': role, 'service.name': serviceName },
+      attributes: orpcSpanAttributes({ procedure, role, serviceName }),
       kind: SpanKind.CLIENT,
     })
     const headers = new Headers(request.headers)
@@ -75,8 +87,7 @@ export const createInstrumentedOrpcClientFetch =
 
       return response
     } catch (error) {
-      span.recordException(error instanceof Error ? error : new Error(String(error)))
-      span.setAttribute('error.type', error instanceof Error ? error.name : typeof error)
+      recordOrpcException(span, error)
       span.setAttribute('http.request.url', request.url)
       finishOrpcSpan(span, startTime, 'error')
       throw error
@@ -95,7 +106,7 @@ export const handleInstrumentedOrpcServerRequest = async <ResponseType>({
   const span = tracer.startSpan(
     spanName({ procedure, role, serviceName }),
     {
-      attributes: { 'orpc.procedure': procedure, 'orpc.role': role, 'service.name': serviceName },
+      attributes: orpcSpanAttributes({ procedure, role, serviceName }),
       kind: SpanKind.SERVER,
     },
     parentContext,
@@ -107,8 +118,7 @@ export const handleInstrumentedOrpcServerRequest = async <ResponseType>({
 
     return response
   } catch (error) {
-    span.recordException(error instanceof Error ? error : new Error(String(error)))
-    span.setAttribute('error.type', error instanceof Error ? error.name : typeof error)
+    recordOrpcException(span, error)
     finishOrpcSpan(span, startTime, 'error')
     throw error
   }
