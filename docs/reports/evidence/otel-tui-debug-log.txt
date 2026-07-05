@@ -1,0 +1,4 @@
+2026/07/05 18:50:26 Debug log is enabled. Logs will be written to /tmp/otel-tui.log
+error running tui app: open /dev/tty: no such device or address
+{"level":"info","msg":"Starting HTTP server","otelcol.component.id":"otlp","otelcol.component.kind":"receiver","endpoint":"[::]:4318"}
+{"level":"info","msg":"Everything is ready. Begin running and processing data.","resource":{"service.name":"otel-tui","service.version":"0.7.3"}}
