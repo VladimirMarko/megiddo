@@ -93,6 +93,7 @@ test('README documents the selected telemetry viewer workflow separately from pn
   assert.match(readme, /pnpm telemetry:viewer/)
   assert.match(readme, /pnpm dev/)
   assert.match(readme, /Service startup never waits for viewer availability/)
+  assert.match(readme, /Nix development shell provides the pinned `otel-gui` release artifact/)
   assert.match(readme, /OTEL_GUI_BIN=\/path\/to\/otel-gui pnpm telemetry:viewer/)
 })
 

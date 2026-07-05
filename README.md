@@ -28,6 +28,7 @@ Services started by `pnpm dev` emit best-effort OpenTelemetry traces to `http://
 Run the viewer in one terminal:
 
 ```sh
+nix develop
 pnpm telemetry:viewer
 ```
 
@@ -37,9 +38,7 @@ Run the Megiddo services in another terminal:
 pnpm dev
 ```
 
-The viewer command expects an `otel-gui` executable on `PATH` and sets `PORT=4318` for OTLP HTTP ingestion. If needed, download the Linux release from `https://github.com/metafab/otel-gui/releases` and either place `otel-gui` on `PATH` or run with `OTEL_GUI_BIN=/path/to/otel-gui pnpm telemetry:viewer`.
-
-`otel-gui` is not added to `flake.nix` yet because no stable nixpkgs package was verified for this repository. The documented fallback is the upstream release binary used by the viewer evaluation.
+The Nix development shell provides the pinned `otel-gui` release artifact from `flake.lock`, and the viewer command sets `PORT=4318` for OTLP HTTP ingestion. If needed, override the executable with `OTEL_GUI_BIN=/path/to/otel-gui pnpm telemetry:viewer`.
 
 Individual service scripts are available when you want separate terminals:
 

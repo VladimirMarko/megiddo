@@ -31,10 +31,24 @@
         "type": "indirect"
       }
     },
+    "otel-gui": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1782055995,
+        "narHash": "sha256-PKuCXQsaNcbNJxLcgQeqz10KKYE/uyJ9cvTqTMQVTOA=",
+        "type": "tarball",
+        "url": "https://github.com/metafab/otel-gui/releases/download/v2.0.0/otel-gui-linux-x64.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://github.com/metafab/otel-gui/releases/download/v2.0.0/otel-gui-linux-x64.tar.gz"
+      }
+    },
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "otel-gui": "otel-gui"
       }
     },
     "systems": {
