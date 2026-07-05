@@ -63,6 +63,7 @@ export function TodoItem({ onComplete, onRename, onReopen, todo }: TodoItemProps
         checked={isCompleted}
         onChange={toggleTodo}
         type="checkbox"
+        disabled={isEditing}
       />
       <div className="todo-content">
         {isEditing ? (
