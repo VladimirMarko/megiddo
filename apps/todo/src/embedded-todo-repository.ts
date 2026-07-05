@@ -18,6 +18,10 @@ interface TodoRow {
   completed: 0 | 1
 }
 
+interface TodoSequenceRow {
+  next_todo_number: number
+}
+
 const toRecord = (row: TodoRow): TodoRecord => ({
   id: row.id,
   ownerId: row.owner_id,
@@ -49,30 +53,53 @@ export const createEmbeddedTodoRepository = ({
     INSERT OR IGNORE INTO todo_sequence (id, next_todo_number) VALUES (1, 1);
   `)
 
-  const listByOwner = database.prepare(
-    'SELECT id, owner_id, title, completed FROM todos WHERE owner_id = ? ORDER BY id',
-  )
-  const findByOwner = database.prepare('SELECT id, owner_id, title, completed FROM todos WHERE id = ? AND owner_id = ?')
-  const readNextTodoNumber = database.prepare('SELECT next_todo_number FROM todo_sequence WHERE id = 1')
-  const advanceNextTodoNumber = database.prepare('UPDATE todo_sequence SET next_todo_number = ? WHERE id = 1')
-  const insertTodo = database.prepare('INSERT INTO todos (id, owner_id, title, completed) VALUES (?, ?, ?, 0)')
-  const saveTodo = database.prepare('UPDATE todos SET owner_id = ?, title = ?, completed = ? WHERE id = ?')
+  const listByOwner = database.prepare(`
+    SELECT id, owner_id, title, completed
+    FROM todos
+    WHERE owner_id = ?
+    ORDER BY id
+  `)
+  const findByOwner = database.prepare(`
+    SELECT id, owner_id, title, completed
+    FROM todos
+    WHERE id = ? AND owner_id = ?
+  `)
+  const readNextTodoNumber = database.prepare(`
+    SELECT next_todo_number
+    FROM todo_sequence
+    WHERE id = 1
+  `)
+  const advanceNextTodoNumber = database.prepare(`
+    UPDATE todo_sequence
+    SET next_todo_number = ?
+    WHERE id = 1
+  `)
+  const insertTodo = database.prepare(`
+    INSERT INTO todos (id, owner_id, title, completed)
+    VALUES (?, ?, ?, 0)
+  `)
+  const saveTodo = database.prepare(`
+    UPDATE todos
+    SET owner_id = ?, title = ?, completed = ?
+    WHERE id = ?
+  `)
 
   return {
     async listByOwner(ownerId) {
       return (listByOwner.all(ownerId) as TodoRow[]).map(toRecord)
     },
     async create(input: CreateOwnedTodoInput) {
-      const sequence = readNextTodoNumber.get() as { next_todo_number: number }
+      const sequence = readNextTodoNumber.get() as TodoSequenceRow
+      const nextTodoNumber = sequence.next_todo_number
       const todo = {
-        id: `todo-${sequence.next_todo_number}`,
+        id: `todo-${nextTodoNumber}`,
         ownerId: input.ownerId,
         title: input.title,
         completed: false,
       }
 
       insertTodo.run(todo.id, todo.ownerId, todo.title)
-      advanceNextTodoNumber.run(sequence.next_todo_number + 1)
+      advanceNextTodoNumber.run(nextTodoNumber + 1)
 
       return todo
     },

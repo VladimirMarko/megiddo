@@ -11,6 +11,10 @@ export interface EmbeddedDevelopmentAuthProviderAdapter extends AuthProviderAdap
   close(): void
 }
 
+interface DevelopmentUserRow {
+  id: string
+}
+
 export const createEmbeddedDevelopmentAuthProviderAdapter = ({
   databasePath,
 }: EmbeddedDevelopmentAuthProviderAdapterOptions): EmbeddedDevelopmentAuthProviderAdapter => {
@@ -25,12 +29,19 @@ export const createEmbeddedDevelopmentAuthProviderAdapter = ({
     );
   `)
 
-  const findUser = database.prepare('SELECT id FROM development_users WHERE id = ?')
-  const insertUser = database.prepare('INSERT INTO development_users (id) VALUES (?)')
+  const findUser = database.prepare(`
+    SELECT id
+    FROM development_users
+    WHERE id = ?
+  `)
+  const insertUser = database.prepare(`
+    INSERT INTO development_users (id)
+    VALUES (?)
+  `)
 
   return {
     async resolveDevelopmentUser(subject = 'dev:viewer') {
-      const existing = findUser.get(subject) as { id: string } | undefined
+      const existing = findUser.get(subject) as DevelopmentUserRow | undefined
 
       if (existing) {
         return { id: existing.id }
