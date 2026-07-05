@@ -5,8 +5,8 @@ Megiddo is a TypeScript Turborepo for demonstrating clean architecture across in
 ## Language
 
 **Service**:
-A separately runnable process with its own package boundary and persistence boundary.
-_Avoid_: Microservice as a mere folder boundary or module namespace.
+A separately runnable process with its own package boundary. Some Services own persistence, but stateless or developer-facing Services are still Services.
+_Avoid_: Microservice as a mere folder boundary or module namespace, meta-service as a separate category.
 
 **API Gateway**:
 A service that exposes the collated public API surface to the frontend and composes calls to backend services through their contracts.
@@ -15,6 +15,10 @@ _Avoid_: Frontend server, shared backend, direct service aggregation in the brow
 **Frontend Procedure**:
 An API Gateway procedure shaped around a frontend use case, often composed from multiple backend service calls.
 _Avoid_: Re-exported service procedure, raw backend endpoint.
+
+**Operational Procedure**:
+A contract-defined procedure for service orchestration or readiness rather than domain data, such as a health check.
+_Avoid_: Uncontracted side channel, domain use case, OpenTelemetry ingestion endpoint.
 
 **Service Ownership**:
 The rule that a service is the source of truth for the data and rules inside its boundary. Other services refer to that data through stable identifiers or contract calls rather than copying ownership.
@@ -51,6 +55,34 @@ _Avoid_: Deep service import, implementation sharing.
 **Platform Package**:
 A shared package for cross-cutting infrastructure seams such as configuration, logging, cryptography interfaces, oRPC wiring, and test harness helpers.
 _Avoid_: Shared domain package, business logic package, service utility dump.
+
+**Telemetry Span**:
+A timed OpenTelemetry operation emitted by a Service or frontend adapter, such as an oRPC client call or oRPC server handler.
+_Avoid_: Custom message hash, raw console message, unstructured request log.
+
+**Service Name**:
+The explicit OpenTelemetry `service.name` value assigned to a Service in the local topology.
+_Avoid_: Inferred name from port, package name guessed by devtools, display-only process label.
+
+**Developer Log View**:
+A local development view that collates telemetry from the running topology and filters it for the developer's current debugging task.
+_Avoid_: Production dashboard, log file ownership by each service, unfiltered process output.
+
+**Devtools View Model**:
+A presentation-ready representation of telemetry for a Developer Log View, produced before rendering so terminal and browser interfaces can share filtering, grouping, and status classification rules.
+_Avoid_: Ink component state as the source of telemetry truth, browser-only UI model, raw OpenTelemetry export.
+
+**Devtools UI Component**:
+A focused React component that renders one part of a Developer Log View from a Devtools View Model.
+_Avoid_: Monolithic terminal screen component, formatting embedded in telemetry ingestion, one-off string builder UI.
+
+**Telemetry Store**:
+The devtools Service-owned local persistence for captured OpenTelemetry data used to build Developer Log Views.
+_Avoid_: Runner-owned log file, Raw Service Log, production observability backend.
+
+**Call Edge**:
+A rendered parent-child relationship in a Developer Log View showing one operation causing another operation, usually one caller service invoking one callee service operation.
+_Avoid_: Isolated request log line, network packet, shared request ID.
 
 **Frontend API Adapter**:
 A frontend-owned boundary that exposes UI-friendly operations and delegates to the oRPC client in production. Tests and stories can replace it with a fake implementation without running Identity, Better Auth, or service databases.
