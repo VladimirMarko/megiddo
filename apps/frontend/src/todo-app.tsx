@@ -252,14 +252,14 @@ function TodoScreen() {
 
 function TodoItem({ api, todo }: { api: FrontendApi; todo: FrontendTodo }) {
   const setTodos = useSetAtom(todosAtom)
-  const completed = todo.status === 'completed'
-  const status = completed ? 'Completed' : 'Open'
-  const toggleAction = completed ? 'Reopen' : 'Complete'
+  const isCompleted = todo.status === 'completed'
+  const statusLabel = isCompleted ? 'Completed' : 'Open'
+  const toggleActionLabel = isCompleted ? 'Reopen' : 'Complete'
   const updateTodo = (updated: FrontendTodo) =>
     setTodos(current => current.map(candidate => (candidate.id === updated.id ? updated : candidate)))
 
   const toggleTodo = async () => {
-    if (completed) {
+    if (isCompleted) {
       updateTodo(await api.reopenTodo({ id: todo.id }))
       return
     }
@@ -280,9 +280,9 @@ function TodoItem({ api, todo }: { api: FrontendApi; todo: FrontendTodo }) {
   return (
     <li>
       <span>{todo.title}</span>
-      <span>{status}</span>
-      <button aria-label={`${toggleAction} ${todo.title}`} onClick={toggleTodo} type="button">
-        {toggleAction}
+      <span>{statusLabel}</span>
+      <button aria-label={`${toggleActionLabel} ${todo.title}`} onClick={toggleTodo} type="button">
+        {toggleActionLabel}
       </button>
       <form
         aria-label={`Rename ${todo.title}`}
@@ -293,9 +293,9 @@ function TodoItem({ api, todo }: { api: FrontendApi; todo: FrontendTodo }) {
       >
         <label>
           Rename
-          <input aria-label={`Rename ${todo.title}`} defaultValue={todo.title} disabled={completed} name="title" />
+          <input aria-label={`Rename ${todo.title}`} defaultValue={todo.title} disabled={isCompleted} name="title" />
         </label>
-        <button aria-label={`Save rename for ${todo.title}`} disabled={completed} type="submit">
+        <button aria-label={`Save rename for ${todo.title}`} disabled={isCompleted} type="submit">
           Save rename
         </button>
       </form>

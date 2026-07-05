@@ -139,8 +139,8 @@ test('local development workflow runs real services over localhost for the authe
     const todos = await frontendApi.listTodos()
 
     assert.match(created.id, /^todo-/)
-    assert.deepEqual(created, { completed: false, id: created.id, title: 'Local service boundary todo' })
-    assert.deepEqual(completed, { ...created, completed: true })
+    assert.deepEqual(created, { id: created.id, title: 'Local service boundary todo', status: 'open' })
+    assert.deepEqual(completed, { ...created, status: 'completed' })
     assert.deepEqual(todos, [completed])
   } catch (error) {
     const serviceLogs = services.map(({ logs }) => logs()).join('\n')

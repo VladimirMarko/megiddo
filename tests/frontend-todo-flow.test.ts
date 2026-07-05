@@ -98,7 +98,7 @@ test('frontend todo flow renders and mutates todos through a fake Frontend API A
     },
     async createTodo(input) {
       calls.push(`createTodo:${input.title}`)
-      const todo = { id: 'todo-2', title: input.title, status: 'open' as const }
+      const todo: FrontendTodo = { id: 'todo-2', title: input.title, status: 'open' }
       todos = [...todos, todo]
       return todo
     },

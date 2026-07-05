@@ -21,10 +21,12 @@ export type FrontendAuthSession =
       user: FrontendLoggedInSession['user']
     }
 
+export type FrontendTodoStatus = 'open' | 'completed'
+
 export interface FrontendTodo {
   id: string
   title: string
-  status: 'open' | 'completed'
+  status: FrontendTodoStatus
 }
 
 export interface FrontendApi {
