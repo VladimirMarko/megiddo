@@ -87,22 +87,26 @@ export function TodoItem({ onComplete, onRename, onReopen, todo }: TodoItemProps
         ) : (
           <span className={isCompleted ? 'todo-title todo-title-completed' : 'todo-title'}>{todo.title}</span>
         )}
+        {isEditing ? (
+          <div className="todo-actions">
+            <button
+              aria-label={`Confirm rename for ${todo.title}`}
+              onClick={() => void confirmRenaming()}
+              type="button"
+            >
+              ✓
+            </button>
+            <button aria-label={`Cancel rename for ${todo.title}`} onClick={cancelRenaming} type="button">
+              ×
+            </button>
+          </div>
+        ) : isCompleted ? null : (
+          <button aria-label={`Edit ${todo.title}`} className="icon-button" onClick={startRenaming} type="button">
+            ✎
+          </button>
+        )}
         <span className="todo-status">{statusLabel}</span>
       </div>
-      {isEditing ? (
-        <div className="todo-actions">
-          <button aria-label={`Confirm rename for ${todo.title}`} onClick={() => void confirmRenaming()} type="button">
-            ✓
-          </button>
-          <button aria-label={`Cancel rename for ${todo.title}`} onClick={cancelRenaming} type="button">
-            ×
-          </button>
-        </div>
-      ) : isCompleted ? null : (
-        <button aria-label={`Edit ${todo.title}`} className="icon-button" onClick={startRenaming} type="button">
-          ✎
-        </button>
-      )}
     </li>
   )
 }
