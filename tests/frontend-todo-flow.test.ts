@@ -461,7 +461,7 @@ test('frontend renders auth session states through a fake Frontend API Adapter',
         await settle()
       })
 
-      await waitForText(rootElement, /Jōtai|Sign in to manage todos|Session expired/)
+      await waitForText(rootElement, /Signed in as|Sign in to manage todos|Session expired/)
       textContent = rootElement.textContent ?? ''
       await act(async () => root.unmount())
     })
