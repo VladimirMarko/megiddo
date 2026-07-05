@@ -7,7 +7,7 @@ const root = process.cwd()
 
 const readJson = (path: string) => JSON.parse(readFileSync(join(root, path), 'utf8')) as Record<string, unknown>
 
-const removedWorkspacePaths = ['apps/web', 'packages/shared']
+const removedPackagePaths = ['apps/web/package.json', 'packages/shared/package.json']
 
 const packageJsonPaths = [
   'apps/frontend/package.json',
@@ -19,7 +19,7 @@ const packageJsonPaths = [
 ]
 
 test('repo exposes the first Sandcastle service topology', () => {
-  for (const path of removedWorkspacePaths) {
+  for (const path of removedPackagePaths) {
     assert.equal(existsSync(join(root, path)), false, `${path} should not exist`)
   }
 
@@ -45,6 +45,15 @@ test('repo exposes the first Sandcastle service topology', () => {
   assert.deepEqual(Object.keys(api.scripts as Record<string, string>).sort(), ['build', 'dev'])
   assert.deepEqual(Object.keys(identity.scripts as Record<string, string>).sort(), ['build', 'dev'])
   assert.deepEqual(Object.keys(todo.scripts as Record<string, string>).sort(), ['build', 'dev'])
+})
+
+test('root dev script runs the full local topology', () => {
+  const packageJson = readJson('package.json')
+  const scripts = packageJson.scripts as Record<string, string>
+
+  assert.equal(scripts.dev, 'tsx scripts/run-local-dev.mts')
+  assert.equal(scripts['dev:local'], scripts.dev)
+  assert.equal(scripts['dev:turbo'], 'turbo dev')
 })
 
 test('service packages do not depend on another service implementation package', () => {

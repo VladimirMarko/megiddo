@@ -25,11 +25,13 @@ Review the code changes on branch `{{BRANCH}}` and improve code clarity, consist
    - Avoid nested ternary operators - prefer switch statements or if/else chains
    - Choose clarity over brevity - explicit code is often better than overly compact code
 
-3. **Check correctness**:
-   - Does the implementation match the intent? Are edge cases handled?
-   - Are new/changed behaviours covered by tests?
-   - Are there unsafe casts, `any` types, or unchecked assumptions?
-   - Does the change introduce injection vulnerabilities, credential leaks, or other security issues?
+3. **Check correctness and spec fit**:
+    - Does the implementation match the intent? Are edge cases handled?
+    - Are new/changed behaviours covered by tests?
+    - Are there unsafe casts, `any` types, or unchecked assumptions?
+    - Does the change introduce injection vulnerabilities, credential leaks, or other security issues?
+    - If local startup changed, does `pnpm dev` still run the documented full local topology?
+    - If frontend code changed, do components stay behind the Frontend API Adapter seam?
 
 4. **Maintain balance**: Avoid over-simplification that could:
    - Reduce code clarity or maintainability
@@ -38,7 +40,7 @@ Review the code changes on branch `{{BRANCH}}` and improve code clarity, consist
    - Remove helpful abstractions that improve code organization
    - Make the code harder to debug or extend
 
-5. **Apply project standards**: Follow the coding standards defined in @.sandcastle/CODING_STANDARDS.md
+5. **Apply project standards**: Follow the coding standards defined in @.sandcastle/CODING_STANDARDS.md. Read `README.md`, `CONTEXT.md`, `docs/adr/0011-use-real-service-processes-in-dev-and-fakes-in-focused-tests.md`, and `docs/adr/0006-use-frontend-api-adapter-above-orpc.md` when the change touches local development workflow, service boundaries, contract surfaces, or frontend seams.
 
 6. **Preserve functionality**: Never change what the code does - only how it does it. All original features, outputs, and behaviors must remain intact.
 
