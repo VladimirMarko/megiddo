@@ -1,4 +1,5 @@
 import { serve } from '@hono/node-server'
+import { configureLocalTelemetry } from '@megiddo/platform/local-telemetry'
 import { createTodoApp } from './app'
 import { createEmbeddedTodoRepository } from './embedded-todo-repository'
 
@@ -7,6 +8,8 @@ const repository = createEmbeddedTodoRepository({
   databasePath: process.env.TODO_DATABASE_PATH ?? '.data/todo/todo.sqlite',
 })
 const closeRepository = () => repository.close()
+
+await configureLocalTelemetry()
 
 serve({
   port,
