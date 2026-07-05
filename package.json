@@ -1,6 +1,7 @@
 {
   "name": "megiddo",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "turbo build",
     "check": "tsx scripts/check-frontend-contract-boundaries.mts && biome check --write",
