@@ -12,6 +12,8 @@
   "dependencies": {
     "@megiddo/api": "workspace:*",
     "@megiddo/contracts": "workspace:*",
+    "@megiddo/identity": "workspace:*",
+    "@megiddo/platform": "workspace:*",
     "@megiddo/todo": "workspace:*",
     "zod": "^4.4.3"
   },

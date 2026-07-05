@@ -1,5 +1,3 @@
-const developmentTodoOwnerId = 'development-owner'
-
 export interface TodoIdInput {
   id: string
 }
@@ -17,6 +15,10 @@ export interface OwnedTodoInput extends TodoIdInput {
 }
 
 export interface CreateOwnedTodoInput extends CreateTodoInput {
+  ownerId: string
+}
+
+export interface RenameOwnedTodoInput extends RenameTodoInput {
   ownerId: string
 }
 
@@ -53,11 +55,11 @@ export class CompletedTodoRenameError extends Error {
 }
 
 export interface TodoUseCases {
-  list(): Promise<TodoView[]>
-  create(input: CreateTodoInput): Promise<TodoView>
-  complete(input: TodoIdInput): Promise<TodoView>
-  reopen(input: TodoIdInput): Promise<TodoView>
-  rename(input: RenameTodoInput): Promise<TodoView>
+  list(ownerId: string): Promise<TodoView[]>
+  create(input: CreateOwnedTodoInput): Promise<TodoView>
+  complete(input: OwnedTodoInput): Promise<TodoView>
+  reopen(input: OwnedTodoInput): Promise<TodoView>
+  rename(input: RenameOwnedTodoInput): Promise<TodoView>
 }
 
 const toView = (todo: TodoRecord): TodoView => ({
@@ -67,33 +69,33 @@ const toView = (todo: TodoRecord): TodoView => ({
 })
 
 export const createTodoUseCases = ({ repository }: { repository: TodoRepository }): TodoUseCases => {
-  const getOwnedTodo = async (id: string) => {
-    const todo = await repository.findByOwner({ ownerId: developmentTodoOwnerId, id })
+  const getOwnedTodo = async (input: OwnedTodoInput) => {
+    const todo = await repository.findByOwner(input)
 
     if (!todo) {
-      throw new TodoNotFoundError(id)
+      throw new TodoNotFoundError(input.id)
     }
 
     return todo
   }
 
   return {
-    async list() {
-      return (await repository.listByOwner(developmentTodoOwnerId)).map(toView)
+    async list(ownerId) {
+      return (await repository.listByOwner(ownerId)).map(toView)
     },
     async create(input) {
-      return toView(await repository.create({ ownerId: developmentTodoOwnerId, title: input.title }))
+      return toView(await repository.create(input))
     },
     async complete(input) {
-      const todo = await getOwnedTodo(input.id)
+      const todo = await getOwnedTodo(input)
       return toView(await repository.save({ ...todo, completed: true }))
     },
     async reopen(input) {
-      const todo = await getOwnedTodo(input.id)
+      const todo = await getOwnedTodo(input)
       return toView(await repository.save({ ...todo, completed: false }))
     },
     async rename(input) {
-      const todo = await getOwnedTodo(input.id)
+      const todo = await getOwnedTodo(input)
 
       if (todo.completed) {
         throw new CompletedTodoRenameError()
