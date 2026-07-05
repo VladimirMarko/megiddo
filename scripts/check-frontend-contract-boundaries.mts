@@ -23,7 +23,10 @@ const contractImportPattern =
 
 const toRepoPath = (path: string) => path.split(sep).join('/')
 
-const isSourceFile = (path: string) => path.endsWith('.ts') || path.endsWith('.tsx')
+const isMissingDirectoryError = (caught: unknown): caught is NodeJS.ErrnoException =>
+  caught instanceof Error && 'code' in caught && caught.code === 'ENOENT'
+
+const isSourceFile = (filePath: string) => filePath.endsWith('.ts') || filePath.endsWith('.tsx')
 
 const listSourceFiles = async (dir: string): Promise<string[]> => {
   let entries: Awaited<ReturnType<typeof readdir>>
@@ -31,7 +34,7 @@ const listSourceFiles = async (dir: string): Promise<string[]> => {
   try {
     entries = await readdir(dir, { withFileTypes: true })
   } catch (caught) {
-    if (caught instanceof Error && 'code' in caught && caught.code === 'ENOENT') {
+    if (isMissingDirectoryError(caught)) {
       return []
     }
 
@@ -40,13 +43,13 @@ const listSourceFiles = async (dir: string): Promise<string[]> => {
 
   const files = await Promise.all(
     entries.map(entry => {
-      const path = join(dir, entry.name)
+      const filePath = join(dir, entry.name)
 
       if (entry.isDirectory()) {
-        return listSourceFiles(path)
+        return listSourceFiles(filePath)
       }
 
-      return Promise.resolve(isSourceFile(path) ? [path] : [])
+      return Promise.resolve(isSourceFile(filePath) ? [filePath] : [])
     }),
   )
 
