@@ -1,6 +1,7 @@
 import { createDevelopmentIdentityTokenCodec, type IdentityTokenSigner, identityRpcMountPath } from '@megiddo/platform'
 import { RPCHandler } from '@orpc/server/fetch'
 import { Hono } from 'hono'
+import type { AuthProviderAdapter } from './identity-use-cases'
 import { createDevelopmentAuthProviderAdapter, createIdentityUseCases } from './identity-use-cases'
 import { createIdentityRouter } from './router'
 
@@ -12,13 +13,17 @@ const requestWithoutIdentityRpcMountPath = (request: Request) => {
 }
 
 interface IdentityAppOptions {
+  authProvider?: AuthProviderAdapter
   tokenSigner?: IdentityTokenSigner
 }
 
-export const createIdentityApp = ({ tokenSigner = createDevelopmentIdentityTokenCodec() }: IdentityAppOptions = {}) => {
+export const createIdentityApp = ({
+  authProvider = createDevelopmentAuthProviderAdapter(),
+  tokenSigner = createDevelopmentIdentityTokenCodec(),
+}: IdentityAppOptions = {}) => {
   const app = new Hono()
   const identity = createIdentityUseCases({
-    authProvider: createDevelopmentAuthProviderAdapter(),
+    authProvider,
     tokenSigner,
   })
   const handler = new RPCHandler(createIdentityRouter(identity))
