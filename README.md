@@ -21,6 +21,26 @@ This starts real separate processes over localhost:
 
 Local service data is stored under `.data/local-dev` by default. Set `MEGIDDO_LOCAL_DATA_DIR` to use a different directory, which is useful for Sandcastle-style isolated workspaces.
 
+### Local Telemetry Viewer
+
+Services started by `pnpm dev` emit best-effort OpenTelemetry traces to `http://localhost:4318`. The selected local viewer is `otel-gui`, and it is started separately so Service startup never waits for viewer availability.
+
+Run the viewer in one terminal:
+
+```sh
+pnpm telemetry:viewer
+```
+
+Run the Megiddo services in another terminal:
+
+```sh
+pnpm dev
+```
+
+The viewer command expects an `otel-gui` executable on `PATH` and sets `PORT=4318` for OTLP HTTP ingestion. If needed, download the Linux release from `https://github.com/metafab/otel-gui/releases` and either place `otel-gui` on `PATH` or run with `OTEL_GUI_BIN=/path/to/otel-gui pnpm telemetry:viewer`.
+
+`otel-gui` is not added to `flake.nix` yet because no stable nixpkgs package was verified for this repository. The documented fallback is the upstream release binary used by the viewer evaluation.
+
 Individual service scripts are available when you want separate terminals:
 
 ```sh

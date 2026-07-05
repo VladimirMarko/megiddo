@@ -1,6 +1,15 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalPassThroughEnv": ["API_PORT", "FRONTEND_PORT", "IDENTITY_PORT", "MEGIDDO_LOCAL_DATA_DIR", "TODO_PORT"],
+  "globalPassThroughEnv": [
+    "API_PORT",
+    "FRONTEND_PORT",
+    "IDENTITY_PORT",
+    "MEGIDDO_LOCAL_DATA_DIR",
+    "OTEL_GUI_BIN",
+    "OTEL_GUI_PORT",
+    "PORT",
+    "TODO_PORT"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

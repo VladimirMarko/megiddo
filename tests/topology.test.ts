@@ -62,6 +62,38 @@ test('root dev script runs the full local topology', () => {
   assert.equal(scripts.dev, 'tsx scripts/run-local-dev.mts')
   assert.equal(scripts['dev:local'], scripts.dev)
   assert.equal(scripts['dev:turbo'], 'turbo dev')
+  assert.equal(scripts['telemetry:viewer'], 'tsx scripts/run-telemetry-viewer.mts')
+  assert.equal(scripts.dev.includes('telemetry'), false)
+})
+
+test('local dev topology keeps telemetry viewer separate from service startup', () => {
+  const processDefinitions = createLocalDevProcessDefinitions({
+    apiPort: '3100',
+    dataDirectory: '/tmp/megiddo-local-data',
+    frontendPort: '5174',
+    identityPort: '3102',
+    todoPort: '3101',
+  })
+
+  assert.deepEqual(
+    processDefinitions.map(processDefinition => processDefinition.packageName),
+    ['@megiddo/identity', '@megiddo/todo', '@megiddo/api', '@megiddo/frontend'],
+  )
+
+  for (const processDefinition of processDefinitions) {
+    assert.equal(processDefinition.packageName.includes('otel'), false)
+    assert.equal(processDefinition.packageName.includes('telemetry'), false)
+  }
+})
+
+test('README documents the selected telemetry viewer workflow separately from pnpm dev', () => {
+  const readme = readFileSync(join(root, 'README.md'), 'utf8')
+
+  assert.match(readme, /selected local viewer is `otel-gui`/)
+  assert.match(readme, /pnpm telemetry:viewer/)
+  assert.match(readme, /pnpm dev/)
+  assert.match(readme, /Service startup never waits for viewer availability/)
+  assert.match(readme, /OTEL_GUI_BIN=\/path\/to\/otel-gui pnpm telemetry:viewer/)
 })
 
 test('root dev injects best-effort local OpenTelemetry defaults for services', () => {
