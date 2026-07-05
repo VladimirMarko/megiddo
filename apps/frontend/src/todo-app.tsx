@@ -11,6 +11,7 @@ import * as React from 'react'
 import { type ReactElement, useEffect } from 'react'
 import type { FrontendApi, FrontendAuthSession, FrontendTodo } from './api/frontend-api-adapter'
 import { AuthSessionPrompt } from './components/auth-session-prompt'
+import { Title } from './components/title'
 import { TodoCreateForm } from './components/todo-create-form'
 import { TodoItem } from './components/todo-item'
 
@@ -182,7 +183,7 @@ function TodoScreen() {
   if (!authSession) {
     return (
       <main className="todo-shell">
-        <h1>Jōtai</h1>
+        <Title />
         <p className="todo-message">Checking session...</p>
       </main>
     )
@@ -206,7 +207,7 @@ function TodoScreen() {
   return (
     <main className="todo-shell">
       <header className="todo-header">
-        <h1>Jōtai</h1>
+        <Title />
         <div className="session-bar">
           <span>Signed in as {authSession.user.id}</span>
           <button onClick={() => void signOut()} type="button">

@@ -1,5 +1,6 @@
 // biome-ignore lint/correctness/noUnusedImports: node test JSX transform expects React in scope.
 import * as React from 'react'
+import { Title } from './title'
 
 type AuthSessionPromptProps = {
   buttonText: string
@@ -11,7 +12,7 @@ type AuthSessionPromptProps = {
 export function AuthSessionPrompt({ buttonText, message, messageRole, onSignIn }: AuthSessionPromptProps) {
   return (
     <main className="todo-shell">
-      <h1>Jōtai</h1>
+      <Title />
       <p className="todo-message" role={messageRole}>
         {message}
       </p>
