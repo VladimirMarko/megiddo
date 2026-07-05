@@ -1,7 +1,8 @@
 {
   "extends": "@total-typescript/tsconfig/bundler/dom/app",
   "compilerOptions": {
-    "outDir": "dist"
+    "outDir": "dist",
+    "jsx": "react-jsx"
   },
   "include": ["src"]
 }
