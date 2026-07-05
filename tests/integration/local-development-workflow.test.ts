@@ -42,16 +42,16 @@ const waitForHealth = async (url: string, logs: () => string) => {
   throw new Error(`Timed out waiting for ${url}\n${logs()}`)
 }
 
-const startService = async ({
+const startProcess = async ({
+  args,
   env,
-  healthUrl,
-  packageName,
+  healthUrls,
 }: {
+  args: string[]
   env: NodeJS.ProcessEnv
-  healthUrl: string
-  packageName: string
+  healthUrls: string[]
 }) => {
-  const child = spawn('pnpm', ['--filter', packageName, 'dev'], {
+  const child = spawn('pnpm', args, {
     cwd: workspaceRoot,
     detached: true,
     env: { ...process.env, ...env },
@@ -63,7 +63,7 @@ const startService = async ({
   child.stderr.on('data', chunk => chunks.push(chunk.toString()))
 
   try {
-    await waitForHealth(healthUrl, logs)
+    await Promise.all(healthUrls.map(url => waitForHealth(url, logs)))
   } catch (error) {
     stopService(child)
     throw error
@@ -71,6 +71,21 @@ const startService = async ({
 
   return { child, logs }
 }
+
+const startService = async ({
+  env,
+  healthUrl,
+  packageName,
+}: {
+  env: NodeJS.ProcessEnv
+  healthUrl: string
+  packageName: string
+}) =>
+  startProcess({
+    args: ['--filter', packageName, 'dev'],
+    env,
+    healthUrls: [healthUrl],
+  })
 
 const startLocalWorkflow = async ({
   apiUrl,
@@ -81,25 +96,11 @@ const startLocalWorkflow = async ({
   env: NodeJS.ProcessEnv
   frontendUrl: string
 }) => {
-  const child = spawn('pnpm', ['dev'], {
-    cwd: workspaceRoot,
-    detached: true,
-    env: { ...process.env, ...env },
+  return startProcess({
+    args: ['dev'],
+    env,
+    healthUrls: [`${apiUrl}/health`, frontendUrl],
   })
-  const chunks: string[] = []
-  const logs = () => chunks.join('')
-
-  child.stdout.on('data', chunk => chunks.push(chunk.toString()))
-  child.stderr.on('data', chunk => chunks.push(chunk.toString()))
-
-  try {
-    await Promise.all([waitForHealth(`${apiUrl}/health`, logs), waitForHealth(frontendUrl, logs)])
-  } catch (error) {
-    stopService(child)
-    throw error
-  }
-
-  return { child, logs }
 }
 
 const stopService = (child: ChildProcessWithoutNullStreams) => {
