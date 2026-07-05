@@ -2,6 +2,7 @@ import {
   type ApiGatewayContractV1,
   apiGatewayAudienceV1,
   apiGatewayContractV1,
+  apiGatewayOperationalHealthV1,
   gatewayStatus,
   todoServiceAudienceV1,
 } from '@megiddo/contracts'
@@ -91,6 +92,9 @@ export const createApiGatewayRouter = ({
     v1: {
       gateway: {
         status: apiGatewayV1.v1.gateway.status.handler(() => gatewayStatus),
+      },
+      operational: {
+        health: apiGatewayV1.v1.operational.health.handler(() => apiGatewayOperationalHealthV1),
       },
       viewer: {
         session: {

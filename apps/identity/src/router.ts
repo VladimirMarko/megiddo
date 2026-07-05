@@ -1,4 +1,4 @@
-import { identityContractV1 } from '@megiddo/contracts'
+import { identityContractV1, identityOperationalHealthV1 } from '@megiddo/contracts'
 import { implement } from '@orpc/server'
 import type { IdentityUseCases } from './identity-use-cases'
 
@@ -13,6 +13,9 @@ export const createIdentityRouter = (identity: IdentityUseCases) =>
             identity.issueDevelopmentIdentityToken(input),
           ),
         },
+      },
+      operational: {
+        health: identityV1.v1.operational.health.handler(() => identityOperationalHealthV1),
       },
     },
   })

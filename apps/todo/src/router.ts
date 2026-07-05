@@ -1,4 +1,4 @@
-import { todoContractV1, todoServiceAudienceV1 } from '@megiddo/contracts'
+import { todoContractV1, todoOperationalHealthV1, todoServiceAudienceV1 } from '@megiddo/contracts'
 import type { IdentityTokenVerifier } from '@megiddo/platform'
 import { implement, ORPCError } from '@orpc/server'
 import type { TodoUseCases } from './todo-use-cases'
@@ -19,6 +19,9 @@ const verifyTodoOwnerId = async (tokenVerifier: IdentityTokenVerifier, identityT
 export const createTodoRouter = (todos: TodoUseCases, tokenVerifier: IdentityTokenVerifier) =>
   todoV1.router({
     v1: {
+      operational: {
+        health: todoV1.v1.operational.health.handler(() => todoOperationalHealthV1),
+      },
       todos: {
         list: todoV1.v1.todos.list.handler(async ({ input }) => {
           const ownerId = await verifyTodoOwnerId(tokenVerifier, input.identityToken)

@@ -19,6 +19,17 @@ export const UserReferenceResourceSchemaV1 = z.object({
 
 export const IdentityTokenSchemaV1 = z.string().min(1)
 
+export const OperationalHealthResourceSchemaV1 = z.discriminatedUnion('status', [
+  z.object({ service: z.string().min(1), status: z.literal('ready') }).strict(),
+  z
+    .object({
+      reasons: z.array(z.string().min(1)).nonempty(),
+      service: z.string().min(1),
+      status: z.union([z.literal('starting'), z.literal('degraded'), z.literal('broken')]),
+    })
+    .strict(),
+])
+
 export const AuthSessionResourceSchemaV1 = z.discriminatedUnion('state', [
   z.object({ state: z.literal('logged-out') }),
   z.object({ state: z.literal('expired') }),
@@ -55,6 +66,7 @@ export const GatewayAuthSessionInputSchemaV1 = z.undefined()
 export const GatewayAuthSignInInputSchemaV1 = z.object({ subject: z.string().min(1).optional() }).optional()
 export const GatewayAuthSignOutInputSchemaV1 = z.undefined()
 export const GatewayStatusInputSchemaV1 = z.undefined()
+export const OperationalHealthInputSchemaV1 = z.undefined()
 export const GatewayTodoListInputSchemaV1 = z.undefined()
 export const GatewayTodoCreateInputSchemaV1 = z.object({ title: z.string().min(1) })
 export const GatewayTodoByIdInputSchemaV1 = z.object({ id: z.string().min(1) })
@@ -66,6 +78,7 @@ export const TodoByIdInputSchemaV1 = AuthenticatedTodoInputSchemaV1.extend({ id:
 export const TodoRenameInputSchemaV1 = TodoByIdInputSchemaV1.extend({ title: z.string().min(1) })
 
 export type GatewayStatus = z.infer<typeof GatewayStatusResourceSchemaV1>
+export type OperationalHealthResourceV1 = z.infer<typeof OperationalHealthResourceSchemaV1>
 export type TodoResourceV1 = z.infer<typeof TodoResourceSchemaV1>
 export type UserReferenceResourceV1 = z.infer<typeof UserReferenceResourceSchemaV1>
 export type AuthSessionResourceV1 = z.infer<typeof AuthSessionResourceSchemaV1>
@@ -90,11 +103,28 @@ export const gatewayStatus = GatewayStatusResourceSchemaV1.parse({
   message: 'frontend is connected',
 })
 
+export const operationalHealthContractFragmentV1 = {
+  health: oc.input(OperationalHealthInputSchemaV1).output(OperationalHealthResourceSchemaV1),
+}
+
+export const apiGatewayOperationalHealthV1 = OperationalHealthResourceSchemaV1.parse({
+  service: 'api-gateway',
+  status: 'ready',
+})
+
+export const todoOperationalHealthV1 = OperationalHealthResourceSchemaV1.parse({ service: 'todo', status: 'ready' })
+
+export const identityOperationalHealthV1 = OperationalHealthResourceSchemaV1.parse({
+  service: 'identity',
+  status: 'ready',
+})
+
 export const apiGatewayContractV1 = {
   v1: {
     gateway: {
       status: oc.input(GatewayStatusInputSchemaV1).output(GatewayStatusResourceSchemaV1),
     },
+    operational: operationalHealthContractFragmentV1,
     viewer: {
       session: {
         current: oc.input(GatewayAuthSessionInputSchemaV1).output(AuthSessionResourceSchemaV1),
@@ -122,6 +152,7 @@ export const identityContractV1 = {
         issue: oc.input(IdentityTokenIssueInputSchemaV1).output(IdentityTokenIssueOutputSchemaV1),
       },
     },
+    operational: operationalHealthContractFragmentV1,
   },
 }
 
@@ -130,6 +161,7 @@ export type IdentityContractClientV1 = ContractRouterClient<IdentityContractV1>
 
 export const todoContractV1 = {
   v1: {
+    operational: operationalHealthContractFragmentV1,
     todos: {
       list: oc.input(TodoListInputSchemaV1).output(z.array(TodoResourceSchemaV1)),
       create: oc.input(TodoCreateInputSchemaV1).output(TodoResourceSchemaV1),
