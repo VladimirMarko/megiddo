@@ -56,6 +56,10 @@ _Avoid_: Shared domain package, business logic package, service utility dump.
 A frontend-owned boundary that exposes UI-friendly operations and delegates to the oRPC client in production. Tests and stories can replace it with a fake implementation without running Identity, Better Auth, or service databases.
 _Avoid_: Raw oRPC calls in components, mocking backend internals in frontend tests.
 
+**Frontend Component**:
+A UI unit with a focused rendering or interaction responsibility. Each component should live in its own file when splitting it out makes the call sites and tests easier to read.
+_Avoid_: Large page components that mix unrelated UI sections, API state, and event handling in one file.
+
 **Version Adapter**:
 A service-edge adapter that maps one Contract Surface version's transport shapes to and from the service's current application use cases.
 _Avoid_: Version branching in domain logic, contract-shaped application core.

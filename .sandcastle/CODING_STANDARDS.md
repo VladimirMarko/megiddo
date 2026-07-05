@@ -12,6 +12,8 @@
 - Prefer named exports over default exports
 -->
 
+- Split frontend UI into focused components, with each component in its own file when the split improves readability or testability.
+
 ## Testing
 
 <!-- Example:
@@ -25,3 +27,6 @@
 - Keep modules focused on a single responsibility
 - Prefer composition over inheritance
 -->
+
+- Frontend components depend on frontend-owned models and API adapters, not contract Resource types or raw oRPC calls.
+- Keep contract-to-UI mapping inside the frontend adapter layer.
