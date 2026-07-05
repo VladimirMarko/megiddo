@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createApiGatewayApp, createTodoServiceClient } from '@megiddo/api'
+import { createApiGatewayApp, createIdentityServiceClient, createTodoServiceClient } from '@megiddo/api'
 import type { TodoResourceV1 } from '@megiddo/contracts'
+import { createIdentityApp } from '@megiddo/identity'
 import { createDevelopmentIdentityTokenCodec } from '@megiddo/platform'
 import { createTodoApp } from '@megiddo/todo'
-import { propagation, trace } from '@opentelemetry/api'
+import { propagation, SpanStatusCode, trace } from '@opentelemetry/api'
 import { W3CTraceContextPropagator } from '@opentelemetry/core'
+import type { ReadableSpan } from '@opentelemetry/sdk-trace-base'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 
 const postAuthenticatedRpc = (
@@ -20,14 +22,34 @@ const postAuthenticatedRpc = (
     method: 'POST',
   })
 
-test('API Gateway to Todo oRPC call exports related OpenTelemetry client and server spans', async () => {
+const spanFor = (spans: ReadableSpan[], attributes: Record<string, string>) =>
+  spans.find(span =>
+    Object.entries(attributes).every(([attribute, expected]) => span.attributes[attribute] === expected),
+  )
+
+const assertSpan = (spans: ReadableSpan[], attributes: Record<string, string>, message: string) => {
+  const span = spanFor(spans, attributes)
+  assert.ok(span, message)
+
+  return span
+}
+
+test('backend oRPC calls export consistent spans and failed client metadata', async () => {
   const exporter = new InMemorySpanExporter()
   const provider = new BasicTracerProvider({ spanProcessors: [new SimpleSpanProcessor(exporter)] })
   trace.setGlobalTracerProvider(provider)
   propagation.setGlobalPropagator(new W3CTraceContextPropagator())
 
   const codec = createDevelopmentIdentityTokenCodec()
+  const identityApp = createIdentityApp({ tokenSigner: codec })
   const todoApp = createTodoApp({ tokenVerifier: codec })
+  const identityClient = createIdentityServiceClient({
+    baseUrl: 'http://identity-service.test',
+    fetch(request) {
+      const url = new URL(request.url)
+      return identityApp.request(`${url.pathname}${url.search}`, request)
+    },
+  })
   const todoClient = createTodoServiceClient({
     baseUrl: 'http://todo-service.test',
     fetch(request) {
@@ -36,14 +58,7 @@ test('API Gateway to Todo oRPC call exports related OpenTelemetry client and ser
     },
   })
   const apiApp = createApiGatewayApp({
-    identityClient: {
-      async issueDevelopmentIdentityToken(input) {
-        return {
-          identityToken: await codec.issueIdentityToken(input),
-          user: { id: input.subject },
-        }
-      },
-    },
+    identityClient,
     todoClient,
     tokenVerifier: codec,
   })
@@ -60,28 +75,91 @@ test('API Gateway to Todo oRPC call exports related OpenTelemetry client and ser
   assert.equal(response.status, 200)
   const created = (await response.json()) as { json: TodoResourceV1 }
   assert.equal(created.json.title, 'Trace me without payloads')
+
+  const failedResponse = await postAuthenticatedRpc(apiApp, '/rpc/v1/viewer/todos/complete', identityToken, {
+    id: 'missing-todo',
+  })
+
+  assert.equal(failedResponse.ok, false)
   await provider.forceFlush()
 
   const spans = exporter.getFinishedSpans()
-  const clientSpan = spans.find(span => span.attributes['orpc.role'] === 'client')
-  const serverSpan = spans.find(span => span.attributes['orpc.role'] === 'server')
+  const apiServerSpan = assertSpan(
+    spans,
+    {
+      'orpc.procedure': 'v1.viewer.todos.create',
+      'orpc.role': 'server',
+      'service.name': 'api-gateway',
+    },
+    'expected an API Gateway oRPC server span',
+  )
+  const identityClientSpan = assertSpan(
+    spans,
+    {
+      'orpc.procedure': 'v1.development.identityTokens.issue',
+      'orpc.role': 'client',
+      'service.name': 'api-gateway',
+    },
+    'expected an Identity oRPC client span',
+  )
+  const identityServerSpan = assertSpan(
+    spans,
+    {
+      'orpc.procedure': 'v1.development.identityTokens.issue',
+      'orpc.role': 'server',
+      'service.name': 'identity',
+    },
+    'expected an Identity oRPC server span',
+  )
+  const todoClientSpan = assertSpan(
+    spans,
+    {
+      'orpc.procedure': 'v1.todos.create',
+      'orpc.role': 'client',
+      'service.name': 'api-gateway',
+    },
+    'expected a Todo oRPC client span',
+  )
+  const todoServerSpan = assertSpan(
+    spans,
+    {
+      'orpc.procedure': 'v1.todos.create',
+      'orpc.role': 'server',
+      'service.name': 'todo',
+    },
+    'expected a Todo oRPC server span',
+  )
+  const failedTodoClientSpan = assertSpan(
+    spans,
+    {
+      'orpc.procedure': 'v1.todos.complete',
+      'orpc.role': 'client',
+      'service.name': 'api-gateway',
+    },
+    'expected a failed Todo oRPC client span',
+  )
 
-  assert.ok(clientSpan, 'expected an oRPC client span')
-  assert.ok(serverSpan, 'expected an oRPC server span')
-  assert.equal(clientSpan.attributes['service.name'], 'api-gateway')
-  assert.equal(serverSpan.attributes['service.name'], 'todo')
-  assert.equal(clientSpan.attributes['orpc.procedure'], 'v1.todos.create')
-  assert.equal(serverSpan.attributes['orpc.procedure'], 'v1.todos.create')
-  assert.equal(clientSpan.attributes['orpc.status'], 'ok')
-  assert.equal(serverSpan.attributes['orpc.status'], 'ok')
-  assert.equal(typeof clientSpan.attributes['orpc.duration_ms'], 'number')
-  assert.equal(typeof serverSpan.attributes['orpc.duration_ms'], 'number')
-  assert.equal(serverSpan.spanContext().traceId, clientSpan.spanContext().traceId)
-  assert.equal(serverSpan.parentSpanContext?.spanId, clientSpan.spanContext().spanId)
+  for (const span of [apiServerSpan, identityClientSpan, identityServerSpan, todoClientSpan, todoServerSpan]) {
+    assert.equal(span.attributes['orpc.status'], 'ok')
+    assert.equal(typeof span.attributes['orpc.duration_ms'], 'number')
+    assert.equal(span.attributes['http.request.url'], undefined)
+  }
 
-  for (const span of [clientSpan, serverSpan]) {
+  assert.equal(identityServerSpan.spanContext().traceId, identityClientSpan.spanContext().traceId)
+  assert.equal(identityServerSpan.parentSpanContext?.spanId, identityClientSpan.spanContext().spanId)
+  assert.equal(todoServerSpan.spanContext().traceId, todoClientSpan.spanContext().traceId)
+  assert.equal(todoServerSpan.parentSpanContext?.spanId, todoClientSpan.spanContext().spanId)
+
+  assert.equal(failedTodoClientSpan.attributes['orpc.status'], 'error')
+  assert.equal(failedTodoClientSpan.status.code, SpanStatusCode.ERROR)
+  assert.equal(failedTodoClientSpan.attributes['error.type'], 'HTTP 500')
+  assert.equal(failedTodoClientSpan.attributes['http.response.status_code'], 500)
+  assert.equal(failedTodoClientSpan.attributes['http.request.url'], 'http://todo-service.test/rpc/v1/todos/complete')
+
+  for (const span of spans) {
     assert.equal(Object.values(span.attributes).includes('Trace me without payloads'), false)
     assert.equal(Object.values(span.attributes).includes(created.json.id), false)
+    assert.equal(Object.values(span.attributes).includes('missing-todo'), false)
   }
 
   await provider.shutdown()

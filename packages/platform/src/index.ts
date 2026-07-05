@@ -83,6 +83,11 @@ export const createInstrumentedOrpcClientFetch =
 
     try {
       const response = await fetch(new Request(request, { headers }))
+      if (!response.ok) {
+        span.setAttribute('error.type', `HTTP ${response.status}`)
+        span.setAttribute('http.request.url', request.url)
+        span.setAttribute('http.response.status_code', response.status)
+      }
       finishOrpcSpan(span, startTime, response.ok ? 'ok' : 'error')
 
       return response

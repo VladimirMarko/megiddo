@@ -1,4 +1,10 @@
-import { createDevelopmentIdentityTokenCodec, type IdentityTokenSigner, identityRpcMountPath } from '@megiddo/platform'
+import {
+  createDevelopmentIdentityTokenCodec,
+  handleInstrumentedOrpcServerRequest,
+  type IdentityTokenSigner,
+  identityRpcMountPath,
+  orpcProcedureFromRequest,
+} from '@megiddo/platform'
 import { RPCHandler } from '@orpc/server/fetch'
 import { Hono } from 'hono'
 import type { AuthProviderAdapter } from './identity-use-cases'
@@ -14,11 +20,13 @@ const requestWithoutIdentityRpcMountPath = (request: Request) => {
 
 interface IdentityAppOptions {
   authProvider?: AuthProviderAdapter
+  serviceName?: string
   tokenSigner?: IdentityTokenSigner
 }
 
 export const createIdentityApp = ({
   authProvider = createDevelopmentAuthProviderAdapter(),
+  serviceName = 'identity',
   tokenSigner = createDevelopmentIdentityTokenCodec(),
 }: IdentityAppOptions = {}) => {
   const app = new Hono()
@@ -31,7 +39,12 @@ export const createIdentityApp = ({
   app.get('/health', context => context.json({ service: 'identity', message: 'identity service is running' }))
   app.use(`${identityRpcMountPath}/*`, async (context, next) => {
     const request = requestWithoutIdentityRpcMountPath(context.req.raw)
-    const { matched, response } = await handler.handle(request)
+    const { matched, response } = await handleInstrumentedOrpcServerRequest({
+      handle: () => handler.handle(request),
+      procedure: orpcProcedureFromRequest(request),
+      request,
+      serviceName,
+    })
 
     if (matched) {
       return response
