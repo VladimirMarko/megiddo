@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client'
 import { createFrontendApi } from './api/frontend-api-adapter'
+import './styles.css'
 import { createTodoApp } from './todo-app'
 
 const root = document.querySelector<HTMLDivElement>('#root')

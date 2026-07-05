@@ -162,21 +162,40 @@ test('frontend todo flow renders and mutates todos through a fake Frontend API A
     await waitForText(rootElement, /Created from UI/)
 
     await act(async () => {
-      getElement<HTMLButtonElement>('button[aria-label="Complete Existing todo"]').click()
+      getElement<HTMLInputElement>('input[aria-label="Complete Existing todo"]').click()
       await settle()
     })
 
     await waitForText(rootElement, /Completed/)
 
     await act(async () => {
-      getElement<HTMLButtonElement>('button[aria-label="Reopen Existing todo"]').click()
+      getElement<HTMLInputElement>('input[aria-label="Reopen Existing todo"]').click()
       await settle()
     })
 
-    const renameInput = getElement<HTMLInputElement>('input[aria-label="Rename Existing todo"]')
+    await act(async () => {
+      getElement<HTMLButtonElement>('button[aria-label="Edit Existing todo"]').click()
+      await settle()
+    })
+
+    let renameInput = getElement<HTMLInputElement>('input[aria-label="Rename Existing todo"]')
+    await act(async () => {
+      setInputValue(renameInput, 'Cancelled rename')
+      getElement<HTMLButtonElement>('button[aria-label="Cancel rename for Existing todo"]').click()
+      await settle()
+    })
+
+    assert.doesNotMatch(rootElement.textContent ?? '', /Cancelled rename/)
+
+    await act(async () => {
+      getElement<HTMLButtonElement>('button[aria-label="Edit Existing todo"]').click()
+      await settle()
+    })
+
+    renameInput = getElement<HTMLInputElement>('input[aria-label="Rename Existing todo"]')
     await act(async () => {
       setInputValue(renameInput, 'Renamed existing todo')
-      getElement<HTMLButtonElement>('button[aria-label="Save rename for Existing todo"]').click()
+      getElement<HTMLButtonElement>('button[aria-label="Confirm rename for Existing todo"]').click()
       await settle()
     })
 
@@ -270,14 +289,14 @@ test('frontend todo flow surfaces mutation failures through a fake Frontend API 
     assert.doesNotMatch(rootElement.textContent ?? '', /Create failed/)
 
     await act(async () => {
-      getElement<HTMLButtonElement>('button[aria-label="Complete Existing todo"]').click()
+      getElement<HTMLInputElement>('input[aria-label="Complete Existing todo"]').click()
       await settle()
     })
 
     await waitForText(rootElement, /Complete failed/)
 
     await act(async () => {
-      getElement<HTMLButtonElement>('button[aria-label="Complete Existing todo"]').click()
+      getElement<HTMLInputElement>('input[aria-label="Complete Existing todo"]').click()
       await settle()
     })
 
@@ -285,36 +304,112 @@ test('frontend todo flow surfaces mutation failures through a fake Frontend API 
     assert.doesNotMatch(rootElement.textContent ?? '', /Complete failed/)
 
     await act(async () => {
-      getElement<HTMLButtonElement>('button[aria-label="Reopen Existing todo"]').click()
+      getElement<HTMLInputElement>('input[aria-label="Reopen Existing todo"]').click()
       await settle()
     })
 
     await waitForText(rootElement, /Reopen failed/)
 
     await act(async () => {
-      getElement<HTMLButtonElement>('button[aria-label="Reopen Existing todo"]').click()
+      getElement<HTMLInputElement>('input[aria-label="Reopen Existing todo"]').click()
       await settle()
     })
 
     assert.doesNotMatch(rootElement.textContent ?? '', /Reopen failed/)
 
+    await act(async () => {
+      getElement<HTMLButtonElement>('button[aria-label="Edit Existing todo"]').click()
+      await settle()
+    })
+
     const renameInput = getElement<HTMLInputElement>('input[aria-label="Rename Existing todo"]')
-    const renameForm = getElement<HTMLFormElement>('form[aria-label="Rename Existing todo"]')
     await act(async () => {
       setInputValue(renameInput, 'Renamed after failure')
-      renameForm.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }))
+      getElement<HTMLButtonElement>('button[aria-label="Confirm rename for Existing todo"]').click()
       await settle()
     })
 
     await waitForText(rootElement, /Rename failed/)
 
     await act(async () => {
-      renameForm.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }))
+      getElement<HTMLButtonElement>('button[aria-label="Confirm rename for Existing todo"]').click()
       await settle()
     })
 
     await waitForText(rootElement, /Renamed after failure/)
     assert.doesNotMatch(rootElement.textContent ?? '', /Rename failed/)
+
+    await act(async () => root.unmount())
+  })
+})
+
+test('frontend filters todos by completion status without reloading from the API', async () => {
+  const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/' })
+  const todoStore = createTodoStore([
+    { id: 'todo-1', title: 'Open todo', status: 'open' },
+    { id: 'todo-2', title: 'Completed todo', status: 'completed' },
+  ])
+  const calls: string[] = []
+  const api: FrontendApi = {
+    async getGatewayStatus() {
+      return { service: 'api-gateway', message: 'frontend is connected' }
+    },
+    async getAuthSession() {
+      return { state: 'logged-in', user: { id: 'dev:viewer' } }
+    },
+    async signInDevelopment() {
+      return { state: 'logged-in', user: { id: 'dev:viewer' } }
+    },
+    async signOut() {
+      return { state: 'logged-out' }
+    },
+    async listTodos() {
+      calls.push('listTodos')
+      return todoStore.list()
+    },
+    async createTodo() {
+      throw new Error('createTodo should not be called')
+    },
+    async completeTodo() {
+      throw new Error('completeTodo should not be called')
+    },
+    async reopenTodo() {
+      throw new Error('reopenTodo should not be called')
+    },
+    async renameTodo() {
+      throw new Error('renameTodo should not be called')
+    },
+  }
+
+  await withBrowserGlobals(dom, async () => {
+    const rootElement = getElement<HTMLDivElement>('#root')
+    const root = createRoot(rootElement)
+
+    await act(async () => {
+      root.render(createFrontendTodoApp({ api }))
+      await settle()
+    })
+
+    await waitForText(rootElement, /Open todo/)
+    assert.match(rootElement.textContent ?? '', /Completed todo/)
+    assert.equal(document.querySelector('button[aria-label="Edit Completed todo"]'), null)
+
+    await act(async () => {
+      getElement<HTMLInputElement>('input[aria-label="Show completed todos"]').click()
+      await settle()
+    })
+
+    assert.doesNotMatch(rootElement.textContent ?? '', /Open todo/)
+    assert.match(rootElement.textContent ?? '', /Completed todo/)
+
+    await act(async () => {
+      getElement<HTMLInputElement>('input[aria-label="Show open todos"]').click()
+      await settle()
+    })
+
+    assert.match(rootElement.textContent ?? '', /Open todo/)
+    assert.doesNotMatch(rootElement.textContent ?? '', /Completed todo/)
+    assert.deepEqual(calls, ['listTodos'])
 
     await act(async () => root.unmount())
   })
@@ -366,7 +461,7 @@ test('frontend renders auth session states through a fake Frontend API Adapter',
         await settle()
       })
 
-      await waitForText(rootElement, /Todos|Sign in to manage todos|Session expired/)
+      await waitForText(rootElement, /Jōtai|Sign in to manage todos|Session expired/)
       textContent = rootElement.textContent ?? ''
       await act(async () => root.unmount())
     })

@@ -33,6 +33,7 @@ export function TodoCreateForm({ onCreate }: TodoCreateFormProps) {
   return (
     <form
       aria-label="Create todo"
+      className="todo-create-form"
       onSubmit={event => {
         event.preventDefault()
         event.stopPropagation()

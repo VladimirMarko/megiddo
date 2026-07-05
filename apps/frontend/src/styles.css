@@ -1,0 +1,212 @@
+@import url("https://rsms.me/inter/inter.css");
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #fdfdfd;
+  color: #0f0f12;
+  font-family: Inter, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  filter: saturate(0);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+#root {
+  width: min(50ch, calc(100vw - 32px));
+  margin: 5rem auto 2rem;
+}
+
+.todo-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.todo-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+h1 {
+  margin: 0;
+  color: black;
+  font-size: clamp(4.5rem, 21vw, 10rem);
+  font-weight: 800;
+  letter-spacing: -0.07em;
+  line-height: 0.9;
+  white-space: nowrap;
+}
+
+.session-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #767676;
+  font-size: 0.9rem;
+}
+
+.session-bar button,
+.todo-filter label,
+.todo-actions button,
+.icon-button {
+  color: #8f8f8f;
+}
+
+.session-bar button:hover,
+.todo-filter label:has(input:checked),
+.todo-actions button:hover,
+.icon-button:hover {
+  color: #272730;
+}
+
+.todo-filter {
+  display: flex;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.todo-filter legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.todo-filter label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
+.todo-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.todo-create-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: #767676;
+}
+
+.todo-create-form input:not([type="checkbox"]),
+.todo-rename-input {
+  width: 100%;
+  border: 0;
+  background: white;
+  box-shadow: 0 15px 30px rgb(0 0 0 / 5%);
+  padding: 10px 20px;
+}
+
+.todo-create-form input:focus,
+.todo-rename-input:focus {
+  outline: none;
+}
+
+.todo-create-form button {
+  align-self: flex-start;
+  color: #767676;
+}
+
+.todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 40px;
+}
+
+.todo-content {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.todo-title {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.todo-title-completed {
+  text-decoration: line-through;
+}
+
+.todo-status,
+.todo-message {
+  color: #a0a0a0;
+  font-size: 0.85rem;
+}
+
+.todo-error {
+  color: #7a2323;
+}
+
+.todo-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.icon-button,
+.todo-actions button {
+  width: 32px;
+  height: 32px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+@media (max-width: 520px) {
+  #root {
+    margin-top: 2rem;
+  }
+
+  .session-bar,
+  .todo-content {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

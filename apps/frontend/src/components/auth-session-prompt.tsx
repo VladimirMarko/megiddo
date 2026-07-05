@@ -10,9 +10,11 @@ type AuthSessionPromptProps = {
 
 export function AuthSessionPrompt({ buttonText, message, messageRole, onSignIn }: AuthSessionPromptProps) {
   return (
-    <main>
-      <h1>Todos</h1>
-      <p role={messageRole}>{message}</p>
+    <main className="todo-shell">
+      <h1>Jōtai</h1>
+      <p className="todo-message" role={messageRole}>
+        {message}
+      </p>
       <button onClick={onSignIn} type="button">
         {buttonText}
       </button>

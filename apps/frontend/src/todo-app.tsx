@@ -6,7 +6,7 @@ import {
   Outlet,
   RouterProvider,
 } from '@tanstack/react-router'
-import { atom, Provider, useAtom } from 'jotai'
+import { atom, Provider, useAtom, useSetAtom } from 'jotai'
 import * as React from 'react'
 import { type ReactElement, useEffect } from 'react'
 import type { FrontendApi, FrontendAuthSession, FrontendTodo } from './api/frontend-api-adapter'
@@ -21,6 +21,21 @@ interface TodoRouteContext {
 }
 
 const todosAtom = atom<FrontendTodo[]>([])
+const filterAtom = atom<'all' | 'completed' | 'open'>('all')
+const filteredTodosAtom = atom(get => {
+  const filter = get(filterAtom)
+  const todos = get(todosAtom)
+
+  if (filter === 'completed') {
+    return todos.filter(todo => todo.status === 'completed')
+  }
+
+  if (filter === 'open') {
+    return todos.filter(todo => todo.status === 'open')
+  }
+
+  return todos
+})
 const loadingAtom = atom(true)
 const errorAtom = atom<string | undefined>(undefined)
 const authSessionAtom = atom<FrontendAuthSession | undefined>(undefined)
@@ -60,7 +75,9 @@ export const createTodoApp = ({ api }: { api: FrontendApi }): ReactElement => {
 
 function TodoScreen() {
   const { api } = todoRoute.useRouteContext()
-  const [todos, setTodos] = useAtom(todosAtom)
+  const setTodos = useSetAtom(todosAtom)
+  const [filteredTodos] = useAtom(filteredTodosAtom)
+  const [filter, setFilter] = useAtom(filterAtom)
   const [loading, setLoading] = useAtom(loadingAtom)
   const [error, setError] = useAtom(errorAtom)
   const [authSession, setAuthSession] = useAtom(authSessionAtom)
@@ -164,9 +181,9 @@ function TodoScreen() {
 
   if (!authSession) {
     return (
-      <main>
-        <h1>Todos</h1>
-        <p>Checking session...</p>
+      <main className="todo-shell">
+        <h1>Jōtai</h1>
+        <p className="todo-message">Checking session...</p>
       </main>
     )
   }
@@ -187,19 +204,63 @@ function TodoScreen() {
   }
 
   return (
-    <main>
-      <h1>Todos</h1>
-      <p>Signed in as {authSession.user.id}</p>
-      <button onClick={() => void signOut()} type="button">
-        Sign out
-      </button>
+    <main className="todo-shell">
+      <header className="todo-header">
+        <h1>Jōtai</h1>
+        <div className="session-bar">
+          <span>Signed in as {authSession.user.id}</span>
+          <button onClick={() => void signOut()} type="button">
+            Sign out
+          </button>
+        </div>
+      </header>
+      <fieldset className="todo-filter">
+        <legend>Filter todos</legend>
+        <label>
+          <input
+            aria-label="Show all todos"
+            checked={filter === 'all'}
+            name="todo-filter"
+            onChange={() => setFilter('all')}
+            type="radio"
+            value="all"
+          />
+          All
+        </label>
+        <label>
+          <input
+            aria-label="Show completed todos"
+            checked={filter === 'completed'}
+            name="todo-filter"
+            onChange={() => setFilter('completed')}
+            type="radio"
+            value="completed"
+          />
+          Completed
+        </label>
+        <label>
+          <input
+            aria-label="Show open todos"
+            checked={filter === 'open'}
+            name="todo-filter"
+            onChange={() => setFilter('open')}
+            type="radio"
+            value="open"
+          />
+          Open
+        </label>
+      </fieldset>
       <TodoCreateForm onCreate={createTodo} />
 
-      {loading ? <p>Loading todos...</p> : null}
-      {error ? <p role="alert">{error}</p> : null}
+      {loading ? <p className="todo-message">Loading todos...</p> : null}
+      {error ? (
+        <p className="todo-error" role="alert">
+          {error}
+        </p>
+      ) : null}
 
-      <ul>
-        {todos.map(todo => (
+      <ul className="todo-list">
+        {filteredTodos.map(todo => (
           <TodoItem key={todo.id} onComplete={completeTodo} onRename={renameTodo} onReopen={reopenTodo} todo={todo} />
         ))}
       </ul>
