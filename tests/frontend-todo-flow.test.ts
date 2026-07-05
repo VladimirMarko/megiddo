@@ -46,6 +46,37 @@ const waitForText = async (rootElement: HTMLElement, pattern: RegExp) => {
 
   assert.match(rootElement.textContent ?? '', pattern)
 }
+const createTodoStore = (initialTodos: FrontendTodo[]) => {
+  let todos = initialTodos
+  const getTodo = (id: string) => {
+    const todo = todos.find(candidate => candidate.id === id)
+
+    assert.ok(todo, `Expected todo ${id} to exist`)
+
+    return todo
+  }
+
+  return {
+    add(todo: FrontendTodo) {
+      todos = [...todos, todo]
+    },
+    complete(id: string) {
+      todos = todos.map(todo => (todo.id === id ? { ...todo, status: 'completed' } : todo))
+      return getTodo(id)
+    },
+    list() {
+      return todos
+    },
+    rename(id: string, title: string) {
+      todos = todos.map(todo => (todo.id === id ? { ...todo, title } : todo))
+      return getTodo(id)
+    },
+    reopen(id: string) {
+      todos = todos.map(todo => (todo.id === id ? { ...todo, status: 'open' } : todo))
+      return getTodo(id)
+    },
+  }
+}
 const withBrowserGlobals = async (dom: JSDOM, run: () => Promise<void>) => {
   const previousWindow = globalThis.window
   const previousDocument = globalThis.document
@@ -71,14 +102,7 @@ const withBrowserGlobals = async (dom: JSDOM, run: () => Promise<void>) => {
 test('frontend todo flow renders and mutates todos through a fake Frontend API Adapter', async () => {
   const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/' })
   const calls: string[] = []
-  let todos: FrontendTodo[] = [{ id: 'todo-1', title: 'Existing todo', status: 'open' }]
-  const getTodo = (id: string) => {
-    const todo = todos.find(candidate => candidate.id === id)
-
-    assert.ok(todo, `Expected todo ${id} to exist`)
-
-    return todo
-  }
+  const todoStore = createTodoStore([{ id: 'todo-1', title: 'Existing todo', status: 'open' }])
   const api: FrontendApi = {
     async getGatewayStatus() {
       return { service: 'api-gateway', message: 'frontend is connected' }
@@ -94,28 +118,25 @@ test('frontend todo flow renders and mutates todos through a fake Frontend API A
     },
     async listTodos() {
       calls.push('listTodos')
-      return todos
+      return todoStore.list()
     },
     async createTodo(input) {
       calls.push(`createTodo:${input.title}`)
       const todo: FrontendTodo = { id: 'todo-2', title: input.title, status: 'open' }
-      todos = [...todos, todo]
+      todoStore.add(todo)
       return todo
     },
     async completeTodo(input) {
       calls.push(`completeTodo:${input.id}`)
-      todos = todos.map(todo => (todo.id === input.id ? { ...todo, status: 'completed' } : todo))
-      return getTodo(input.id)
+      return todoStore.complete(input.id)
     },
     async reopenTodo(input) {
       calls.push(`reopenTodo:${input.id}`)
-      todos = todos.map(todo => (todo.id === input.id ? { ...todo, status: 'open' } : todo))
-      return getTodo(input.id)
+      return todoStore.reopen(input.id)
     },
     async renameTodo(input) {
       calls.push(`renameTodo:${input.id}:${input.title}`)
-      todos = todos.map(todo => (todo.id === input.id ? { ...todo, title: input.title } : todo))
-      return getTodo(input.id)
+      return todoStore.rename(input.id, input.title)
     },
   }
 
@@ -174,14 +195,12 @@ test('frontend todo flow renders and mutates todos through a fake Frontend API A
 
 test('frontend todo flow surfaces mutation failures through a fake Frontend API Adapter', async () => {
   const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/' })
-  let todos: FrontendTodo[] = [{ id: 'todo-1', title: 'Existing todo', status: 'open' }]
+  const todoStore = createTodoStore([{ id: 'todo-1', title: 'Existing todo', status: 'open' }])
   const failures = new Set(['createTodo', 'completeTodo', 'reopenTodo', 'renameTodo'])
-  const getTodo = (id: string) => {
-    const todo = todos.find(candidate => candidate.id === id)
-
-    assert.ok(todo, `Expected todo ${id} to exist`)
-
-    return todo
+  const failOnce = (operation: string, message: string) => {
+    if (failures.delete(operation)) {
+      throw new Error(message)
+    }
   }
   const api: FrontendApi = {
     async getGatewayStatus() {
@@ -197,40 +216,26 @@ test('frontend todo flow surfaces mutation failures through a fake Frontend API 
       return { state: 'logged-out' }
     },
     async listTodos() {
-      return todos
+      return todoStore.list()
     },
     async createTodo(input) {
-      if (failures.delete('createTodo')) {
-        throw new Error('Create failed')
-      }
+      failOnce('createTodo', 'Create failed')
 
       const todo: FrontendTodo = { id: 'todo-2', title: input.title, status: 'open' }
-      todos = [...todos, todo]
+      todoStore.add(todo)
       return todo
     },
     async completeTodo(input) {
-      if (failures.delete('completeTodo')) {
-        throw new Error('Complete failed')
-      }
-
-      todos = todos.map(todo => (todo.id === input.id ? { ...todo, status: 'completed' } : todo))
-      return getTodo(input.id)
+      failOnce('completeTodo', 'Complete failed')
+      return todoStore.complete(input.id)
     },
     async reopenTodo(input) {
-      if (failures.delete('reopenTodo')) {
-        throw new Error('Reopen failed')
-      }
-
-      todos = todos.map(todo => (todo.id === input.id ? { ...todo, status: 'open' } : todo))
-      return getTodo(input.id)
+      failOnce('reopenTodo', 'Reopen failed')
+      return todoStore.reopen(input.id)
     },
     async renameTodo(input) {
-      if (failures.delete('renameTodo')) {
-        throw new Error('Rename failed')
-      }
-
-      todos = todos.map(todo => (todo.id === input.id ? { ...todo, title: input.title } : todo))
-      return getTodo(input.id)
+      failOnce('renameTodo', 'Rename failed')
+      return todoStore.rename(input.id, input.title)
     },
   }
 

@@ -21,13 +21,10 @@ export function TodoItem({ onComplete, onRename, onReopen, todo }: TodoItemProps
   const toggleActionLabel = isCompleted ? 'Reopen' : 'Complete'
 
   const toggleTodo = async () => {
-    try {
-      if (isCompleted) {
-        await onReopen(todo.id)
-        return
-      }
+    const toggle = isCompleted ? onReopen : onComplete
 
-      await onComplete(todo.id)
+    try {
+      await toggle(todo.id)
     } catch {
       return
     }

@@ -96,7 +96,7 @@ function TodoScreen() {
     try {
       setTodos(await api.listTodos())
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not load todos')
+      setError(mutationErrorMessage(caught, 'Could not load todos'))
     } finally {
       setLoading(false)
     }
@@ -146,7 +146,7 @@ function TodoScreen() {
         setError(undefined)
       } catch (caught) {
         if (!cancelled) {
-          setError(caught instanceof Error ? caught.message : 'Could not load todos')
+          setError(mutationErrorMessage(caught, 'Could not load todos'))
         }
       } finally {
         if (!cancelled) {
