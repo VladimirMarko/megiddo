@@ -72,6 +72,36 @@ const startService = async ({
   return { child, logs }
 }
 
+const startLocalWorkflow = async ({
+  apiUrl,
+  env,
+  frontendUrl,
+}: {
+  apiUrl: string
+  env: NodeJS.ProcessEnv
+  frontendUrl: string
+}) => {
+  const child = spawn('pnpm', ['dev'], {
+    cwd: workspaceRoot,
+    detached: true,
+    env: { ...process.env, ...env },
+  })
+  const chunks: string[] = []
+  const logs = () => chunks.join('')
+
+  child.stdout.on('data', chunk => chunks.push(chunk.toString()))
+  child.stderr.on('data', chunk => chunks.push(chunk.toString()))
+
+  try {
+    await Promise.all([waitForHealth(`${apiUrl}/health`, logs), waitForHealth(frontendUrl, logs)])
+  } catch (error) {
+    stopService(child)
+    throw error
+  }
+
+  return { child, logs }
+}
+
 const stopService = (child: ChildProcessWithoutNullStreams) => {
   if (!child.killed && child.pid) {
     try {
@@ -149,5 +179,52 @@ test('local development workflow runs real services over localhost for the authe
     for (const { child } of services.toReversed()) {
       stopService(child)
     }
+  }
+})
+
+test('documented pnpm dev workflow supports authenticated todo creation across real local services', async () => {
+  const [apiPort, identityPort, todoPort, frontendPort] = await Promise.all([
+    getFreePort(),
+    getFreePort(),
+    getFreePort(),
+    getFreePort(),
+  ])
+  const dataDirectory = await mkdtemp(join(tmpdir(), 'megiddo-pnpm-dev-'))
+  const apiUrl = `http://127.0.0.1:${apiPort}`
+  const frontendUrl = `http://127.0.0.1:${frontendPort}`
+  const workflow = await startLocalWorkflow({
+    apiUrl,
+    env: {
+      API_PORT: String(apiPort),
+      FRONTEND_PORT: String(frontendPort),
+      IDENTITY_PORT: String(identityPort),
+      MEGIDDO_LOCAL_DATA_DIR: dataDirectory,
+      TODO_PORT: String(todoPort),
+    },
+    frontendUrl,
+  })
+
+  try {
+    const frontendApi = createFrontendApi({ baseUrl: apiUrl })
+
+    assert.deepEqual(await frontendApi.getGatewayStatus(), {
+      message: 'frontend is connected',
+      service: 'api-gateway',
+    })
+    assert.deepEqual(await frontendApi.signInDevelopment({ subject: 'dev:pnpm-dev' }), {
+      state: 'logged-in',
+      user: { id: 'dev:pnpm-dev' },
+    })
+
+    // This covers the regression where Identity accepted sign-in, but API could not
+    // verify Identity's token because the dev services used different key material.
+    const created = await frontendApi.createTodo({ title: 'Documented local workflow todo' })
+
+    assert.match(created.id, /^todo-/)
+    assert.deepEqual(created, { completed: false, id: created.id, title: 'Documented local workflow todo' })
+  } catch (error) {
+    assert.fail(`${error instanceof Error ? error.stack : String(error)}\n${workflow.logs()}`)
+  } finally {
+    stopService(workflow.child)
   }
 })

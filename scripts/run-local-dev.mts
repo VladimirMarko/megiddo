@@ -68,5 +68,5 @@ start(
   {
     PORT: frontendPort,
   },
-  ['--', '--port', frontendPort],
+  ['--port', frontendPort],
 )
