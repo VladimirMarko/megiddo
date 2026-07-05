@@ -11,7 +11,7 @@ import {
 import { atom, Provider, useAtom, useSetAtom } from 'jotai'
 import * as React from 'react'
 import { type ReactElement, useEffect } from 'react'
-import type { FrontendApi } from './api/frontend-api-adapter'
+import type { FrontendApi, FrontendAuthSession } from './api/frontend-api-adapter'
 
 export type { FrontendApi } from './api/frontend-api-adapter'
 
@@ -22,6 +22,7 @@ interface TodoRouteContext {
 const todosAtom = atom<TodoResourceV1[]>([])
 const loadingAtom = atom(true)
 const errorAtom = atom<string | undefined>(undefined)
+const authSessionAtom = atom<FrontendAuthSession | undefined>(undefined)
 
 const readFormData = (formElement: HTMLFormElement) => {
   const view = formElement.ownerDocument.defaultView
@@ -70,6 +71,7 @@ function TodoScreen() {
   const [todos, setTodos] = useAtom(todosAtom)
   const [loading, setLoading] = useAtom(loadingAtom)
   const [error, setError] = useAtom(errorAtom)
+  const [authSession, setAuthSession] = useAtom(authSessionAtom)
   const form = useForm({
     defaultValues: { title: '' },
     onSubmit: async () => {},
@@ -87,20 +89,60 @@ function TodoScreen() {
     formElement.reset()
   }
 
+  const loadTodos = async () => {
+    setLoading(true)
+    setError(undefined)
+
+    try {
+      setTodos(await api.listTodos())
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not load todos')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const signIn = async () => {
+    const nextSession = await api.signInDevelopment()
+    setAuthSession(nextSession)
+
+    if (nextSession.state === 'logged-in') {
+      await loadTodos()
+    }
+  }
+
+  const signOut = async () => {
+    setAuthSession(await api.signOut())
+    setTodos([])
+    setLoading(false)
+    setError(undefined)
+  }
+
   useEffect(() => {
     let cancelled = false
 
     api
-      .listTodos()
-      .then(nextTodos => {
-        if (!cancelled) {
-          setTodos(nextTodos)
-          setError(undefined)
+      .getAuthSession()
+      .then(async nextSession => {
+        if (cancelled) {
+          return
         }
+
+        setAuthSession(nextSession)
+
+        if (nextSession.state !== 'logged-in') {
+          setTodos([])
+          setLoading(false)
+          return
+        }
+
+        setTodos(await api.listTodos())
+        setError(undefined)
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
           setError(caught instanceof Error ? caught.message : 'Could not load todos')
+          setLoading(false)
         }
       })
       .finally(() => {
@@ -112,11 +154,48 @@ function TodoScreen() {
     return () => {
       cancelled = true
     }
-  }, [api, setError, setLoading, setTodos])
+  }, [api, setAuthSession, setError, setLoading, setTodos])
+
+  if (!authSession) {
+    return (
+      <main>
+        <h1>Todos</h1>
+        <p>Checking session...</p>
+      </main>
+    )
+  }
+
+  if (authSession.state === 'logged-out') {
+    return (
+      <main>
+        <h1>Todos</h1>
+        <p>Sign in to manage todos.</p>
+        <button onClick={() => void signIn()} type="button">
+          Sign in
+        </button>
+      </main>
+    )
+  }
+
+  if (authSession.state === 'expired') {
+    return (
+      <main>
+        <h1>Todos</h1>
+        <p role="alert">Session expired. Sign in again to manage todos.</p>
+        <button onClick={() => void signIn()} type="button">
+          Sign in again
+        </button>
+      </main>
+    )
+  }
 
   return (
     <main>
       <h1>Todos</h1>
+      <p>Signed in as {authSession.user.id}</p>
+      <button onClick={() => void signOut()} type="button">
+        Sign out
+      </button>
       <form
         aria-label="Create todo"
         onSubmit={event => {

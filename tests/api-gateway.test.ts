@@ -18,8 +18,23 @@ const postRpc = (app: ReturnType<typeof createApiGatewayApp>, path: string, json
     method: 'POST',
   })
 
+const postAuthenticatedRpc = (
+  app: ReturnType<typeof createApiGatewayApp>,
+  path: string,
+  identityToken: string,
+  json?: unknown,
+) =>
+  app.request(path, {
+    body: json === undefined ? '{}' : JSON.stringify({ json }),
+    headers: { authorization: `Bearer ${identityToken}`, 'content-type': 'application/json' },
+    method: 'POST',
+  })
+
 test('contracts package exports the explicit API Gateway v1 contract surface', () => {
   assert.equal(typeof apiGatewayContractV1.v1.gateway.status, 'object')
+  assert.equal(typeof apiGatewayContractV1.v1.viewer.session.current, 'object')
+  assert.equal(typeof apiGatewayContractV1.v1.viewer.session.signInDevelopment, 'object')
+  assert.equal(typeof apiGatewayContractV1.v1.viewer.session.signOut, 'object')
   assert.equal(typeof apiGatewayContractV1.v1.viewer.todos.list, 'object')
   assert.equal(typeof apiGatewayContractV1.v1.viewer.todos.create, 'object')
   assert.equal(typeof apiGatewayContractV1.v1.viewer.todos.complete, 'object')
@@ -47,8 +62,19 @@ test('API Gateway composes frontend-shaped todo procedures through a Todo client
   const createdTodo: TodoResourceV1 = { id: 'todo-from-fake', title: 'Compose through Gateway', completed: false }
   const completedTodo: TodoResourceV1 = { ...createdTodo, completed: true }
   const identityClient = {
-    async issueDevelopmentIdentityToken() {
+    async issueDevelopmentIdentityToken(input) {
+      assert.equal(input.subject, 'dev:viewer')
       return { identityToken: 'fake-token', user: { id: 'dev:viewer' } }
+    },
+  }
+  const tokenVerifier = {
+    async verifyIdentityToken({ identityToken }) {
+      assert.equal(identityToken, 'browser-token')
+      return {
+        audience: { service: 'api-gateway' },
+        issuedAt: 1,
+        subject: 'dev:viewer',
+      }
     },
   }
   const todoClient: TodoServiceClient = {
@@ -74,16 +100,22 @@ test('API Gateway composes frontend-shaped todo procedures through a Todo client
       return { ...createdTodo, title: input.title }
     },
   }
-  const app = createApiGatewayApp({ identityClient, todoClient })
+  const app = createApiGatewayApp({ identityClient, todoClient, tokenVerifier })
 
-  const createResponse = await postRpc(app, '/rpc/v1/viewer/todos/create', { title: 'Compose through Gateway' })
-  const completeResponse = await postRpc(app, '/rpc/v1/viewer/todos/complete', { id: createdTodo.id })
-  const reopenResponse = await postRpc(app, '/rpc/v1/viewer/todos/reopen', { id: createdTodo.id })
-  const renameResponse = await postRpc(app, '/rpc/v1/viewer/todos/rename', {
+  const createResponse = await postAuthenticatedRpc(app, '/rpc/v1/viewer/todos/create', 'browser-token', {
+    title: 'Compose through Gateway',
+  })
+  const completeResponse = await postAuthenticatedRpc(app, '/rpc/v1/viewer/todos/complete', 'browser-token', {
+    id: createdTodo.id,
+  })
+  const reopenResponse = await postAuthenticatedRpc(app, '/rpc/v1/viewer/todos/reopen', 'browser-token', {
+    id: createdTodo.id,
+  })
+  const renameResponse = await postAuthenticatedRpc(app, '/rpc/v1/viewer/todos/rename', 'browser-token', {
     id: createdTodo.id,
     title: 'Renamed through Gateway',
   })
-  const listResponse = await postRpc(app, '/rpc/v1/viewer/todos/list')
+  const listResponse = await postAuthenticatedRpc(app, '/rpc/v1/viewer/todos/list', 'browser-token')
 
   assert.equal(createResponse.status, 200)
   assert.equal(completeResponse.status, 200)
@@ -122,16 +154,21 @@ test('API Gateway production Todo client reaches Todo over the Todo oRPC contrac
       return todoApp.request(`${url.pathname}${url.search}`, request)
     },
   })
-  const apiApp = createApiGatewayApp({ identityClient, todoClient })
+  const apiApp = createApiGatewayApp({ identityClient, todoClient, tokenVerifier: codec })
+  const signInResponse = await postRpc(apiApp, '/rpc/v1/viewer/session/signInDevelopment', { subject: 'dev:viewer' })
+  assert.equal(signInResponse.status, 200)
+  const signIn = (await signInResponse.json()) as { json: { identityToken: string } }
 
-  const createResponse = await postRpc(apiApp, '/rpc/v1/viewer/todos/create', { title: 'Cross service Todo' })
+  const createResponse = await postAuthenticatedRpc(apiApp, '/rpc/v1/viewer/todos/create', signIn.json.identityToken, {
+    title: 'Cross service Todo',
+  })
   assert.equal(createResponse.status, 200)
 
   const created = (await createResponse.json()) as { json: TodoResourceV1 }
   assert.match(created.json.id, /^todo-/)
   assert.deepEqual(created.json, { id: created.json.id, title: 'Cross service Todo', completed: false })
 
-  const listResponse = await postRpc(apiApp, '/rpc/v1/viewer/todos/list')
+  const listResponse = await postAuthenticatedRpc(apiApp, '/rpc/v1/viewer/todos/list', signIn.json.identityToken)
 
   assert.equal(listResponse.status, 200)
   assert.deepEqual(await listResponse.json(), { json: [created.json] })

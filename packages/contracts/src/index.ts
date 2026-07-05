@@ -17,11 +17,21 @@ export const UserReferenceResourceSchemaV1 = z.object({
   id: z.string().min(1),
 })
 
+export const IdentityTokenSchemaV1 = z.string().min(1)
+
+export const AuthSessionResourceSchemaV1 = z.discriminatedUnion('state', [
+  z.object({ state: z.literal('logged-out') }),
+  z.object({ state: z.literal('expired') }),
+  z.object({
+    identityToken: IdentityTokenSchemaV1.optional(),
+    state: z.literal('logged-in'),
+    user: UserReferenceResourceSchemaV1,
+  }),
+])
+
 export const IdentityTokenAudienceSchemaV1 = z.object({
   service: z.string().min(1),
 })
-
-export const IdentityTokenSchemaV1 = z.string().min(1)
 
 export const IdentityTokenClaimsSchemaV1 = z.object({
   subject: z.string().min(1),
@@ -41,6 +51,9 @@ export const IdentityTokenIssueOutputSchemaV1 = z.object({
   user: UserReferenceResourceSchemaV1,
 })
 
+export const GatewayAuthSessionInputSchemaV1 = z.undefined()
+export const GatewayAuthSignInInputSchemaV1 = z.object({ subject: z.string().min(1).optional() }).optional()
+export const GatewayAuthSignOutInputSchemaV1 = z.undefined()
 export const GatewayStatusInputSchemaV1 = z.undefined()
 export const GatewayTodoListInputSchemaV1 = z.undefined()
 export const GatewayTodoCreateInputSchemaV1 = z.object({ title: z.string().min(1) })
@@ -55,11 +68,13 @@ export const TodoRenameInputSchemaV1 = TodoByIdInputSchemaV1.extend({ title: z.s
 export type GatewayStatus = z.infer<typeof GatewayStatusResourceSchemaV1>
 export type TodoResourceV1 = z.infer<typeof TodoResourceSchemaV1>
 export type UserReferenceResourceV1 = z.infer<typeof UserReferenceResourceSchemaV1>
+export type AuthSessionResourceV1 = z.infer<typeof AuthSessionResourceSchemaV1>
 export type IdentityTokenAudienceV1 = z.infer<typeof IdentityTokenAudienceSchemaV1>
 export type IdentityTokenClaimsV1 = z.infer<typeof IdentityTokenClaimsSchemaV1>
 export type IdentityTokenIssueInputV1 = z.infer<typeof IdentityTokenIssueInputSchemaV1>
 export type IdentityTokenIssueOutputV1 = z.infer<typeof IdentityTokenIssueOutputSchemaV1>
 export type AuthenticatedTodoInputV1 = z.infer<typeof AuthenticatedTodoInputSchemaV1>
+export type GatewayAuthSignInInputV1 = z.infer<typeof GatewayAuthSignInInputSchemaV1>
 export type GatewayTodoCreateInputV1 = z.infer<typeof GatewayTodoCreateInputSchemaV1>
 export type GatewayTodoByIdInputV1 = z.infer<typeof GatewayTodoByIdInputSchemaV1>
 export type GatewayTodoRenameInputV1 = z.infer<typeof GatewayTodoRenameInputSchemaV1>
@@ -68,6 +83,7 @@ export type TodoByIdInputV1 = z.infer<typeof TodoByIdInputSchemaV1>
 export type TodoRenameInputV1 = z.infer<typeof TodoRenameInputSchemaV1>
 
 export const todoServiceAudienceV1 = IdentityTokenAudienceSchemaV1.parse({ service: 'todo' })
+export const apiGatewayAudienceV1 = IdentityTokenAudienceSchemaV1.parse({ service: 'api-gateway' })
 
 export const gatewayStatus = GatewayStatusResourceSchemaV1.parse({
   service: 'api-gateway',
@@ -80,6 +96,11 @@ export const apiGatewayContractV1 = {
       status: oc.input(GatewayStatusInputSchemaV1).output(GatewayStatusResourceSchemaV1),
     },
     viewer: {
+      session: {
+        current: oc.input(GatewayAuthSessionInputSchemaV1).output(AuthSessionResourceSchemaV1),
+        signInDevelopment: oc.input(GatewayAuthSignInInputSchemaV1).output(AuthSessionResourceSchemaV1),
+        signOut: oc.input(GatewayAuthSignOutInputSchemaV1).output(AuthSessionResourceSchemaV1),
+      },
       todos: {
         list: oc.input(GatewayTodoListInputSchemaV1).output(z.array(TodoResourceSchemaV1)),
         create: oc.input(GatewayTodoCreateInputSchemaV1).output(TodoResourceSchemaV1),
