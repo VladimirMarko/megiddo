@@ -18,6 +18,12 @@ const packageJsonPaths = [
   'packages/platform/package.json',
 ]
 
+const frontendTodoComponentPaths = [
+  'apps/frontend/src/components/auth-session-prompt.tsx',
+  'apps/frontend/src/components/todo-create-form.tsx',
+  'apps/frontend/src/components/todo-item.tsx',
+]
+
 test('repo exposes the first Sandcastle service topology', () => {
   for (const path of removedPackagePaths) {
     assert.equal(existsSync(join(root, path)), false, `${path} should not exist`)
@@ -66,5 +72,16 @@ test('service packages do not depend on another service implementation package',
     const illegalDependencies = servicePackageNames.filter(name => name !== packageJson.name && dependencies?.[name])
 
     assert.deepEqual(illegalDependencies, [], `${path} should not depend on another service implementation package`)
+  }
+})
+
+test('frontend todo components stay behind the Frontend API Adapter seam', () => {
+  for (const path of frontendTodoComponentPaths) {
+    assert.equal(existsSync(join(root, path)), true, `${path} should exist`)
+
+    const source = readFileSync(join(root, path), 'utf8')
+
+    assert.equal(source.includes('@megiddo/contracts'), false, `${path} should not import contract Resource shapes`)
+    assert.equal(source.includes('@orpc/client'), false, `${path} should not import raw oRPC clients`)
   }
 })
