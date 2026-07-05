@@ -15,7 +15,8 @@
     }
   },
   "files": {
-    "ignoreUnknown": false
+    "ignoreUnknown": false,
+    "includes": ["**", "!!.sandcastle/worktrees"]
   },
   "formatter": {
     "enabled": true,
