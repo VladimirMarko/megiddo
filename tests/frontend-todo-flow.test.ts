@@ -1,14 +1,13 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createApiGatewayApp, createIdentityServiceClient, createTodoServiceClient } from '@megiddo/api'
-import type { TodoResourceV1 } from '@megiddo/contracts'
 import { createIdentityApp } from '@megiddo/identity'
 import { createDevelopmentIdentityTokenCodec } from '@megiddo/platform'
 import { createTodoApp as createTodoServiceApp } from '@megiddo/todo'
 import { JSDOM } from 'jsdom'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
-import { createFrontendApi } from '../apps/frontend/src/api/frontend-api-adapter'
+import { createFrontendApi, type FrontendTodo } from '../apps/frontend/src/api/frontend-api-adapter'
 import { createTodoApp as createFrontendTodoApp, type FrontendApi } from '../apps/frontend/src/todo-app'
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0))
@@ -72,7 +71,7 @@ const withBrowserGlobals = async (dom: JSDOM, run: () => Promise<void>) => {
 test('frontend todo flow renders and mutates todos through a fake Frontend API Adapter', async () => {
   const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/' })
   const calls: string[] = []
-  let todos: TodoResourceV1[] = [{ id: 'todo-1', title: 'Existing todo', completed: false }]
+  let todos: FrontendTodo[] = [{ id: 'todo-1', title: 'Existing todo', status: 'open' }]
   const getTodo = (id: string) => {
     const todo = todos.find(candidate => candidate.id === id)
 
@@ -99,18 +98,18 @@ test('frontend todo flow renders and mutates todos through a fake Frontend API A
     },
     async createTodo(input) {
       calls.push(`createTodo:${input.title}`)
-      const todo = { id: 'todo-2', title: input.title, completed: false }
+      const todo = { id: 'todo-2', title: input.title, status: 'open' as const }
       todos = [...todos, todo]
       return todo
     },
     async completeTodo(input) {
       calls.push(`completeTodo:${input.id}`)
-      todos = todos.map(todo => (todo.id === input.id ? { ...todo, completed: true } : todo))
+      todos = todos.map(todo => (todo.id === input.id ? { ...todo, status: 'completed' } : todo))
       return getTodo(input.id)
     },
     async reopenTodo(input) {
       calls.push(`reopenTodo:${input.id}`)
-      todos = todos.map(todo => (todo.id === input.id ? { ...todo, completed: false } : todo))
+      todos = todos.map(todo => (todo.id === input.id ? { ...todo, status: 'open' } : todo))
       return getTodo(input.id)
     },
     async renameTodo(input) {
@@ -266,7 +265,8 @@ test('production Frontend API Adapter delegates todo calls to the API Gateway oR
   const renamed = await api.renameTodo({ id: created.id, title: 'Rename through frontend adapter' })
   const todos = await api.listTodos()
 
-  assert.deepEqual(completed, { ...created, completed: true })
+  assert.deepEqual(created, { id: created.id, title: 'Create through frontend adapter', status: 'open' })
+  assert.deepEqual(completed, { ...created, status: 'completed' })
   assert.deepEqual(reopened, created)
   assert.deepEqual(renamed, { ...created, title: 'Rename through frontend adapter' })
   assert.deepEqual(todos, [renamed])

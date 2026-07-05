@@ -21,16 +21,22 @@ export type FrontendAuthSession =
       user: FrontendLoggedInSession['user']
     }
 
+export interface FrontendTodo {
+  id: string
+  title: string
+  status: 'open' | 'completed'
+}
+
 export interface FrontendApi {
   getGatewayStatus(): Promise<GatewayStatus>
   getAuthSession(): Promise<FrontendAuthSession>
   signInDevelopment(input?: GatewayAuthSignInInputV1): Promise<FrontendAuthSession>
   signOut(): Promise<FrontendAuthSession>
-  listTodos(): Promise<TodoResourceV1[]>
-  createTodo(input: GatewayTodoCreateInputV1): Promise<TodoResourceV1>
-  completeTodo(input: GatewayTodoByIdInputV1): Promise<TodoResourceV1>
-  reopenTodo(input: GatewayTodoByIdInputV1): Promise<TodoResourceV1>
-  renameTodo(input: GatewayTodoRenameInputV1): Promise<TodoResourceV1>
+  listTodos(): Promise<FrontendTodo[]>
+  createTodo(input: GatewayTodoCreateInputV1): Promise<FrontendTodo>
+  completeTodo(input: GatewayTodoByIdInputV1): Promise<FrontendTodo>
+  reopenTodo(input: GatewayTodoByIdInputV1): Promise<FrontendTodo>
+  renameTodo(input: GatewayTodoRenameInputV1): Promise<FrontendTodo>
 }
 
 interface FrontendApiOptions {
@@ -67,6 +73,11 @@ export const createFrontendApi = ({
 
     return { state: 'logged-in', user: session.user }
   }
+  const toFrontendTodo = (todo: TodoResourceV1): FrontendTodo => ({
+    id: todo.id,
+    title: todo.title,
+    status: todo.completed ? 'completed' : 'open',
+  })
 
   return {
     getGatewayStatus() {
@@ -82,20 +93,20 @@ export const createFrontendApi = ({
       authIdentityToken = undefined
       return toFrontendSession(await client.v1.viewer.session.signOut())
     },
-    listTodos() {
-      return client.v1.viewer.todos.list()
+    async listTodos() {
+      return (await client.v1.viewer.todos.list()).map(toFrontendTodo)
     },
-    createTodo(input) {
-      return client.v1.viewer.todos.create(input)
+    async createTodo(input) {
+      return toFrontendTodo(await client.v1.viewer.todos.create(input))
     },
-    completeTodo(input) {
-      return client.v1.viewer.todos.complete(input)
+    async completeTodo(input) {
+      return toFrontendTodo(await client.v1.viewer.todos.complete(input))
     },
-    reopenTodo(input) {
-      return client.v1.viewer.todos.reopen(input)
+    async reopenTodo(input) {
+      return toFrontendTodo(await client.v1.viewer.todos.reopen(input))
     },
-    renameTodo(input) {
-      return client.v1.viewer.todos.rename(input)
+    async renameTodo(input) {
+      return toFrontendTodo(await client.v1.viewer.todos.rename(input))
     },
   }
 }

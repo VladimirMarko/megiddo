@@ -1,4 +1,3 @@
-import type { TodoResourceV1 } from '@megiddo/contracts'
 import { useForm } from '@tanstack/react-form'
 import {
   createBrowserHistory,
@@ -11,7 +10,7 @@ import {
 import { atom, Provider, useAtom, useSetAtom } from 'jotai'
 import * as React from 'react'
 import { type ReactElement, useEffect } from 'react'
-import type { FrontendApi, FrontendAuthSession } from './api/frontend-api-adapter'
+import type { FrontendApi, FrontendAuthSession, FrontendTodo } from './api/frontend-api-adapter'
 
 export type { FrontendApi } from './api/frontend-api-adapter'
 
@@ -19,7 +18,7 @@ interface TodoRouteContext {
   api: FrontendApi
 }
 
-const todosAtom = atom<TodoResourceV1[]>([])
+const todosAtom = atom<FrontendTodo[]>([])
 const loadingAtom = atom(true)
 const errorAtom = atom<string | undefined>(undefined)
 const authSessionAtom = atom<FrontendAuthSession | undefined>(undefined)
@@ -251,15 +250,16 @@ function TodoScreen() {
   )
 }
 
-function TodoItem({ api, todo }: { api: FrontendApi; todo: TodoResourceV1 }) {
+function TodoItem({ api, todo }: { api: FrontendApi; todo: FrontendTodo }) {
   const setTodos = useSetAtom(todosAtom)
-  const status = todo.completed ? 'Completed' : 'Open'
-  const toggleAction = todo.completed ? 'Reopen' : 'Complete'
-  const updateTodo = (updated: TodoResourceV1) =>
+  const completed = todo.status === 'completed'
+  const status = completed ? 'Completed' : 'Open'
+  const toggleAction = completed ? 'Reopen' : 'Complete'
+  const updateTodo = (updated: FrontendTodo) =>
     setTodos(current => current.map(candidate => (candidate.id === updated.id ? updated : candidate)))
 
   const toggleTodo = async () => {
-    if (todo.completed) {
+    if (completed) {
       updateTodo(await api.reopenTodo({ id: todo.id }))
       return
     }
@@ -293,9 +293,9 @@ function TodoItem({ api, todo }: { api: FrontendApi; todo: TodoResourceV1 }) {
       >
         <label>
           Rename
-          <input aria-label={`Rename ${todo.title}`} defaultValue={todo.title} disabled={todo.completed} name="title" />
+          <input aria-label={`Rename ${todo.title}`} defaultValue={todo.title} disabled={completed} name="title" />
         </label>
-        <button aria-label={`Save rename for ${todo.title}`} disabled={todo.completed} type="submit">
+        <button aria-label={`Save rename for ${todo.title}`} disabled={completed} type="submit">
           Save rename
         </button>
       </form>
