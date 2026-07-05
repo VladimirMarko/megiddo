@@ -3,7 +3,7 @@ import { RPCHandler } from '@orpc/server/fetch'
 import { Hono } from 'hono'
 import { createInMemoryTodoRepository } from './in-memory-todo-repository'
 import { createTodoRouter } from './router'
-import { createTodoUseCases } from './todo-use-cases'
+import { createTodoUseCases, type TodoRepository } from './todo-use-cases'
 
 const requestWithoutTodoRpcMountPath = (request: Request) => {
   const url = new URL(request.url)
@@ -13,12 +13,16 @@ const requestWithoutTodoRpcMountPath = (request: Request) => {
 }
 
 interface TodoAppOptions {
+  repository?: TodoRepository
   tokenVerifier?: IdentityTokenVerifier
 }
 
-export const createTodoApp = ({ tokenVerifier = createDevelopmentIdentityTokenCodec() }: TodoAppOptions = {}) => {
+export const createTodoApp = ({
+  repository = createInMemoryTodoRepository(),
+  tokenVerifier = createDevelopmentIdentityTokenCodec(),
+}: TodoAppOptions = {}) => {
   const app = new Hono()
-  const todos = createTodoUseCases({ repository: createInMemoryTodoRepository() })
+  const todos = createTodoUseCases({ repository })
   const handler = new RPCHandler(createTodoRouter(todos, tokenVerifier))
 
   app.get('/health', context => context.json({ service: 'todo', message: 'todo service is running' }))
