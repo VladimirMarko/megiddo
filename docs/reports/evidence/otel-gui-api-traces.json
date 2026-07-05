@@ -1,0 +1,16 @@
+{
+  "status": 200,
+  "body": [
+    {
+      "serviceName": "api-gateway",
+      "traceId": "11111111111111111111111111111111",
+      "rootSpanName": "orpc.client v1.todos.create",
+      "rootSpanTentative": false,
+      "durationMs": 40,
+      "spanCount": 2,
+      "logCount": 0,
+      "hasError": false,
+      "startTime": "2026-11-05T07:20:00.000Z"
+    }
+  ]
+}
