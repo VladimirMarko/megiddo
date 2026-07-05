@@ -1,16 +1,16 @@
 import { spawn } from 'node:child_process'
 
-const defaultPort = '4318'
-const port = process.env.PORT ?? process.env.OTEL_GUI_PORT ?? defaultPort
+const defaultOtlpHttpPort = '4318'
+const otlpHttpPort = process.env.PORT ?? process.env.OTEL_GUI_PORT ?? defaultOtlpHttpPort
 const viewerBinary = process.env.OTEL_GUI_BIN ?? 'otel-gui'
 
 console.log('Starting local OpenTelemetry viewer:')
 console.log('- Viewer: otel-gui')
-console.log(`- OTLP HTTP ingest: http://localhost:${port}/v1/traces`)
+console.log(`- OTLP HTTP ingest: http://localhost:${otlpHttpPort}/v1/traces`)
 console.log('- Pair with services by running pnpm dev in a separate terminal.')
 
 const child = spawn(viewerBinary, [], {
-  env: { ...process.env, PORT: port },
+  env: { ...process.env, PORT: otlpHttpPort },
   stdio: 'inherit',
 })
 
