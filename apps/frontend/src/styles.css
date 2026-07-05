@@ -51,7 +51,7 @@ button {
 h1 {
   margin: 0;
   color: black;
-  font-size: clamp(4.5rem, 21vw, 10rem);
+  font-size: clamp(4.5rem, 21vw, 8rem);
   font-weight: 800;
   letter-spacing: -0.07em;
   line-height: 0.9;
