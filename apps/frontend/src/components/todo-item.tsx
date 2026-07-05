@@ -21,12 +21,16 @@ export function TodoItem({ onComplete, onRename, onReopen, todo }: TodoItemProps
   const toggleActionLabel = isCompleted ? 'Reopen' : 'Complete'
 
   const toggleTodo = async () => {
-    if (isCompleted) {
-      await onReopen(todo.id)
+    try {
+      if (isCompleted) {
+        await onReopen(todo.id)
+        return
+      }
+
+      await onComplete(todo.id)
+    } catch {
       return
     }
-
-    await onComplete(todo.id)
   }
 
   const renameTodo = async (formElement: HTMLFormElement) => {
@@ -36,7 +40,11 @@ export function TodoItem({ onComplete, onRename, onReopen, todo }: TodoItemProps
       return
     }
 
-    await onRename({ id: todo.id, title })
+    try {
+      await onRename({ id: todo.id, title })
+    } catch {
+      return
+    }
   }
 
   return (

@@ -20,7 +20,12 @@ export function TodoCreateForm({ onCreate }: TodoCreateFormProps) {
       return
     }
 
-    await onCreate(title)
+    try {
+      await onCreate(title)
+    } catch {
+      return
+    }
+
     form.reset()
     formElement.reset()
   }

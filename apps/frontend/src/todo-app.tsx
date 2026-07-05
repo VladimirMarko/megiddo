@@ -25,6 +25,9 @@ const loadingAtom = atom(true)
 const errorAtom = atom<string | undefined>(undefined)
 const authSessionAtom = atom<FrontendAuthSession | undefined>(undefined)
 
+const mutationErrorMessage = (caught: unknown, fallback: string) =>
+  caught instanceof Error ? caught.message : fallback
+
 const rootRoute = createRootRouteWithContext<TodoRouteContext>()({
   component: () => React.createElement(Outlet),
 })
@@ -61,16 +64,30 @@ function TodoScreen() {
   const [loading, setLoading] = useAtom(loadingAtom)
   const [error, setError] = useAtom(errorAtom)
   const [authSession, setAuthSession] = useAtom(authSessionAtom)
+  const runTodoMutation = async (mutation: () => Promise<void>, fallbackError: string) => {
+    setError(undefined)
+
+    try {
+      await mutation()
+    } catch (caught) {
+      setError(mutationErrorMessage(caught, fallbackError))
+      throw caught
+    }
+  }
   const createTodo = async (title: string) => {
-    const todo = await api.createTodo({ title })
-    setTodos(current => [...current, todo])
+    await runTodoMutation(async () => {
+      const todo = await api.createTodo({ title })
+      setTodos(current => [...current, todo])
+    }, 'Could not create todo')
   }
   const updateTodo = (updated: FrontendTodo) =>
     setTodos(current => current.map(candidate => (candidate.id === updated.id ? updated : candidate)))
-  const completeTodo = async (id: string) => updateTodo(await api.completeTodo({ id }))
-  const reopenTodo = async (id: string) => updateTodo(await api.reopenTodo({ id }))
+  const completeTodo = async (id: string) =>
+    runTodoMutation(async () => updateTodo(await api.completeTodo({ id })), 'Could not complete todo')
+  const reopenTodo = async (id: string) =>
+    runTodoMutation(async () => updateTodo(await api.reopenTodo({ id })), 'Could not reopen todo')
   const renameTodo = async ({ id, title }: { id: string; title: string }) =>
-    updateTodo(await api.renameTodo({ id, title }))
+    runTodoMutation(async () => updateTodo(await api.renameTodo({ id, title })), 'Could not rename todo')
 
   const loadTodos = async () => {
     setLoading(true)
