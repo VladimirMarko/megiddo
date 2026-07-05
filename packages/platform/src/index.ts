@@ -11,6 +11,8 @@ export const todoRpcUrl = (baseUrl: string) => `${baseUrl.replace(/\/$/, '')}${t
 const identityTokenHeader = { alg: 'EdDSA', typ: 'megiddo.identity-token.v1' }
 const privateKeyEnvName = 'MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64'
 const publicKeyEnvName = 'MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64'
+type DevelopmentIdentityTokenKeyPair = { privateKeyPem: string; publicKeyPem: string }
+type DevelopmentIdentityTokenKeyPairEnv = Record<typeof privateKeyEnvName | typeof publicKeyEnvName, string>
 
 export interface IdentityTokenSigner {
   issueIdentityToken(claims: Omit<IdentityTokenClaimsV1, 'issuedAt'>): Promise<string>
@@ -26,38 +28,52 @@ export interface IdentityTokenVerifier {
 const base64UrlEncode = (input: Buffer | string) => Buffer.from(input).toString('base64url')
 const base64UrlDecode = (input: string) => Buffer.from(input, 'base64url')
 
+const generateDevelopmentIdentityTokenKeyPair = async (): Promise<DevelopmentIdentityTokenKeyPair> => {
+  const { generateKeyPairSync } = await import('node:crypto')
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519')
+
+  return {
+    privateKeyPem: privateKey.export({ format: 'pem', type: 'pkcs8' }).toString(),
+    publicKeyPem: publicKey.export({ format: 'pem', type: 'spki' }).toString(),
+  }
+}
+
+export const createDevelopmentIdentityTokenKeyPairEnv = async (): Promise<DevelopmentIdentityTokenKeyPairEnv> => {
+  const { privateKeyPem, publicKeyPem } = await generateDevelopmentIdentityTokenKeyPair()
+
+  return {
+    [privateKeyEnvName]: base64UrlEncode(privateKeyPem),
+    [publicKeyEnvName]: base64UrlEncode(publicKeyPem),
+  }
+}
+
 interface DevelopmentIdentityTokenCodecOptions {
   privateKeyPem?: string
   publicKeyPem?: string
 }
 
-const readDevelopmentIdentityTokenKeyPair = (): DevelopmentIdentityTokenCodecOptions => ({
-  privateKeyPem: process.env[privateKeyEnvName]
-    ? base64UrlDecode(process.env[privateKeyEnvName]).toString('utf8')
-    : undefined,
-  publicKeyPem: process.env[publicKeyEnvName]
-    ? base64UrlDecode(process.env[publicKeyEnvName]).toString('utf8')
-    : undefined,
-})
+const readDevelopmentIdentityTokenKeyPair = (): DevelopmentIdentityTokenCodecOptions => {
+  const privateKeyPemBase64 = process.env[privateKeyEnvName]
+  const publicKeyPemBase64 = process.env[publicKeyEnvName]
+
+  return {
+    privateKeyPem: privateKeyPemBase64 ? base64UrlDecode(privateKeyPemBase64).toString('utf8') : undefined,
+    publicKeyPem: publicKeyPemBase64 ? base64UrlDecode(publicKeyPemBase64).toString('utf8') : undefined,
+  }
+}
 
 export const createDevelopmentIdentityTokenCodec = (
   { privateKeyPem, publicKeyPem }: DevelopmentIdentityTokenCodecOptions = readDevelopmentIdentityTokenKeyPair(),
 ): IdentityTokenSigner & IdentityTokenVerifier => {
-  let keyPair: { privateKeyPem: string; publicKeyPem: string } | undefined
+  let keyPair: DevelopmentIdentityTokenKeyPair | undefined
 
   const ensureKeyPair = async () => {
-    if (!keyPair) {
-      if (privateKeyPem && publicKeyPem) {
-        keyPair = { privateKeyPem, publicKeyPem }
-      } else {
-        const { generateKeyPairSync } = await import('node:crypto')
-        const { privateKey, publicKey } = generateKeyPairSync('ed25519')
-        keyPair = {
-          privateKeyPem: privateKey.export({ format: 'pem', type: 'pkcs8' }).toString(),
-          publicKeyPem: publicKey.export({ format: 'pem', type: 'spki' }).toString(),
-        }
-      }
+    if (keyPair) {
+      return keyPair
     }
+
+    keyPair =
+      privateKeyPem && publicKeyPem ? { privateKeyPem, publicKeyPem } : await generateDevelopmentIdentityTokenKeyPair()
 
     return keyPair
   }

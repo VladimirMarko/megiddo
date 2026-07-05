@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
 import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process'
-import { generateKeyPairSync } from 'node:crypto'
 import { mkdtemp } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
+import { createDevelopmentIdentityTokenKeyPairEnv } from '@megiddo/platform'
 import { createFrontendApi } from '../../apps/frontend/src/api/frontend-api-adapter'
 
 const workspaceRoot = new URL('../..', import.meta.url).pathname
@@ -22,19 +22,6 @@ const getFreePort = async () =>
       server.close(error => (error ? reject(error) : resolve(port)))
     })
   })
-
-const createSharedDevelopmentTokenEnv = () => {
-  const { privateKey, publicKey } = generateKeyPairSync('ed25519')
-
-  return {
-    MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64: Buffer.from(
-      privateKey.export({ format: 'pem', type: 'pkcs8' }).toString(),
-    ).toString('base64url'),
-    MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64: Buffer.from(
-      publicKey.export({ format: 'pem', type: 'spki' }).toString(),
-    ).toString('base64url'),
-  }
-}
 
 const waitForHealth = async (url: string, logs: () => string) => {
   const startedAt = Date.now()
@@ -98,7 +85,7 @@ const stopService = (child: ChildProcessWithoutNullStreams) => {
 test('local development workflow runs real services over localhost for the authenticated todo path', async () => {
   const [apiPort, identityPort, todoPort] = await Promise.all([getFreePort(), getFreePort(), getFreePort()])
   const dataDirectory = await mkdtemp(join(tmpdir(), 'megiddo-local-dev-'))
-  const tokenEnv = createSharedDevelopmentTokenEnv()
+  const tokenEnv = await createDevelopmentIdentityTokenKeyPairEnv()
   const identityUrl = `http://127.0.0.1:${identityPort}`
   const todoUrl = `http://127.0.0.1:${todoPort}`
   const apiUrl = `http://127.0.0.1:${apiPort}`
