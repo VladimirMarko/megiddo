@@ -5,9 +5,15 @@
     "build": "turbo build",
     "check": "biome check --write",
     "dev": "turbo dev",
+    "dev:api": "pnpm --filter @megiddo/api dev",
+    "dev:frontend": "pnpm --filter @megiddo/frontend dev",
+    "dev:identity": "pnpm --filter @megiddo/identity dev",
+    "dev:local": "tsx scripts/run-local-dev.mts",
+    "dev:todo": "pnpm --filter @megiddo/todo dev",
     "sandcastle": "tsx .sandcastle/main.mts",
     "sandcastle:build-image": "sandcastle docker build-image --image-name sandcastle:megiddo",
-    "test": "node --import tsx --test tests/**/*.test.ts"
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:integration:local": "node --import tsx --test tests/integration/local-development-workflow.test.ts"
   },
   "dependencies": {
     "@megiddo/api": "workspace:*",

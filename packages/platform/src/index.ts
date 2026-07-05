@@ -9,6 +9,8 @@ export const identityRpcUrl = (baseUrl: string) => `${baseUrl.replace(/\/$/, '')
 export const todoRpcUrl = (baseUrl: string) => `${baseUrl.replace(/\/$/, '')}${todoRpcMountPath}`
 
 const identityTokenHeader = { alg: 'EdDSA', typ: 'megiddo.identity-token.v1' }
+const privateKeyEnvName = 'MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64'
+const publicKeyEnvName = 'MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64'
 
 export interface IdentityTokenSigner {
   issueIdentityToken(claims: Omit<IdentityTokenClaimsV1, 'issuedAt'>): Promise<string>
@@ -24,16 +26,36 @@ export interface IdentityTokenVerifier {
 const base64UrlEncode = (input: Buffer | string) => Buffer.from(input).toString('base64url')
 const base64UrlDecode = (input: string) => Buffer.from(input, 'base64url')
 
-export const createDevelopmentIdentityTokenCodec = (): IdentityTokenSigner & IdentityTokenVerifier => {
+interface DevelopmentIdentityTokenCodecOptions {
+  privateKeyPem?: string
+  publicKeyPem?: string
+}
+
+const readDevelopmentIdentityTokenKeyPair = (): DevelopmentIdentityTokenCodecOptions => ({
+  privateKeyPem: process.env[privateKeyEnvName]
+    ? base64UrlDecode(process.env[privateKeyEnvName]).toString('utf8')
+    : undefined,
+  publicKeyPem: process.env[publicKeyEnvName]
+    ? base64UrlDecode(process.env[publicKeyEnvName]).toString('utf8')
+    : undefined,
+})
+
+export const createDevelopmentIdentityTokenCodec = (
+  { privateKeyPem, publicKeyPem }: DevelopmentIdentityTokenCodecOptions = readDevelopmentIdentityTokenKeyPair(),
+): IdentityTokenSigner & IdentityTokenVerifier => {
   let keyPair: { privateKeyPem: string; publicKeyPem: string } | undefined
 
   const ensureKeyPair = async () => {
     if (!keyPair) {
-      const { generateKeyPairSync } = await import('node:crypto')
-      const { privateKey, publicKey } = generateKeyPairSync('ed25519')
-      keyPair = {
-        privateKeyPem: privateKey.export({ format: 'pem', type: 'pkcs8' }).toString(),
-        publicKeyPem: publicKey.export({ format: 'pem', type: 'spki' }).toString(),
+      if (privateKeyPem && publicKeyPem) {
+        keyPair = { privateKeyPem, publicKeyPem }
+      } else {
+        const { generateKeyPairSync } = await import('node:crypto')
+        const { privateKey, publicKey } = generateKeyPairSync('ed25519')
+        keyPair = {
+          privateKeyPem: privateKey.export({ format: 'pem', type: 'pkcs8' }).toString(),
+          publicKeyPem: publicKey.export({ format: 'pem', type: 'spki' }).toString(),
+        }
       }
     }
 
