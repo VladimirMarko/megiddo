@@ -2,6 +2,7 @@ import { type ChildProcess, spawn } from 'node:child_process'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { createDevelopmentIdentityTokenKeyPairEnv } from '@megiddo/platform'
+import { createLocalDevProcessDefinitions } from './local-dev-topology.mjs'
 
 const workspaceRoot = new URL('..', import.meta.url).pathname
 const dataDirectory = process.env.MEGIDDO_LOCAL_DATA_DIR ?? join(workspaceRoot, '.data', 'local-dev')
@@ -50,23 +51,12 @@ console.log(`- API:      http://localhost:${apiPort}`)
 console.log(`- Frontend: http://localhost:${frontendPort}`)
 console.log(`- Data:     ${dataDirectory}`)
 
-start('@megiddo/identity', {
-  IDENTITY_DATABASE_PATH: join(dataDirectory, 'identity.sqlite'),
-  PORT: identityPort,
-})
-start('@megiddo/todo', {
-  PORT: todoPort,
-  TODO_DATABASE_PATH: join(dataDirectory, 'todo.sqlite'),
-})
-start('@megiddo/api', {
-  IDENTITY_SERVICE_URL: `http://localhost:${identityPort}`,
-  PORT: apiPort,
-  TODO_SERVICE_URL: `http://localhost:${todoPort}`,
-})
-start(
-  '@megiddo/frontend',
-  {
-    PORT: frontendPort,
-  },
-  ['--port', frontendPort],
-)
+for (const processDefinition of createLocalDevProcessDefinitions({
+  apiPort,
+  dataDirectory,
+  frontendPort,
+  identityPort,
+  todoPort,
+})) {
+  start(processDefinition.packageName, processDefinition.env, processDefinition.args)
+}

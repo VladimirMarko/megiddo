@@ -222,7 +222,7 @@ test('documented pnpm dev workflow supports authenticated todo creation across r
     const created = await frontendApi.createTodo({ title: 'Documented local workflow todo' })
 
     assert.match(created.id, /^todo-/)
-    assert.deepEqual(created, { completed: false, id: created.id, title: 'Documented local workflow todo' })
+    assert.deepEqual(created, { id: created.id, status: 'open', title: 'Documented local workflow todo' })
   } catch (error) {
     assert.fail(`${error instanceof Error ? error.stack : String(error)}\n${workflow.logs()}`)
   } finally {

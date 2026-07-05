@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { test } from 'node:test'
+import { createLocalDevProcessDefinitions } from '../scripts/local-dev-topology.mts'
 
 const root = process.cwd()
 
@@ -61,6 +62,37 @@ test('root dev script runs the full local topology', () => {
   assert.equal(scripts.dev, 'tsx scripts/run-local-dev.mts')
   assert.equal(scripts['dev:local'], scripts.dev)
   assert.equal(scripts['dev:turbo'], 'turbo dev')
+})
+
+test('root dev injects best-effort local OpenTelemetry defaults for services', () => {
+  const processDefinitions = createLocalDevProcessDefinitions({
+    apiPort: '3100',
+    dataDirectory: '/tmp/megiddo-local-data',
+    frontendPort: '5174',
+    identityPort: '3102',
+    todoPort: '3101',
+  })
+
+  assert.deepEqual(
+    processDefinitions.map(processDefinition => [
+      processDefinition.packageName,
+      processDefinition.env.OTEL_SERVICE_NAME,
+    ]),
+    [
+      ['@megiddo/identity', 'identity'],
+      ['@megiddo/todo', 'todo'],
+      ['@megiddo/api', 'api-gateway'],
+      ['@megiddo/frontend', undefined],
+    ],
+  )
+
+  for (const processDefinition of processDefinitions.filter(
+    processDefinition => processDefinition.packageName !== '@megiddo/frontend',
+  )) {
+    assert.equal(processDefinition.env.OTEL_TRACES_EXPORTER, 'otlp')
+    assert.equal(processDefinition.env.OTEL_EXPORTER_OTLP_ENDPOINT, 'http://localhost:4318')
+    assert.equal(processDefinition.env.OTEL_EXPORTER_OTLP_PROTOCOL, 'http/protobuf')
+  }
 })
 
 test('service packages do not depend on another service implementation package', () => {

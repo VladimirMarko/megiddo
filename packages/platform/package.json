@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./local-telemetry": "./src/local-telemetry.ts"
   },
   "scripts": {
     "build": "tsc",
@@ -11,7 +12,11 @@
   },
   "dependencies": {
     "@megiddo/contracts": "workspace:*",
-    "@opentelemetry/api": "^1.9.1"
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/core": "^2.9.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.220.0",
+    "@opentelemetry/resources": "^2.9.0",
+    "@opentelemetry/sdk-trace-base": "^2.9.0"
   },
   "devDependencies": {
     "@total-typescript/tsconfig": "catalog:",
