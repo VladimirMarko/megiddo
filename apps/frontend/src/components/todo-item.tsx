@@ -3,17 +3,19 @@ import * as React from 'react'
 import type { FrontendTodo } from '../api/frontend-api-adapter'
 import { readTitle } from './form-title'
 
-export function TodoItem({
-  onComplete,
-  onRename,
-  onReopen,
-  todo,
-}: {
+type RenameTodoInput = {
+  id: string
+  title: string
+}
+
+type TodoItemProps = {
   onComplete: (id: string) => Promise<void>
-  onRename: (input: { id: string; title: string }) => Promise<void>
+  onRename: (input: RenameTodoInput) => Promise<void>
   onReopen: (id: string) => Promise<void>
   todo: FrontendTodo
-}) {
+}
+
+export function TodoItem({ onComplete, onRename, onReopen, todo }: TodoItemProps) {
   const isCompleted = todo.status === 'completed'
   const statusLabel = isCompleted ? 'Completed' : 'Open'
   const toggleActionLabel = isCompleted ? 'Reopen' : 'Complete'

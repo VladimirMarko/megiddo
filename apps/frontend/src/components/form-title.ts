@@ -8,4 +8,8 @@ const readFormData = (formElement: HTMLFormElement) => {
   return new view.FormData(formElement)
 }
 
-export const readTitle = (formElement: HTMLFormElement) => String(readFormData(formElement).get('title') ?? '').trim()
+export const readTitle = (formElement: HTMLFormElement) => {
+  const title = readFormData(formElement).get('title')
+
+  return String(title ?? '').trim()
+}

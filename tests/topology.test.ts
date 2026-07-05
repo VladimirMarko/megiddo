@@ -20,6 +20,7 @@ const packageJsonPaths = [
 
 const frontendTodoComponentPaths = [
   'apps/frontend/src/components/auth-session-prompt.tsx',
+  'apps/frontend/src/components/form-title.ts',
   'apps/frontend/src/components/todo-create-form.tsx',
   'apps/frontend/src/components/todo-item.tsx',
 ]

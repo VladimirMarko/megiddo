@@ -3,7 +3,11 @@ import { useForm } from '@tanstack/react-form'
 import * as React from 'react'
 import { readTitle } from './form-title'
 
-export function TodoCreateForm({ onCreate }: { onCreate: (title: string) => Promise<void> }) {
+type TodoCreateFormProps = {
+  onCreate: (title: string) => Promise<void>
+}
+
+export function TodoCreateForm({ onCreate }: TodoCreateFormProps) {
   const form = useForm({
     defaultValues: { title: '' },
     onSubmit: async () => {},
