@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "turbo build",
-    "check": "biome check --write",
+    "check": "tsx scripts/check-frontend-contract-boundaries.mts && biome check --write",
     "dev": "tsx scripts/run-local-dev.mts",
     "dev:api": "pnpm --filter @megiddo/api dev",
     "dev:frontend": "pnpm --filter @megiddo/frontend dev",
