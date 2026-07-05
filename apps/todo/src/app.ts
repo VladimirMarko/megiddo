@@ -1,4 +1,10 @@
-import { createDevelopmentIdentityTokenCodec, type IdentityTokenVerifier, todoRpcMountPath } from '@megiddo/platform'
+import {
+  createDevelopmentIdentityTokenCodec,
+  handleInstrumentedOrpcServerRequest,
+  type IdentityTokenVerifier,
+  orpcProcedureFromRequest,
+  todoRpcMountPath,
+} from '@megiddo/platform'
 import { RPCHandler } from '@orpc/server/fetch'
 import { Hono } from 'hono'
 import { createInMemoryTodoRepository } from './in-memory-todo-repository'
@@ -14,11 +20,13 @@ const requestWithoutTodoRpcMountPath = (request: Request) => {
 
 interface TodoAppOptions {
   repository?: TodoRepository
+  serviceName?: string
   tokenVerifier?: IdentityTokenVerifier
 }
 
 export const createTodoApp = ({
   repository = createInMemoryTodoRepository(),
+  serviceName = 'todo',
   tokenVerifier = createDevelopmentIdentityTokenCodec(),
 }: TodoAppOptions = {}) => {
   const app = new Hono()
@@ -28,7 +36,12 @@ export const createTodoApp = ({
   app.get('/health', context => context.json({ service: 'todo', message: 'todo service is running' }))
   app.use(`${todoRpcMountPath}/*`, async (context, next) => {
     const request = requestWithoutTodoRpcMountPath(context.req.raw)
-    const { matched, response } = await handler.handle(request)
+    const { matched, response } = await handleInstrumentedOrpcServerRequest({
+      handle: () => handler.handle(request),
+      procedure: orpcProcedureFromRequest(request),
+      request,
+      serviceName,
+    })
 
     if (matched) {
       return response

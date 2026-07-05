@@ -6,7 +6,7 @@ import type {
   TodoRenameInputV1,
   TodoResourceV1,
 } from '@megiddo/contracts'
-import { todoRpcUrl } from '@megiddo/platform'
+import { createInstrumentedOrpcClientFetch, todoRpcUrl } from '@megiddo/platform'
 import { createORPCClient } from '@orpc/client'
 import { RPCLink } from '@orpc/client/fetch'
 
@@ -21,30 +21,42 @@ export interface TodoServiceClient {
 interface TodoServiceClientOptions {
   baseUrl?: string
   fetch?: (request: Request) => Promise<Response>
+  serviceName?: string
 }
 
 export const createTodoServiceClient = ({
   baseUrl = 'http://localhost:3001',
   fetch,
+  serviceName = 'api-gateway',
 }: TodoServiceClientOptions = {}): TodoServiceClient => {
-  const link = new RPCLink({ fetch, url: todoRpcUrl(baseUrl) })
-  const client = createORPCClient<TodoContractClientV1>(link)
+  const createClient = (procedure: string) =>
+    createORPCClient<TodoContractClientV1>(
+      new RPCLink({
+        fetch: createInstrumentedOrpcClientFetch({ fetch, procedure, serviceName }),
+        url: todoRpcUrl(baseUrl),
+      }),
+    )
+  const listClient = createClient('v1.todos.list')
+  const createClientForTodos = createClient('v1.todos.create')
+  const completeClient = createClient('v1.todos.complete')
+  const reopenClient = createClient('v1.todos.reopen')
+  const renameClient = createClient('v1.todos.rename')
 
   return {
     listTodos(input) {
-      return client.v1.todos.list(input)
+      return listClient.v1.todos.list(input)
     },
     createTodo(input) {
-      return client.v1.todos.create(input)
+      return createClientForTodos.v1.todos.create(input)
     },
     completeTodo(input) {
-      return client.v1.todos.complete(input)
+      return completeClient.v1.todos.complete(input)
     },
     reopenTodo(input) {
-      return client.v1.todos.reopen(input)
+      return reopenClient.v1.todos.reopen(input)
     },
     renameTodo(input) {
-      return client.v1.todos.rename(input)
+      return renameClient.v1.todos.rename(input)
     },
   }
 }
