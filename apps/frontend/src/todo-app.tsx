@@ -33,6 +33,8 @@ const readFormData = (formElement: HTMLFormElement) => {
   return new view.FormData(formElement)
 }
 
+const readTitle = (formElement: HTMLFormElement) => String(readFormData(formElement).get('title') ?? '').trim()
+
 const rootRoute = createRootRouteWithContext<TodoRouteContext>()({
   component: () => React.createElement(Outlet),
 })
@@ -73,8 +75,7 @@ function TodoScreen() {
     onSubmit: async () => {},
   })
   const createTodo = async (formElement: HTMLFormElement) => {
-    const formData = readFormData(formElement)
-    const title = String(formData.get('title') ?? '').trim()
+    const title = readTitle(formElement)
 
     if (!title) {
       return
@@ -154,16 +155,22 @@ function TodoScreen() {
 
 function TodoItem({ api, todo }: { api: FrontendApi; todo: TodoResourceV1 }) {
   const setTodos = useSetAtom(todosAtom)
+  const status = todo.completed ? 'Completed' : 'Open'
+  const toggleAction = todo.completed ? 'Reopen' : 'Complete'
   const updateTodo = (updated: TodoResourceV1) =>
     setTodos(current => current.map(candidate => (candidate.id === updated.id ? updated : candidate)))
 
   const toggleTodo = async () => {
-    updateTodo(todo.completed ? await api.reopenTodo({ id: todo.id }) : await api.completeTodo({ id: todo.id }))
+    if (todo.completed) {
+      updateTodo(await api.reopenTodo({ id: todo.id }))
+      return
+    }
+
+    updateTodo(await api.completeTodo({ id: todo.id }))
   }
 
   const renameTodo = async (formElement: HTMLFormElement) => {
-    const formData = readFormData(formElement)
-    const title = String(formData.get('title') ?? '').trim()
+    const title = readTitle(formElement)
 
     if (!title || title === todo.title) {
       return
@@ -175,9 +182,9 @@ function TodoItem({ api, todo }: { api: FrontendApi; todo: TodoResourceV1 }) {
   return (
     <li>
       <span>{todo.title}</span>
-      <span>{todo.completed ? 'Completed' : 'Open'}</span>
-      <button aria-label={`${todo.completed ? 'Reopen' : 'Complete'} ${todo.title}`} onClick={toggleTodo} type="button">
-        {todo.completed ? 'Reopen' : 'Complete'}
+      <span>{status}</span>
+      <button aria-label={`${toggleAction} ${todo.title}`} onClick={toggleTodo} type="button">
+        {toggleAction}
       </button>
       <form
         aria-label={`Rename ${todo.title}`}

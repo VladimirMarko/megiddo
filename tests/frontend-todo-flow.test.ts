@@ -45,18 +45,30 @@ const waitForText = async (rootElement: HTMLElement, pattern: RegExp) => {
 
   assert.match(rootElement.textContent ?? '', pattern)
 }
-
-test('frontend todo flow renders and mutates todos through a fake Frontend API Adapter', async () => {
-  const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/' })
+const withBrowserGlobals = async (dom: JSDOM, run: () => Promise<void>) => {
   const previousWindow = globalThis.window
   const previousDocument = globalThis.document
   const previousSelf = globalThis.self
   const previousActEnvironment = globalThis.IS_REACT_ACT_ENVIRONMENT
+
   globalThis.window = dom.window as unknown as Window & typeof globalThis
   globalThis.document = dom.window.document
   globalThis.self = dom.window as unknown as Window & typeof globalThis
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
+  try {
+    await run()
+  } finally {
+    globalThis.window = previousWindow
+    globalThis.document = previousDocument
+    globalThis.self = previousSelf
+    globalThis.IS_REACT_ACT_ENVIRONMENT = previousActEnvironment
+    dom.window.close()
+  }
+}
+
+test('frontend todo flow renders and mutates todos through a fake Frontend API Adapter', async () => {
+  const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/' })
   const calls: string[] = []
   let todos: TodoResourceV1[] = [{ id: 'todo-1', title: 'Existing todo', completed: false }]
   const getTodo = (id: string) => {
@@ -97,7 +109,7 @@ test('frontend todo flow renders and mutates todos through a fake Frontend API A
     },
   }
 
-  try {
+  await withBrowserGlobals(dom, async () => {
     const rootElement = getElement<HTMLDivElement>('#root')
     const root = createRoot(rootElement)
 
@@ -147,12 +159,7 @@ test('frontend todo flow renders and mutates todos through a fake Frontend API A
     ])
 
     await act(async () => root.unmount())
-  } finally {
-    globalThis.window = previousWindow
-    globalThis.document = previousDocument
-    globalThis.self = previousSelf
-    globalThis.IS_REACT_ACT_ENVIRONMENT = previousActEnvironment
-  }
+  })
 })
 
 test('production Frontend API Adapter delegates todo calls to the API Gateway oRPC client', async () => {
