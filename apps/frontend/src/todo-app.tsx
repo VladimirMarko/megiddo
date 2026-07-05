@@ -1,4 +1,3 @@
-import { useForm } from '@tanstack/react-form'
 import {
   createBrowserHistory,
   createRootRouteWithContext,
@@ -7,10 +6,13 @@ import {
   Outlet,
   RouterProvider,
 } from '@tanstack/react-router'
-import { atom, Provider, useAtom, useSetAtom } from 'jotai'
+import { atom, Provider, useAtom } from 'jotai'
 import * as React from 'react'
 import { type ReactElement, useEffect } from 'react'
 import type { FrontendApi, FrontendAuthSession, FrontendTodo } from './api/frontend-api-adapter'
+import { AuthSessionPrompt } from './components/auth-session-prompt'
+import { TodoCreateForm } from './components/todo-create-form'
+import { TodoItem } from './components/todo-item'
 
 export type { FrontendApi } from './api/frontend-api-adapter'
 
@@ -22,40 +24,6 @@ const todosAtom = atom<FrontendTodo[]>([])
 const loadingAtom = atom(true)
 const errorAtom = atom<string | undefined>(undefined)
 const authSessionAtom = atom<FrontendAuthSession | undefined>(undefined)
-
-const readFormData = (formElement: HTMLFormElement) => {
-  const view = formElement.ownerDocument.defaultView
-
-  if (!view) {
-    throw new Error('Missing browser window')
-  }
-
-  return new view.FormData(formElement)
-}
-
-const readTitle = (formElement: HTMLFormElement) => String(readFormData(formElement).get('title') ?? '').trim()
-
-function AuthSessionPrompt({
-  buttonText,
-  message,
-  messageRole,
-  onSignIn,
-}: {
-  buttonText: string
-  message: string
-  messageRole?: 'alert'
-  onSignIn: () => void
-}) {
-  return (
-    <main>
-      <h1>Todos</h1>
-      <p role={messageRole}>{message}</p>
-      <button onClick={onSignIn} type="button">
-        {buttonText}
-      </button>
-    </main>
-  )
-}
 
 const rootRoute = createRootRouteWithContext<TodoRouteContext>()({
   component: () => React.createElement(Outlet),
@@ -93,22 +61,16 @@ function TodoScreen() {
   const [loading, setLoading] = useAtom(loadingAtom)
   const [error, setError] = useAtom(errorAtom)
   const [authSession, setAuthSession] = useAtom(authSessionAtom)
-  const form = useForm({
-    defaultValues: { title: '' },
-    onSubmit: async () => {},
-  })
-  const createTodo = async (formElement: HTMLFormElement) => {
-    const title = readTitle(formElement)
-
-    if (!title) {
-      return
-    }
-
+  const createTodo = async (title: string) => {
     const todo = await api.createTodo({ title })
     setTodos(current => [...current, todo])
-    form.reset()
-    formElement.reset()
   }
+  const updateTodo = (updated: FrontendTodo) =>
+    setTodos(current => current.map(candidate => (candidate.id === updated.id ? updated : candidate)))
+  const completeTodo = async (id: string) => updateTodo(await api.completeTodo({ id }))
+  const reopenTodo = async (id: string) => updateTodo(await api.reopenTodo({ id }))
+  const renameTodo = async ({ id, title }: { id: string; title: string }) =>
+    updateTodo(await api.renameTodo({ id, title }))
 
   const loadTodos = async () => {
     setLoading(true)
@@ -214,91 +176,16 @@ function TodoScreen() {
       <button onClick={() => void signOut()} type="button">
         Sign out
       </button>
-      <form
-        aria-label="Create todo"
-        onSubmit={event => {
-          event.preventDefault()
-          event.stopPropagation()
-          void createTodo(event.currentTarget)
-        }}
-      >
-        <form.Field name="title">
-          {field => (
-            <label>
-              New todo
-              <input
-                name={field.name}
-                onBlur={field.handleBlur}
-                onChange={event => field.handleChange(event.target.value)}
-                value={field.state.value}
-              />
-            </label>
-          )}
-        </form.Field>
-        <button type="submit">Add todo</button>
-      </form>
+      <TodoCreateForm onCreate={createTodo} />
 
       {loading ? <p>Loading todos...</p> : null}
       {error ? <p role="alert">{error}</p> : null}
 
       <ul>
         {todos.map(todo => (
-          <TodoItem api={api} key={todo.id} todo={todo} />
+          <TodoItem key={todo.id} onComplete={completeTodo} onRename={renameTodo} onReopen={reopenTodo} todo={todo} />
         ))}
       </ul>
     </main>
-  )
-}
-
-function TodoItem({ api, todo }: { api: FrontendApi; todo: FrontendTodo }) {
-  const setTodos = useSetAtom(todosAtom)
-  const isCompleted = todo.status === 'completed'
-  const statusLabel = isCompleted ? 'Completed' : 'Open'
-  const toggleActionLabel = isCompleted ? 'Reopen' : 'Complete'
-  const updateTodo = (updated: FrontendTodo) =>
-    setTodos(current => current.map(candidate => (candidate.id === updated.id ? updated : candidate)))
-
-  const toggleTodo = async () => {
-    if (isCompleted) {
-      updateTodo(await api.reopenTodo({ id: todo.id }))
-      return
-    }
-
-    updateTodo(await api.completeTodo({ id: todo.id }))
-  }
-
-  const renameTodo = async (formElement: HTMLFormElement) => {
-    const title = readTitle(formElement)
-
-    if (!title || title === todo.title) {
-      return
-    }
-
-    updateTodo(await api.renameTodo({ id: todo.id, title }))
-  }
-
-  return (
-    <li>
-      <span>{todo.title}</span>
-      <span>{statusLabel}</span>
-      <button aria-label={`${toggleActionLabel} ${todo.title}`} onClick={toggleTodo} type="button">
-        {toggleActionLabel}
-      </button>
-      <form
-        aria-label={`Rename ${todo.title}`}
-        onSubmit={event => {
-          event.preventDefault()
-          void renameTodo(event.currentTarget)
-        }}
-      >
-        <label>
-          Rename
-          <input aria-label={`Rename ${todo.title}`} defaultValue={todo.title} disabled={isCompleted} name="title" />
-        </label>
-        <button aria-label={`Save rename for ${todo.title}`} disabled={isCompleted} type="submit">
-          Save rename
-        </button>
-      </form>
-    </li>
   )
 }
