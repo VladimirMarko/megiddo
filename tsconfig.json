@@ -1,0 +1,8 @@
+{
+  "extends": "@total-typescript/tsconfig/tsc/no-dom/app",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["scripts", "tests"]
+}
