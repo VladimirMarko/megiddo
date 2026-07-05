@@ -2,9 +2,6 @@ import {
   type ApiGatewayContractV1,
   apiGatewayAudienceV1,
   apiGatewayContractV1,
-  type GatewayTodoByIdInputV1,
-  type GatewayTodoCreateInputV1,
-  type GatewayTodoRenameInputV1,
   gatewayStatus,
   todoServiceAudienceV1,
 } from '@megiddo/contracts'
@@ -63,7 +60,7 @@ const issueTodoIdentityToken = async (identityClient: IdentityServiceClient, sub
     })
   ).identityToken
 
-const withTodoIdentityToken = async <Input extends object>(
+const createTodoIdentityInput = async <Input extends object>(
   identityClient: IdentityServiceClient,
   tokenVerifier: IdentityTokenVerifier,
   request: Request,
@@ -75,6 +72,11 @@ const withTodoIdentityToken = async <Input extends object>(
     (await requireGatewaySession(tokenVerifier, request)).user.id,
   ),
 })
+
+const createTodoInputForRequest =
+  (identityClient: IdentityServiceClient, tokenVerifier: IdentityTokenVerifier, request: Request) =>
+  <Input extends object>(input: Input) =>
+    createTodoIdentityInput(identityClient, tokenVerifier, request, input)
 
 export const createApiGatewayRouter = ({
   identityClient,
@@ -107,27 +109,31 @@ export const createApiGatewayRouter = ({
           signOut: apiGatewayV1.v1.viewer.session.signOut.handler(() => ({ state: 'logged-out' as const })),
         },
         todos: {
-          list: apiGatewayV1.v1.viewer.todos.list.handler(async ({ context }) =>
-            todoClient.listTodos(await withTodoIdentityToken(identityClient, tokenVerifier, context.request, {})),
-          ),
-          create: apiGatewayV1.v1.viewer.todos.create.handler(
-            async ({ context, input }: { context: ApiGatewayContext; input: GatewayTodoCreateInputV1 }) =>
-              todoClient.createTodo(await withTodoIdentityToken(identityClient, tokenVerifier, context.request, input)),
-          ),
-          complete: apiGatewayV1.v1.viewer.todos.complete.handler(
-            async ({ context, input }: { context: ApiGatewayContext; input: GatewayTodoByIdInputV1 }) =>
-              todoClient.completeTodo(
-                await withTodoIdentityToken(identityClient, tokenVerifier, context.request, input),
-              ),
-          ),
-          reopen: apiGatewayV1.v1.viewer.todos.reopen.handler(
-            async ({ context, input }: { context: ApiGatewayContext; input: GatewayTodoByIdInputV1 }) =>
-              todoClient.reopenTodo(await withTodoIdentityToken(identityClient, tokenVerifier, context.request, input)),
-          ),
-          rename: apiGatewayV1.v1.viewer.todos.rename.handler(
-            async ({ context, input }: { context: ApiGatewayContext; input: GatewayTodoRenameInputV1 }) =>
-              todoClient.renameTodo(await withTodoIdentityToken(identityClient, tokenVerifier, context.request, input)),
-          ),
+          list: apiGatewayV1.v1.viewer.todos.list.handler(async ({ context }) => {
+            const todoInput = createTodoInputForRequest(identityClient, tokenVerifier, context.request)
+
+            return todoClient.listTodos(await todoInput({}))
+          }),
+          create: apiGatewayV1.v1.viewer.todos.create.handler(async ({ context, input }) => {
+            const todoInput = createTodoInputForRequest(identityClient, tokenVerifier, context.request)
+
+            return todoClient.createTodo(await todoInput(input))
+          }),
+          complete: apiGatewayV1.v1.viewer.todos.complete.handler(async ({ context, input }) => {
+            const todoInput = createTodoInputForRequest(identityClient, tokenVerifier, context.request)
+
+            return todoClient.completeTodo(await todoInput(input))
+          }),
+          reopen: apiGatewayV1.v1.viewer.todos.reopen.handler(async ({ context, input }) => {
+            const todoInput = createTodoInputForRequest(identityClient, tokenVerifier, context.request)
+
+            return todoClient.reopenTodo(await todoInput(input))
+          }),
+          rename: apiGatewayV1.v1.viewer.todos.rename.handler(async ({ context, input }) => {
+            const todoInput = createTodoInputForRequest(identityClient, tokenVerifier, context.request)
+
+            return todoClient.renameTodo(await todoInput(input))
+          }),
         },
       },
     },

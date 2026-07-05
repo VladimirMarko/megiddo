@@ -36,6 +36,28 @@ const readFormData = (formElement: HTMLFormElement) => {
 
 const readTitle = (formElement: HTMLFormElement) => String(readFormData(formElement).get('title') ?? '').trim()
 
+function AuthSessionPrompt({
+  buttonText,
+  message,
+  messageRole,
+  onSignIn,
+}: {
+  buttonText: string
+  message: string
+  messageRole?: 'alert'
+  onSignIn: () => void
+}) {
+  return (
+    <main>
+      <h1>Todos</h1>
+      <p role={messageRole}>{message}</p>
+      <button onClick={onSignIn} type="button">
+        {buttonText}
+      </button>
+    </main>
+  )
+}
+
 const rootRoute = createRootRouteWithContext<TodoRouteContext>()({
   component: () => React.createElement(Outlet),
 })
@@ -121,9 +143,10 @@ function TodoScreen() {
   useEffect(() => {
     let cancelled = false
 
-    api
-      .getAuthSession()
-      .then(async nextSession => {
+    const loadSession = async () => {
+      try {
+        const nextSession = await api.getAuthSession()
+
         if (cancelled) {
           return
         }
@@ -132,24 +155,29 @@ function TodoScreen() {
 
         if (nextSession.state !== 'logged-in') {
           setTodos([])
-          setLoading(false)
           return
         }
 
-        setTodos(await api.listTodos())
+        const nextTodos = await api.listTodos()
+
+        if (cancelled) {
+          return
+        }
+
+        setTodos(nextTodos)
         setError(undefined)
-      })
-      .catch((caught: unknown) => {
+      } catch (caught) {
         if (!cancelled) {
           setError(caught instanceof Error ? caught.message : 'Could not load todos')
-          setLoading(false)
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) {
           setLoading(false)
         }
-      })
+      }
+    }
+
+    void loadSession()
 
     return () => {
       cancelled = true
@@ -166,26 +194,17 @@ function TodoScreen() {
   }
 
   if (authSession.state === 'logged-out') {
-    return (
-      <main>
-        <h1>Todos</h1>
-        <p>Sign in to manage todos.</p>
-        <button onClick={() => void signIn()} type="button">
-          Sign in
-        </button>
-      </main>
-    )
+    return <AuthSessionPrompt buttonText="Sign in" message="Sign in to manage todos." onSignIn={() => void signIn()} />
   }
 
   if (authSession.state === 'expired') {
     return (
-      <main>
-        <h1>Todos</h1>
-        <p role="alert">Session expired. Sign in again to manage todos.</p>
-        <button onClick={() => void signIn()} type="button">
-          Sign in again
-        </button>
-      </main>
+      <AuthSessionPrompt
+        buttonText="Sign in again"
+        message="Session expired. Sign in again to manage todos."
+        messageRole="alert"
+        onSignIn={() => void signIn()}
+      />
     )
   }
 
