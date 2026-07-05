@@ -20,6 +20,18 @@ _Avoid_: Re-exported service procedure, raw backend endpoint.
 A contract-defined procedure for service orchestration or readiness rather than domain data, such as a health check.
 _Avoid_: Uncontracted side channel, domain use case, OpenTelemetry ingestion endpoint.
 
+**Operational Contract Fragment**:
+A reusable versioned contract fragment that gives Services a consistent operational surface, such as `v1.operational.health`, without merging their domain Contract Surfaces.
+_Avoid_: Per-service health shape, global operations service, raw health endpoint as the only contract.
+
+**Broken Service Status**:
+An operational health status for a Service that can answer its health procedure but cannot handle normal contract calls because an essential dependency or internal capability has failed.
+_Avoid_: Blocked, unavailable, unhealthy, degraded.
+
+**Operational Health Reasons**:
+One or more human-readable explanations attached to any non-ready operational health status. Ready Services do not include health reasons.
+_Avoid_: Stable failure code registry, single reason field, reasons on ready health responses.
+
 **Service Ownership**:
 The rule that a service is the source of truth for the data and rules inside its boundary. Other services refer to that data through stable identifiers or contract calls rather than copying ownership.
 _Avoid_: Shared ownership, shared database, cross-service entity reuse.
@@ -65,8 +77,16 @@ The explicit OpenTelemetry `service.name` value assigned to a Service in the loc
 _Avoid_: Inferred name from port, package name guessed by devtools, display-only process label.
 
 **Developer Log View**:
-A local development view that collates telemetry from the running topology and filters it for the developer's current debugging task.
-_Avoid_: Production dashboard, log file ownership by each service, unfiltered process output.
+A local development view that helps developers inspect telemetry from the running topology, preferably through an existing OpenTelemetry viewer rather than a custom Megiddo UI.
+_Avoid_: Production dashboard, log file ownership by each service, unfiltered process output, custom viewer by default.
+
+**Devtools Service**:
+A developer-facing Service at `apps/devtools` that receives local telemetry, owns the Telemetry Store, and renders Developer Log Views.
+_Avoid_: Runner feature, script-only UI, package-owned observability app.
+
+**Telemetry Viewer Spike**:
+A required evaluation of existing local OpenTelemetry viewers against Megiddo's real local traces before building any Megiddo-specific Developer Log View.
+_Avoid_: First-result tool adoption, custom TUI as the default plan, production observability stack selection.
 
 **Devtools View Model**:
 A presentation-ready representation of telemetry for a Developer Log View, produced before rendering so terminal and browser interfaces can share filtering, grouping, and status classification rules.
@@ -79,6 +99,10 @@ _Avoid_: Monolithic terminal screen component, formatting embedded in telemetry 
 **Telemetry Store**:
 The devtools Service-owned local persistence for captured OpenTelemetry data used to build Developer Log Views.
 _Avoid_: Runner-owned log file, Raw Service Log, production observability backend.
+
+**Best-Effort Telemetry Export**:
+The rule that Services attempt to emit local telemetry without making devtools availability part of their startup or serving requirements.
+_Avoid_: Telemetry-gated startup, runner fallback orchestration, devtools as a required dependency.
 
 **Call Edge**:
 A rendered parent-child relationship in a Developer Log View showing one operation causing another operation, usually one caller service invoking one callee service operation.
