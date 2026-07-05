@@ -10,7 +10,8 @@
     "dev": "tsc --watch"
   },
   "dependencies": {
-    "@megiddo/contracts": "workspace:*"
+    "@megiddo/contracts": "workspace:*",
+    "@opentelemetry/api": "^1.9.1"
   },
   "devDependencies": {
     "@total-typescript/tsconfig": "catalog:",

@@ -1,4 +1,5 @@
 import type { IdentityTokenAudienceV1, IdentityTokenClaimsV1 } from '@megiddo/contracts'
+import { context, propagation, type Span, SpanKind, SpanStatusCode, trace } from '@opentelemetry/api'
 
 export const apiGatewayRpcMountPath = '/rpc'
 export const identityRpcMountPath = '/rpc'
@@ -7,6 +8,127 @@ export const todoRpcMountPath = '/rpc'
 export const apiGatewayRpcUrl = (baseUrl: string) => `${baseUrl.replace(/\/$/, '')}${apiGatewayRpcMountPath}`
 export const identityRpcUrl = (baseUrl: string) => `${baseUrl.replace(/\/$/, '')}${identityRpcMountPath}`
 export const todoRpcUrl = (baseUrl: string) => `${baseUrl.replace(/\/$/, '')}${todoRpcMountPath}`
+
+type OrpcServiceRole = 'client' | 'server'
+type OrpcStatus = 'error' | 'ok'
+
+interface OrpcSpanAttributesOptions {
+  procedure: string
+  role: OrpcServiceRole
+  serviceName: string
+}
+
+interface InstrumentedOrpcClientFetchOptions {
+  fetch?: (request: Request) => Promise<Response>
+  procedure: string
+  serviceName: string
+}
+
+interface HandleInstrumentedOrpcServerRequestOptions<ResponseType> {
+  handle: () => Promise<ResponseType>
+  procedure: string
+  request: Request
+  serviceName: string
+}
+
+const tracer = trace.getTracer('@megiddo/platform/orpc')
+
+const headersGetter = {
+  get(headers: Headers, key: string) {
+    return headers.get(key) ?? undefined
+  },
+  keys(headers: Headers) {
+    return [...headers.keys()]
+  },
+}
+
+const headersSetter = {
+  set(headers: Headers, key: string, value: string) {
+    headers.set(key, value)
+  },
+}
+
+const spanName = ({ procedure, role, serviceName }: OrpcSpanAttributesOptions) =>
+  `${serviceName} oRPC ${role} ${procedure}`
+
+const orpcSpanAttributes = ({ procedure, role, serviceName }: OrpcSpanAttributesOptions) => ({
+  'orpc.procedure': procedure,
+  'orpc.role': role,
+  'service.name': serviceName,
+})
+
+const recordOrpcException = (span: Span, error: unknown) => {
+  span.recordException(error instanceof Error ? error : new Error(String(error)))
+  span.setAttribute('error.type', error instanceof Error ? error.name : typeof error)
+}
+
+const finishOrpcSpan = (span: Span, startTime: number, status: OrpcStatus) => {
+  span.setAttribute('orpc.duration_ms', Date.now() - startTime)
+  span.setAttribute('orpc.status', status)
+  span.setStatus({ code: status === 'ok' ? SpanStatusCode.OK : SpanStatusCode.ERROR })
+  span.end()
+}
+
+export const createInstrumentedOrpcClientFetch =
+  ({ fetch = request => globalThis.fetch(request), procedure, serviceName }: InstrumentedOrpcClientFetchOptions) =>
+  async (request: Request) => {
+    const startTime = Date.now()
+    const role = 'client'
+    const span = tracer.startSpan(spanName({ procedure, role, serviceName }), {
+      attributes: orpcSpanAttributes({ procedure, role, serviceName }),
+      kind: SpanKind.CLIENT,
+    })
+    const headers = new Headers(request.headers)
+    propagation.inject(trace.setSpan(context.active(), span), headers, headersSetter)
+
+    try {
+      const response = await fetch(new Request(request, { headers }))
+      finishOrpcSpan(span, startTime, response.ok ? 'ok' : 'error')
+
+      return response
+    } catch (error) {
+      recordOrpcException(span, error)
+      span.setAttribute('http.request.url', request.url)
+      finishOrpcSpan(span, startTime, 'error')
+      throw error
+    }
+  }
+
+export const handleInstrumentedOrpcServerRequest = async <ResponseType>({
+  handle,
+  procedure,
+  request,
+  serviceName,
+}: HandleInstrumentedOrpcServerRequestOptions<ResponseType>) => {
+  const startTime = Date.now()
+  const role = 'server'
+  const parentContext = propagation.extract(context.active(), request.headers, headersGetter)
+  const span = tracer.startSpan(
+    spanName({ procedure, role, serviceName }),
+    {
+      attributes: orpcSpanAttributes({ procedure, role, serviceName }),
+      kind: SpanKind.SERVER,
+    },
+    parentContext,
+  )
+
+  try {
+    const response = await handle()
+    finishOrpcSpan(span, startTime, 'ok')
+
+    return response
+  } catch (error) {
+    recordOrpcException(span, error)
+    finishOrpcSpan(span, startTime, 'error')
+    throw error
+  }
+}
+
+export const orpcProcedureFromRequest = (request: Request) => {
+  const { pathname } = new URL(request.url)
+
+  return pathname.replace(/^\/+/, '').replaceAll('/', '.')
+}
 
 const identityTokenHeader = { alg: 'EdDSA', typ: 'megiddo.identity-token.v1' }
 const privateKeyEnvName = 'MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64'
