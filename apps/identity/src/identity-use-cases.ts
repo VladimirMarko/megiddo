@@ -1,7 +1,9 @@
 import type {
   AuthCapabilitiesResourceV1,
   AuthSignInInputV1,
+  AuthSignUpInputV1,
   DummyAuthAccountResourceV1,
+  IdentityTokenAudienceV1,
   IdentityTokenIssueInputV1,
   IdentityTokenIssueOutputV1,
   UserReferenceResourceV1,
@@ -14,7 +16,20 @@ export class UnknownPrincipalError extends Error {
   }
 }
 
+export class PrincipalCollisionError extends Error {
+  constructor(principalId: string) {
+    super(`Principal already exists: ${principalId}`)
+  }
+}
+
+export class InvalidDummyDisplayNameError extends Error {
+  constructor(displayName: string) {
+    super(`Display name cannot create a dummy principal id: ${displayName}`)
+  }
+}
+
 export interface AuthProviderAdapter {
+  createDummyPrincipal(input: DummyAuthAccountResourceV1): Promise<UserReferenceResourceV1>
   listDummyAccounts(): Promise<DummyAuthAccountResourceV1[]>
   resolveDummyPrincipal(principalId: string): Promise<UserReferenceResourceV1 | undefined>
   resolveDevelopmentUser(subject?: string): Promise<UserReferenceResourceV1>
@@ -23,6 +38,7 @@ export interface AuthProviderAdapter {
 export interface IdentityUseCases {
   getAuthCapabilities(): Promise<AuthCapabilitiesResourceV1>
   signIn(input: AuthSignInInputV1): Promise<IdentityTokenIssueOutputV1>
+  signUp(input: AuthSignUpInputV1): Promise<IdentityTokenIssueOutputV1>
   issueDevelopmentIdentityToken(input: IdentityTokenIssueInputV1): Promise<IdentityTokenIssueOutputV1>
 }
 
@@ -39,6 +55,15 @@ export const createDevelopmentAuthProviderAdapter = ({
   const principals = new Map(demoAccounts.map(account => [account.principalId, account]))
 
   return {
+    async createDummyPrincipal(account) {
+      if (principals.has(account.principalId)) {
+        throw new PrincipalCollisionError(account.principalId)
+      }
+
+      principals.set(account.principalId, account)
+
+      return { displayName: account.displayName, id: account.principalId }
+    },
     async listDummyAccounts() {
       return [...principals.values()]
     },
@@ -57,6 +82,40 @@ export const createDevelopmentAuthProviderAdapter = ({
   }
 }
 
+const dummyPrincipalIdFromDisplayName = (displayName: string) => {
+  const slug = displayName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  if (!slug) {
+    throw new InvalidDummyDisplayNameError(displayName)
+  }
+
+  return `dummy:${slug}`
+}
+
+const issueIdentityTokenForUser = async ({
+  contractVersion,
+  audience,
+  tokenSigner,
+  user,
+}: {
+  audience: IdentityTokenAudienceV1
+  contractVersion?: string
+  tokenSigner: IdentityTokenSigner
+  user: UserReferenceResourceV1
+}) => {
+  const identityToken = await tokenSigner.issueIdentityToken({
+    audience,
+    contractVersion,
+    subject: user.id,
+  })
+
+  return { identityToken, user }
+}
+
 export const createIdentityUseCases = ({
   authProvider,
   tokenSigner,
@@ -68,8 +127,13 @@ export const createIdentityUseCases = ({
     const accounts = await authProvider.listDummyAccounts()
 
     return {
-      dummy: accounts.length > 0 ? { accounts, signIn: 'available' } : undefined,
+      dummy: {
+        accounts,
+        signIn: accounts.length > 0 ? 'available' : undefined,
+        signUp: 'available',
+      },
       signInMethods: accounts.length > 0 ? ['dummy'] : [],
+      signUpMethods: ['dummy'],
     }
   },
   async signIn(input) {
@@ -79,22 +143,32 @@ export const createIdentityUseCases = ({
       throw new UnknownPrincipalError(input.principalId)
     }
 
-    const identityToken = await tokenSigner.issueIdentityToken({
+    return issueIdentityTokenForUser({
       audience: input.audience,
       contractVersion: input.contractVersion,
-      subject: user.id,
+      tokenSigner,
+      user,
     })
+  },
+  async signUp(input) {
+    const principalId = dummyPrincipalIdFromDisplayName(input.displayName)
+    const user = await authProvider.createDummyPrincipal({ displayName: input.displayName.trim(), principalId })
 
-    return { identityToken, user }
+    return issueIdentityTokenForUser({
+      audience: input.audience,
+      contractVersion: input.contractVersion,
+      tokenSigner,
+      user,
+    })
   },
   async issueDevelopmentIdentityToken(input) {
     const user = await authProvider.resolveDevelopmentUser(input.subject)
-    const identityToken = await tokenSigner.issueIdentityToken({
+
+    return issueIdentityTokenForUser({
       audience: input.audience,
       contractVersion: input.contractVersion,
-      subject: user.id,
+      tokenSigner,
+      user,
     })
-
-    return { identityToken, user }
   },
 })

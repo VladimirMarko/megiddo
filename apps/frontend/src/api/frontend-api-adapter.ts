@@ -3,6 +3,7 @@ import type {
   AuthCapabilitiesResourceV1,
   AuthSessionResourceV1,
   GatewayAuthSignInInputV1,
+  GatewayAuthSignUpInputV1,
   GatewayStatus,
   GatewayTodoByIdInputV1,
   GatewayTodoCreateInputV1,
@@ -36,6 +37,7 @@ export interface FrontendApi {
   getAuthCapabilities(): Promise<FrontendAuthCapabilities>
   getAuthSession(): Promise<FrontendAuthSession>
   signIn(input: GatewayAuthSignInInputV1): Promise<FrontendAuthSession>
+  signUp(input: GatewayAuthSignUpInputV1): Promise<FrontendAuthSession>
   signOut(): Promise<FrontendAuthSession>
   listTodos(): Promise<FrontendTodo[]>
   createTodo(input: GatewayTodoCreateInputV1): Promise<FrontendTodo>
@@ -96,6 +98,9 @@ export const createFrontendApi = ({
     },
     async signIn(input) {
       return toFrontendSession(await client.v1.viewer.session.signIn(input))
+    },
+    async signUp(input) {
+      return toFrontendSession(await client.v1.viewer.session.signUp(input))
     },
     async signOut() {
       authIdentityToken = undefined

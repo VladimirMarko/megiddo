@@ -112,6 +112,16 @@ export const createApiGatewayRouter = ({
 
             return { identityToken: issued.identityToken, state: 'logged-in' as const, user: issued.user }
           }),
+          signUp: apiGatewayV1.v1.viewer.session.signUp.handler(async ({ input }) => {
+            const issued = await identityClient.signUp({
+              audience: apiGatewayAudienceV1,
+              contractVersion: 'v1',
+              displayName: input.displayName,
+              method: input.method,
+            })
+
+            return { identityToken: issued.identityToken, state: 'logged-in' as const, user: issued.user }
+          }),
           signOut: apiGatewayV1.v1.viewer.session.signOut.handler(() => ({ state: 'logged-out' as const })),
         },
         todos: {

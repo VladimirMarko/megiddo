@@ -3,7 +3,7 @@ import { createRequire } from 'node:module'
 import { dirname } from 'node:path'
 import type { DummyAuthAccountResourceV1 } from '@megiddo/contracts'
 import type { AuthProviderAdapter } from './identity-use-cases'
-import { dummyDemoAccounts } from './identity-use-cases'
+import { dummyDemoAccounts, PrincipalCollisionError } from './identity-use-cases'
 
 export interface EmbeddedDevelopmentAuthProviderAdapterOptions {
   databasePath: string
@@ -69,6 +69,10 @@ export const createEmbeddedDevelopmentAuthProviderAdapter = ({
     INSERT OR IGNORE INTO development_users (id, display_name)
     VALUES (?, ?)
   `)
+  const listUsers = database.prepare(`
+    SELECT id, display_name
+    FROM development_users
+  `)
 
   if (seedDemoAccounts) {
     for (const account of dummyDemoAccounts) {
@@ -80,14 +84,27 @@ export const createEmbeddedDevelopmentAuthProviderAdapter = ({
     row.display_name ? { displayName: row.display_name, id: row.id } : { id: row.id }
 
   return {
-    async listDummyAccounts() {
-      if (!seedDemoAccounts) {
-        return []
+    async createDummyPrincipal(account) {
+      const existing = findUser.get(account.principalId) as DevelopmentUserRow | undefined
+
+      if (existing) {
+        throw new PrincipalCollisionError(account.principalId)
       }
 
-      const rows = listDemoUsers.all(...demoAccountIds, ...demoAccountIds) as DevelopmentUserRow[]
+      insertUser.run(account.principalId, account.displayName)
 
-      return rows.map(
+      return { displayName: account.displayName, id: account.principalId }
+    },
+    async listDummyAccounts() {
+      const demoRows = seedDemoAccounts
+        ? (listDemoUsers.all(...demoAccountIds, ...demoAccountIds) as DevelopmentUserRow[])
+        : []
+      const demoIds = new Set(demoRows.map(row => row.id))
+      const createdRows = (listUsers.all() as DevelopmentUserRow[])
+        .filter(row => row.id.startsWith('dummy:') && !demoIds.has(row.id))
+        .sort((left, right) => left.id.localeCompare(right.id))
+
+      return [...demoRows, ...createdRows].map(
         (row): DummyAuthAccountResourceV1 => ({ displayName: row.display_name ?? row.id, principalId: row.id }),
       )
     },

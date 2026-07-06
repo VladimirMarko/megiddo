@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { FrontendAuthCapabilities } from '../api/frontend-api-adapter'
 import { Title } from './title'
 
@@ -7,6 +8,7 @@ type AuthSessionPromptProps = {
   message: string
   messageRole?: 'alert'
   onDummySignIn: (principalId: string) => void
+  onDummySignUp: (displayName: string) => void
 }
 
 export function AuthSessionPrompt({
@@ -15,8 +17,11 @@ export function AuthSessionPrompt({
   message,
   messageRole,
   onDummySignIn,
+  onDummySignUp,
 }: AuthSessionPromptProps) {
   const dummyAccounts = dummyAuthLoginShortcutEnabled ? (capabilities?.dummy?.accounts ?? []) : []
+  const dummySignUpAvailable = capabilities?.signUpMethods.includes('dummy') ?? false
+  const [displayName, setDisplayName] = useState('')
 
   return (
     <main className="todo-shell auth-shell">
@@ -42,6 +47,30 @@ export function AuthSessionPrompt({
         ) : (
           <p className="todo-message">No sign-in shortcuts are enabled for this workspace.</p>
         )}
+        {dummySignUpAvailable ? (
+          <form
+            className="auth-sign-up-form"
+            onSubmit={event => {
+              event.preventDefault()
+              onDummySignUp(displayName)
+            }}
+          >
+            <label>
+              Create a local identity
+              <input
+                aria-label="Display name"
+                name="displayName"
+                onChange={event => setDisplayName(event.currentTarget.value)}
+                placeholder="Charlie Example"
+                type="text"
+                value={displayName}
+              />
+            </label>
+            <button disabled={displayName.trim().length === 0} type="submit">
+              Sign up and continue
+            </button>
+          </form>
+        ) : null}
       </section>
     </main>
   )

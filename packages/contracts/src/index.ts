@@ -72,10 +72,12 @@ export const AuthCapabilitiesResourceSchemaV1 = z.object({
   dummy: z
     .object({
       accounts: z.array(DummyAuthAccountResourceSchemaV1),
-      signIn: z.literal('available'),
+      signIn: z.literal('available').optional(),
+      signUp: z.literal('available'),
     })
     .optional(),
   signInMethods: z.array(z.literal('dummy')),
+  signUpMethods: z.array(z.literal('dummy')),
 })
 
 export const AuthSignInInputSchemaV1 = z.object({
@@ -85,11 +87,22 @@ export const AuthSignInInputSchemaV1 = z.object({
   principalId: z.string().min(1),
 })
 
+export const AuthSignUpInputSchemaV1 = z.object({
+  audience: IdentityTokenAudienceSchemaV1,
+  contractVersion: z.string().min(1).optional(),
+  displayName: z.string().trim().min(1),
+  method: z.literal('dummy'),
+})
+
 export const GatewayAuthSessionInputSchemaV1 = z.undefined()
 export const GatewayAuthCapabilitiesInputSchemaV1 = z.undefined()
 export const GatewayAuthSignInInputSchemaV1 = z.object({
   method: z.literal('dummy'),
   principalId: z.string().min(1),
+})
+export const GatewayAuthSignUpInputSchemaV1 = z.object({
+  displayName: z.string().trim().min(1),
+  method: z.literal('dummy'),
 })
 export const GatewayAuthSignOutInputSchemaV1 = z.undefined()
 export const GatewayStatusInputSchemaV1 = z.undefined()
@@ -111,6 +124,7 @@ export type UserReferenceResourceV1 = z.infer<typeof UserReferenceResourceSchema
 export type AuthSessionResourceV1 = z.infer<typeof AuthSessionResourceSchemaV1>
 export type AuthCapabilitiesResourceV1 = z.infer<typeof AuthCapabilitiesResourceSchemaV1>
 export type AuthSignInInputV1 = z.infer<typeof AuthSignInInputSchemaV1>
+export type AuthSignUpInputV1 = z.infer<typeof AuthSignUpInputSchemaV1>
 export type DummyAuthAccountResourceV1 = z.infer<typeof DummyAuthAccountResourceSchemaV1>
 export type IdentityTokenAudienceV1 = z.infer<typeof IdentityTokenAudienceSchemaV1>
 export type IdentityTokenClaimsV1 = z.infer<typeof IdentityTokenClaimsSchemaV1>
@@ -118,6 +132,7 @@ export type IdentityTokenIssueInputV1 = z.infer<typeof IdentityTokenIssueInputSc
 export type IdentityTokenIssueOutputV1 = z.infer<typeof IdentityTokenIssueOutputSchemaV1>
 export type AuthenticatedTodoInputV1 = z.infer<typeof AuthenticatedTodoInputSchemaV1>
 export type GatewayAuthSignInInputV1 = z.infer<typeof GatewayAuthSignInInputSchemaV1>
+export type GatewayAuthSignUpInputV1 = z.infer<typeof GatewayAuthSignUpInputSchemaV1>
 export type GatewayTodoCreateInputV1 = z.infer<typeof GatewayTodoCreateInputSchemaV1>
 export type GatewayTodoByIdInputV1 = z.infer<typeof GatewayTodoByIdInputSchemaV1>
 export type GatewayTodoRenameInputV1 = z.infer<typeof GatewayTodoRenameInputSchemaV1>
@@ -160,6 +175,7 @@ export const apiGatewayContractV1 = {
         capabilities: oc.input(GatewayAuthCapabilitiesInputSchemaV1).output(AuthCapabilitiesResourceSchemaV1),
         current: oc.input(GatewayAuthSessionInputSchemaV1).output(AuthSessionResourceSchemaV1),
         signIn: oc.input(GatewayAuthSignInInputSchemaV1).output(AuthSessionResourceSchemaV1),
+        signUp: oc.input(GatewayAuthSignUpInputSchemaV1).output(AuthSessionResourceSchemaV1),
         signOut: oc.input(GatewayAuthSignOutInputSchemaV1).output(AuthSessionResourceSchemaV1),
       },
       todos: {
@@ -186,6 +202,7 @@ export const identityContractV1 = {
     auth: {
       capabilities: oc.input(GatewayAuthCapabilitiesInputSchemaV1).output(AuthCapabilitiesResourceSchemaV1),
       signIn: oc.input(AuthSignInInputSchemaV1).output(IdentityTokenIssueOutputSchemaV1),
+      signUp: oc.input(AuthSignUpInputSchemaV1).output(IdentityTokenIssueOutputSchemaV1),
     },
     operational: operationalHealthContractFragmentV1,
   },
