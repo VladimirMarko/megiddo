@@ -35,6 +35,7 @@ test('contracts package exports the explicit API Gateway v1 contract surface', (
   assert.equal(typeof apiGatewayContractV1.v1.viewer.session.capabilities, 'object')
   assert.equal(typeof apiGatewayContractV1.v1.viewer.session.current, 'object')
   assert.equal(typeof apiGatewayContractV1.v1.viewer.session.signIn, 'object')
+  assert.equal(typeof apiGatewayContractV1.v1.viewer.session.signUp, 'object')
   assert.equal(typeof apiGatewayContractV1.v1.viewer.session.signOut, 'object')
   assert.equal(typeof apiGatewayContractV1.v1.viewer.todos.list, 'object')
   assert.equal(typeof apiGatewayContractV1.v1.viewer.todos.create, 'object')
@@ -64,10 +65,13 @@ test('API Gateway composes frontend-shaped todo procedures through a Todo client
   const completedTodo: TodoResourceV1 = { ...createdTodo, completed: true }
   const identityClient = {
     async getAuthCapabilities() {
-      return { signInMethods: [] }
+      return { signInMethods: [], signUpMethods: [] }
     },
     async signIn() {
       throw new Error('signIn should not be called')
+    },
+    async signUp() {
+      throw new Error('signUp should not be called')
     },
     async issueDevelopmentIdentityToken(input) {
       assert.equal(input.subject, 'dev:viewer')
@@ -172,8 +176,10 @@ test('API Gateway production Todo client reaches Todo over the Todo oRPC contrac
           { displayName: 'Bob', principalId: 'dummy:bob' },
         ],
         signIn: 'available',
+        signUp: 'available',
       },
       signInMethods: ['dummy'],
+      signUpMethods: ['dummy'],
     },
   })
 

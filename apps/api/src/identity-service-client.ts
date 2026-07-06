@@ -1,6 +1,7 @@
 import type {
   AuthCapabilitiesResourceV1,
   AuthSignInInputV1,
+  AuthSignUpInputV1,
   IdentityContractClientV1,
   IdentityTokenIssueInputV1,
   IdentityTokenIssueOutputV1,
@@ -12,6 +13,7 @@ import { RPCLink } from '@orpc/client/fetch'
 export interface IdentityServiceClient {
   getAuthCapabilities(): Promise<AuthCapabilitiesResourceV1>
   signIn(input: AuthSignInInputV1): Promise<IdentityTokenIssueOutputV1>
+  signUp(input: AuthSignUpInputV1): Promise<IdentityTokenIssueOutputV1>
   issueDevelopmentIdentityToken(input: IdentityTokenIssueInputV1): Promise<IdentityTokenIssueOutputV1>
 }
 
@@ -35,6 +37,7 @@ export const createIdentityServiceClient = ({
     )
   const authCapabilitiesClient = createInstrumentedIdentityClient('v1.auth.capabilities')
   const signInClient = createInstrumentedIdentityClient('v1.auth.signIn')
+  const signUpClient = createInstrumentedIdentityClient('v1.auth.signUp')
   const developmentIdentityTokensClient = createInstrumentedIdentityClient('v1.development.identityTokens.issue')
 
   return {
@@ -43,6 +46,9 @@ export const createIdentityServiceClient = ({
     },
     signIn(input) {
       return signInClient.v1.auth.signIn(input)
+    },
+    signUp(input) {
+      return signUpClient.v1.auth.signUp(input)
     },
     issueDevelopmentIdentityToken(input) {
       return developmentIdentityTokensClient.v1.development.identityTokens.issue(input)

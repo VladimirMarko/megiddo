@@ -108,12 +108,15 @@ test('frontend todo flow renders and mutates todos through a fake Frontend API A
       return { service: 'api-gateway', message: 'frontend is connected' }
     },
     async getAuthCapabilities() {
-      return { signInMethods: [] }
+      return { signInMethods: [], signUpMethods: [] }
     },
     async getAuthSession() {
       return { state: 'logged-in', user: { id: 'dev:viewer' } }
     },
     async signIn() {
+      return { state: 'logged-in', user: { id: 'dev:viewer' } }
+    },
+    async signUp() {
       return { state: 'logged-in', user: { id: 'dev:viewer' } }
     },
     async signOut() {
@@ -229,12 +232,15 @@ test('frontend todo flow surfaces mutation failures through a fake Frontend API 
       return { service: 'api-gateway', message: 'frontend is connected' }
     },
     async getAuthCapabilities() {
-      return { signInMethods: [] }
+      return { signInMethods: [], signUpMethods: [] }
     },
     async getAuthSession() {
       return { state: 'logged-in', user: { id: 'dev:viewer' } }
     },
     async signIn() {
+      return { state: 'logged-in', user: { id: 'dev:viewer' } }
+    },
+    async signUp() {
       return { state: 'logged-in', user: { id: 'dev:viewer' } }
     },
     async signOut() {
@@ -361,12 +367,15 @@ test('frontend filters todos by completion status without reloading from the API
       return { service: 'api-gateway', message: 'frontend is connected' }
     },
     async getAuthCapabilities() {
-      return { signInMethods: [] }
+      return { signInMethods: [], signUpMethods: [] }
     },
     async getAuthSession() {
       return { state: 'logged-in', user: { id: 'dev:viewer' } }
     },
     async signIn() {
+      return { state: 'logged-in', user: { id: 'dev:viewer' } }
+    },
+    async signUp() {
       return { state: 'logged-in', user: { id: 'dev:viewer' } }
     },
     async signOut() {
@@ -434,12 +443,15 @@ test('frontend renders auth session states through a fake Frontend API Adapter',
         return { service: 'api-gateway', message: 'frontend is connected' }
       },
       async getAuthCapabilities() {
-        return { signInMethods: [] }
+        return { signInMethods: [], signUpMethods: [] }
       },
       async getAuthSession() {
         return session
       },
       async signIn() {
+        return { state: 'logged-in', user: { id: 'dev:viewer' } }
+      },
+      async signUp() {
         return { state: 'logged-in', user: { id: 'dev:viewer' } }
       },
       async signOut() {
@@ -486,12 +498,13 @@ test('frontend renders auth session states through a fake Frontend API Adapter',
   assert.match(await renderWithSession({ state: 'expired' }), /Session expired/)
 })
 
-test('frontend renders dummy sign-in shortcuts only when the UI shortcut setting is enabled', async () => {
+test('frontend renders dummy shortcuts conditionally and submits the dummy sign-up flow', async () => {
   const renderLoggedOut = async (dummyAuthLoginShortcutEnabled: boolean) => {
     const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', {
       url: 'http://localhost/',
     })
     const signIns: string[] = []
+    const signUps: string[] = []
     const api: FrontendApi = {
       async getGatewayStatus() {
         return { service: 'api-gateway', message: 'frontend is connected' }
@@ -504,8 +517,10 @@ test('frontend renders dummy sign-in shortcuts only when the UI shortcut setting
               { displayName: 'Bob', principalId: 'dummy:bob' },
             ],
             signIn: 'available',
+            signUp: 'available',
           },
           signInMethods: ['dummy'],
+          signUpMethods: ['dummy'],
         }
       },
       async getAuthSession() {
@@ -514,6 +529,10 @@ test('frontend renders dummy sign-in shortcuts only when the UI shortcut setting
       async signIn(input) {
         signIns.push(input.principalId)
         return { state: 'logged-in', user: { id: input.principalId } }
+      },
+      async signUp(input) {
+        signUps.push(input.displayName)
+        return { state: 'logged-in', user: { id: `dummy:${input.displayName.toLowerCase()}` } }
       },
       async signOut() {
         return { state: 'logged-out' }
@@ -554,22 +573,38 @@ test('frontend renders dummy sign-in shortcuts only when the UI shortcut setting
           getElement<HTMLButtonElement>('button').click()
           await settle()
         })
+      } else {
+        await act(async () => {
+          setInputValue(getElement<HTMLInputElement>('input[aria-label="Display name"]'), 'Charlie Example')
+          await settle()
+        })
+
+        await act(async () => {
+          getElement<HTMLFormElement>('.auth-sign-up-form').dispatchEvent(
+            new dom.window.Event('submit', { bubbles: true, cancelable: true }),
+          )
+          await settle()
+        })
       }
 
       await act(async () => root.unmount())
     })
 
-    return { signIns, textContent }
+    return { signIns, signUps, textContent }
   }
 
   const disabled = await renderLoggedOut(false)
   assert.doesNotMatch(disabled.textContent, /Continue as Alice/)
+  assert.match(disabled.textContent, /Create a local identity/)
+  assert.match(disabled.textContent, /Sign up and continue/)
   assert.deepEqual(disabled.signIns, [])
+  assert.deepEqual(disabled.signUps, ['Charlie Example'])
 
   const enabled = await renderLoggedOut(true)
   assert.match(enabled.textContent, /Continue as Alice/)
   assert.match(enabled.textContent, /Continue as Bob/)
   assert.deepEqual(enabled.signIns, ['dummy:alice'])
+  assert.deepEqual(enabled.signUps, [])
 })
 
 test('production Frontend API Adapter delegates todo calls to the API Gateway oRPC client', async () => {
@@ -621,4 +656,54 @@ test('production Frontend API Adapter delegates todo calls to the API Gateway oR
   assert.deepEqual(bobCreated, { id: bobCreated.id, title: 'Bob owns this todo', status: 'open' })
   assert.deepEqual(bobTodos, [bobCreated])
   assert.deepEqual(aliceTodosAfterBob, [renamed])
+})
+
+test('production Frontend API Adapter signs up a dummy principal and can select it later', async () => {
+  const codec = createDevelopmentIdentityTokenCodec()
+  const identityApp = createIdentityApp({ tokenSigner: codec })
+  const todoApp = createTodoServiceApp({ tokenVerifier: codec })
+  const identityClient = createIdentityServiceClient({
+    baseUrl: 'http://identity-service.test',
+    fetch(request) {
+      const url = new URL(request.url)
+      return identityApp.request(`${url.pathname}${url.search}`, request)
+    },
+  })
+  const todoClient = createTodoServiceClient({
+    baseUrl: 'http://todo-service.test',
+    fetch(request) {
+      const url = new URL(request.url)
+      return todoApp.request(`${url.pathname}${url.search}`, request)
+    },
+  })
+  const app = createApiGatewayApp({ identityClient, todoClient, tokenVerifier: codec })
+  const api = createFrontendApi({
+    baseUrl: 'http://api-gateway.test',
+    fetch(request) {
+      const url = new URL(request.url)
+      return app.request(`${url.pathname}${url.search}`, request)
+    },
+  })
+
+  const signedUp = await api.signUp({ displayName: 'Charlie Example', method: 'dummy' })
+  const created = await api.createTodo({ title: 'Charlie owns this todo' })
+  const capabilities = await api.getAuthCapabilities()
+  await api.signOut()
+  const selectedLater = await api.signIn({ method: 'dummy', principalId: 'dummy:charlie-example' })
+  const selectedLaterTodos = await api.listTodos()
+
+  assert.deepEqual(signedUp, {
+    state: 'logged-in',
+    user: { displayName: 'Charlie Example', id: 'dummy:charlie-example' },
+  })
+  assert.deepEqual(created, { id: created.id, title: 'Charlie owns this todo', status: 'open' })
+  assert.deepEqual(capabilities.dummy?.accounts.at(-1), {
+    displayName: 'Charlie Example',
+    principalId: 'dummy:charlie-example',
+  })
+  assert.deepEqual(selectedLater, {
+    state: 'logged-in',
+    user: { displayName: 'Charlie Example', id: 'dummy:charlie-example' },
+  })
+  assert.deepEqual(selectedLaterTodos, [created])
 })

@@ -126,6 +126,49 @@ button {
   color: #8f8f8f;
 }
 
+.auth-sign-up-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border-top: 1px solid #eeeeee;
+  padding-top: 1rem;
+}
+
+.auth-sign-up-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: #767676;
+  font-size: 0.9rem;
+}
+
+.auth-sign-up-form input {
+  width: 100%;
+  border: 1px solid #eeeeee;
+  background: #fbfbfb;
+  padding: 0.8rem 0.9rem;
+}
+
+.auth-sign-up-form input:focus {
+  border-color: #cfcfcf;
+  outline: none;
+}
+
+.auth-sign-up-form button {
+  align-self: flex-start;
+  border: 1px solid #0f0f12;
+  background: #0f0f12;
+  color: white;
+  padding: 0.75rem 0.95rem;
+}
+
+.auth-sign-up-form button:disabled {
+  border-color: #eeeeee;
+  background: #f4f4f4;
+  color: #a0a0a0;
+  cursor: not-allowed;
+}
+
 h1 {
   margin: 0;
   color: black;

@@ -143,6 +143,16 @@ function TodoScreen() {
     }
   }
 
+  const signUp = async (displayName: string) => {
+    const nextSession = await api.signUp({ displayName, method: 'dummy' })
+    setAuthSession(nextSession)
+    setAuthCapabilities(await api.getAuthCapabilities())
+
+    if (nextSession.state === 'logged-in') {
+      await loadTodos()
+    }
+  }
+
   const signOut = async () => {
     setAuthSession(await api.signOut())
     setTodos([])
@@ -212,6 +222,7 @@ function TodoScreen() {
         dummyAuthLoginShortcutEnabled={dummyAuthLoginShortcutEnabled}
         message="Sign in to manage todos."
         onDummySignIn={principalId => void signIn(principalId)}
+        onDummySignUp={displayName => void signUp(displayName)}
       />
     )
   }
@@ -224,6 +235,7 @@ function TodoScreen() {
         message="Session expired. Sign in again to manage todos."
         messageRole="alert"
         onDummySignIn={principalId => void signIn(principalId)}
+        onDummySignUp={displayName => void signUp(displayName)}
       />
     )
   }
