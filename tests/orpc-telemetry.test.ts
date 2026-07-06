@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { createApiGatewayApp, createIdentityServiceClient, createTodoServiceClient } from '@megiddo/api'
 import type { TodoResourceV1 } from '@megiddo/contracts'
 import { createIdentityApp } from '@megiddo/identity'
-import { createDevelopmentIdentityTokenCodec } from '@megiddo/platform'
+import { createJwtJwsIdentityTokenCodec } from '@megiddo/platform'
 import { createTodoApp } from '@megiddo/todo'
 import { propagation, SpanStatusCode, trace } from '@opentelemetry/api'
 import { W3CTraceContextPropagator } from '@opentelemetry/core'
@@ -42,7 +42,7 @@ test('backend oRPC calls export consistent spans and failed client metadata', as
   trace.setGlobalTracerProvider(provider)
   propagation.setGlobalPropagator(new W3CTraceContextPropagator())
 
-  const codec = createDevelopmentIdentityTokenCodec()
+  const codec = createJwtJwsIdentityTokenCodec()
   const identityApp = createIdentityApp({ tokenSigner: codec })
   const todoApp = createTodoApp({ tokenVerifier: codec })
   const identityClient = createIdentityServiceClient({

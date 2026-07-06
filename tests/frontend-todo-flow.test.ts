@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createApiGatewayApp, createIdentityServiceClient, createTodoServiceClient } from '@megiddo/api'
 import { createIdentityApp } from '@megiddo/identity'
-import { createDevelopmentIdentityTokenCodec } from '@megiddo/platform'
+import { createJwtJwsIdentityTokenCodec } from '@megiddo/platform'
 import { createTodoApp as createTodoServiceApp } from '@megiddo/todo'
 import { JSDOM } from 'jsdom'
 import { act } from 'react'
@@ -609,7 +609,7 @@ test('frontend renders dummy shortcuts conditionally and submits the dummy sign-
 })
 
 test('production Frontend API Adapter delegates todo calls to the API Gateway oRPC client', async () => {
-  const codec = createDevelopmentIdentityTokenCodec()
+  const codec = createJwtJwsIdentityTokenCodec()
   const identityApp = createIdentityApp({ tokenSigner: codec })
   const todoApp = createTodoServiceApp({ tokenVerifier: codec })
   const identityClient = createIdentityServiceClient({
@@ -694,7 +694,7 @@ test('Frontend API Adapter relies on browser session cookies instead of storing 
 })
 
 test('production Frontend API Adapter signs up a dummy principal and can select it later', async () => {
-  const codec = createDevelopmentIdentityTokenCodec()
+  const codec = createJwtJwsIdentityTokenCodec()
   const identityApp = createIdentityApp({ tokenSigner: codec })
   const todoApp = createTodoServiceApp({ tokenVerifier: codec })
   const identityClient = createIdentityServiceClient({
@@ -744,7 +744,7 @@ test('production Frontend API Adapter signs up a dummy principal and can select 
 })
 
 test('production Frontend API Adapter completes the Better Auth browser Todo flow', async () => {
-  const codec = createDevelopmentIdentityTokenCodec()
+  const codec = createJwtJwsIdentityTokenCodec()
   const identityApp = createIdentityApp({
     env: {
       IDENTITY_AUTH_PROVIDER: 'better-auth',

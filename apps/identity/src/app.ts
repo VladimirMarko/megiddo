@@ -1,5 +1,6 @@
 import {
   createDummyIdentityTokenCodec,
+  createJwtJwsIdentityTokenCodec,
   defaultInternalServiceAuthSecret,
   handleInstrumentedOrpcServerRequest,
   type IdentityTokenSigner,
@@ -40,12 +41,12 @@ const createAuthProviderForMode = ({ authProvider }: IdentityModeConfig, env: No
   })
 }
 
-const createTokenSignerForMode = ({ tokenCodec }: IdentityModeConfig) => {
+const createTokenSignerForMode = ({ tokenCodec }: IdentityModeConfig, env: NodeJS.ProcessEnv) => {
   if (tokenCodec === 'dummy') {
     return createDummyIdentityTokenCodec()
   }
 
-  throw new Error('IDENTITY_TOKEN_CODEC=jwt-jws is not implemented yet')
+  return createJwtJwsIdentityTokenCodec({ env })
 }
 
 export const createIdentityApp = ({
@@ -57,7 +58,7 @@ export const createIdentityApp = ({
 }: IdentityAppOptions = {}) => {
   const identityModeConfig = resolveIdentityModeConfig(env)
   const resolvedAuthProvider = authProvider ?? createAuthProviderForMode(identityModeConfig, env)
-  const resolvedTokenSigner = tokenSigner ?? createTokenSignerForMode(identityModeConfig)
+  const resolvedTokenSigner = tokenSigner ?? createTokenSignerForMode(identityModeConfig, env)
   const app = new Hono()
   const identity = createIdentityUseCases({
     authProvider: resolvedAuthProvider,

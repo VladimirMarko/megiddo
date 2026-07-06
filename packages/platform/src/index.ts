@@ -143,11 +143,14 @@ export const orpcProcedureFromRequest = (request: Request) => {
   return pathname.replace(/^\/+/, '').replaceAll('/', '.')
 }
 
-const identityTokenHeader = { alg: 'EdDSA', typ: 'megiddo.identity-token.v1' }
+const jwtJwsIdentityTokenIssuer = 'megiddo.identity'
+const jwtJwsIdentityTokenKeyId = 'local-development'
+const jwtJwsIdentityTokenTtlSeconds = 60 * 60
+const jwtJwsIdentityTokenHeader = { alg: 'EdDSA', kid: jwtJwsIdentityTokenKeyId, typ: 'JWT' }
 const privateKeyEnvName = 'MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64'
 const publicKeyEnvName = 'MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64'
-type DevelopmentIdentityTokenKeyPair = { privateKeyPem: string; publicKeyPem: string }
-type DevelopmentIdentityTokenKeyPairEnv = Record<typeof privateKeyEnvName | typeof publicKeyEnvName, string>
+type JwtJwsIdentityTokenKeyPair = { privateKeyPem: string; publicKeyPem: string }
+type JwtJwsIdentityTokenKeyPairEnv = Record<typeof privateKeyEnvName | typeof publicKeyEnvName, string>
 
 export interface IdentityTokenSigner {
   issueIdentityToken(claims: Omit<IdentityTokenClaimsV1, 'issuedAt'>): Promise<string>
@@ -219,7 +222,7 @@ export const createDummyIdentityTokenCodec = (): IdentityTokenSigner & IdentityT
   },
 })
 
-const generateDevelopmentIdentityTokenKeyPair = async (): Promise<DevelopmentIdentityTokenKeyPair> => {
+const generateJwtJwsIdentityTokenKeyPair = async (): Promise<JwtJwsIdentityTokenKeyPair> => {
   const { generateKeyPairSync } = await import('node:crypto')
   const { privateKey, publicKey } = generateKeyPairSync('ed25519')
 
@@ -229,8 +232,8 @@ const generateDevelopmentIdentityTokenKeyPair = async (): Promise<DevelopmentIde
   }
 }
 
-export const createDevelopmentIdentityTokenKeyPairEnv = async (): Promise<DevelopmentIdentityTokenKeyPairEnv> => {
-  const { privateKeyPem, publicKeyPem } = await generateDevelopmentIdentityTokenKeyPair()
+export const createJwtJwsIdentityTokenKeyPairEnv = async (): Promise<JwtJwsIdentityTokenKeyPairEnv> => {
+  const { privateKeyPem, publicKeyPem } = await generateJwtJwsIdentityTokenKeyPair()
 
   return {
     [privateKeyEnvName]: base64UrlEncode(privateKeyPem),
@@ -238,14 +241,16 @@ export const createDevelopmentIdentityTokenKeyPairEnv = async (): Promise<Develo
   }
 }
 
-interface DevelopmentIdentityTokenCodecOptions {
+interface JwtJwsIdentityTokenCodecOptions {
+  env?: NodeJS.ProcessEnv
   privateKeyPem?: string
   publicKeyPem?: string
+  tokenTtlSeconds?: number
 }
 
-const readDevelopmentIdentityTokenKeyPair = (): DevelopmentIdentityTokenCodecOptions => {
-  const privateKeyPemBase64 = process.env[privateKeyEnvName]
-  const publicKeyPemBase64 = process.env[publicKeyEnvName]
+const readJwtJwsIdentityTokenKeyPair = (env: NodeJS.ProcessEnv = process.env): JwtJwsIdentityTokenCodecOptions => {
+  const privateKeyPemBase64 = env[privateKeyEnvName]
+  const publicKeyPemBase64 = env[publicKeyEnvName]
 
   return {
     privateKeyPem: privateKeyPemBase64 ? base64UrlDecode(privateKeyPemBase64).toString('utf8') : undefined,
@@ -253,10 +258,70 @@ const readDevelopmentIdentityTokenKeyPair = (): DevelopmentIdentityTokenCodecOpt
   }
 }
 
-export const createDevelopmentIdentityTokenCodec = (
-  { privateKeyPem, publicKeyPem }: DevelopmentIdentityTokenCodecOptions = readDevelopmentIdentityTokenKeyPair(),
+const parseJwtJwsJson = (value: string, error: Error) => {
+  try {
+    return JSON.parse(base64UrlDecode(value).toString('utf8')) as unknown
+  } catch {
+    throw error
+  }
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object'
+
+const parseJwtJwsIdentityTokenHeader = (header: string) => {
+  const decodedHeader = parseJwtJwsJson(header, new Error('Invalid JWT/JWS Identity Token header'))
+
+  if (!isRecord(decodedHeader)) {
+    throw new Error('Unsupported JWT/JWS Identity Token header')
+  }
+
+  if (
+    decodedHeader.alg !== jwtJwsIdentityTokenHeader.alg ||
+    decodedHeader.typ !== jwtJwsIdentityTokenHeader.typ ||
+    decodedHeader.kid !== jwtJwsIdentityTokenHeader.kid
+  ) {
+    throw new Error('Unsupported JWT/JWS Identity Token header')
+  }
+
+  return decodedHeader
+}
+
+const parseJwtJwsIdentityTokenPayload = (payload: string) => {
+  const decodedPayload = parseJwtJwsJson(payload, new Error('Invalid JWT/JWS Identity Token claims'))
+
+  if (!isRecord(decodedPayload)) {
+    throw new Error('Invalid JWT/JWS Identity Token claims')
+  }
+
+  const { aud, contractVersion, exp, iat, iss, sub } = decodedPayload
+  if (
+    iss !== jwtJwsIdentityTokenIssuer ||
+    typeof sub !== 'string' ||
+    sub.length === 0 ||
+    typeof aud !== 'string' ||
+    aud.length === 0 ||
+    typeof iat !== 'number' ||
+    !Number.isInteger(iat) ||
+    iat < 0 ||
+    typeof exp !== 'number' ||
+    !Number.isInteger(exp) ||
+    (contractVersion !== undefined && (typeof contractVersion !== 'string' || contractVersion.length === 0))
+  ) {
+    throw new Error('Invalid JWT/JWS Identity Token claims')
+  }
+
+  return { aud, contractVersion, exp, iat, iss, sub }
+}
+
+export const createJwtJwsIdentityTokenCodec = (
+  options: JwtJwsIdentityTokenCodecOptions = readJwtJwsIdentityTokenKeyPair(),
 ): IdentityTokenSigner & IdentityTokenVerifier => {
-  let keyPair: DevelopmentIdentityTokenKeyPair | undefined
+  const {
+    privateKeyPem,
+    publicKeyPem,
+    tokenTtlSeconds = jwtJwsIdentityTokenTtlSeconds,
+  } = { ...readJwtJwsIdentityTokenKeyPair(options.env), ...options }
+  let keyPair: JwtJwsIdentityTokenKeyPair | undefined
 
   const ensureKeyPair = async () => {
     if (keyPair) {
@@ -264,7 +329,7 @@ export const createDevelopmentIdentityTokenCodec = (
     }
 
     keyPair =
-      privateKeyPem && publicKeyPem ? { privateKeyPem, publicKeyPem } : await generateDevelopmentIdentityTokenKeyPair()
+      privateKeyPem && publicKeyPem ? { privateKeyPem, publicKeyPem } : await generateJwtJwsIdentityTokenKeyPair()
 
     return keyPair
   }
@@ -273,8 +338,18 @@ export const createDevelopmentIdentityTokenCodec = (
     async issueIdentityToken(claims) {
       const { createPrivateKey, sign } = await import('node:crypto')
       const { privateKeyPem } = await ensureKeyPair()
-      const header = base64UrlEncode(JSON.stringify(identityTokenHeader))
-      const payload = base64UrlEncode(JSON.stringify({ ...claims, issuedAt: Date.now() }))
+      const issuedAtSeconds = Math.floor(Date.now() / 1000)
+      const header = base64UrlEncode(JSON.stringify(jwtJwsIdentityTokenHeader))
+      const payload = base64UrlEncode(
+        JSON.stringify({
+          aud: claims.audience.service,
+          contractVersion: claims.contractVersion,
+          exp: issuedAtSeconds + tokenTtlSeconds,
+          iat: issuedAtSeconds,
+          iss: jwtJwsIdentityTokenIssuer,
+          sub: claims.subject,
+        }),
+      )
       const signedContent = `${header}.${payload}`
       const signature = sign(null, Buffer.from(signedContent), createPrivateKey(privateKeyPem))
 
@@ -286,8 +361,10 @@ export const createDevelopmentIdentityTokenCodec = (
       const [header, payload, signature, extra] = identityToken.split('.')
 
       if (!header || !payload || !signature || extra) {
-        throw new Error('Invalid Identity Token format')
+        throw new Error('Invalid JWT/JWS Identity Token format')
       }
+
+      parseJwtJwsIdentityTokenHeader(header)
 
       const signedContent = `${header}.${payload}`
       const verified = verify(
@@ -298,14 +375,25 @@ export const createDevelopmentIdentityTokenCodec = (
       )
 
       if (!verified) {
-        throw new Error('Invalid Identity Token signature')
+        throw new Error('Invalid JWT/JWS Identity Token signature')
       }
 
-      const claims = JSON.parse(base64UrlDecode(payload).toString('utf8')) as IdentityTokenClaimsV1
+      const jwtClaims = parseJwtJwsIdentityTokenPayload(payload)
 
-      if (claims.audience.service !== audience.service) {
+      if (jwtClaims.aud !== audience.service) {
         throw new Error(`Identity Token audience mismatch: expected ${audience.service}`)
       }
+
+      if (jwtClaims.exp <= Math.floor(Date.now() / 1000)) {
+        throw new Error('Identity Token expired')
+      }
+
+      const claims = IdentityTokenClaimsSchemaV1.parse({
+        audience: { service: jwtClaims.aud },
+        contractVersion: jwtClaims.contractVersion,
+        issuedAt: jwtClaims.iat * 1000,
+        subject: jwtClaims.sub,
+      })
 
       return claims
     },

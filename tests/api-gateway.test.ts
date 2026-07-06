@@ -8,7 +8,7 @@ import {
 } from '@megiddo/api'
 import { apiGatewayContractV1, gatewayStatus, type TodoResourceV1 } from '@megiddo/contracts'
 import { createIdentityApp } from '@megiddo/identity'
-import { createDevelopmentIdentityTokenCodec } from '@megiddo/platform'
+import { createJwtJwsIdentityTokenCodec } from '@megiddo/platform'
 import { createTodoApp } from '@megiddo/todo'
 
 const postRpc = (app: ReturnType<typeof createApiGatewayApp>, path: string, json?: unknown) =>
@@ -256,7 +256,7 @@ test('API Gateway browser auth uses Identity-owned sessions without returning se
 })
 
 test('API Gateway production Todo client reaches Todo over the Todo oRPC contract', async () => {
-  const codec = createDevelopmentIdentityTokenCodec()
+  const codec = createJwtJwsIdentityTokenCodec()
   const identityApp = createIdentityApp({ tokenSigner: codec })
   const todoApp = createTodoApp({ tokenVerifier: codec })
   const identityClient = createIdentityServiceClient({

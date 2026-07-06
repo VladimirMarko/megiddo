@@ -2,8 +2,9 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createIdentityApp } from '@megiddo/identity'
 import {
-  createDevelopmentIdentityTokenCodec,
   createDummyIdentityTokenCodec,
+  createJwtJwsIdentityTokenCodec,
+  createJwtJwsIdentityTokenKeyPairEnv,
   internalServiceHeader,
   internalServiceSecretHeader,
 } from '@megiddo/platform'
@@ -55,8 +56,10 @@ const postRpcWithHeaders = (
 
 const encodeDummyClaims = (claims: unknown) => `dummy.${Buffer.from(JSON.stringify(claims)).toString('base64url')}`
 
-test('Identity issues development Identity Tokens that Todo verifies for owner-only access', async () => {
-  const codec = createDevelopmentIdentityTokenCodec()
+const encodeJson = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url')
+
+test('Identity issues JWT/JWS Identity Tokens that Todo verifies for owner-only access', async () => {
+  const codec = createJwtJwsIdentityTokenCodec()
   const identityApp = createIdentityApp({ tokenSigner: codec })
   const todoApp = createTodoApp({ tokenVerifier: codec })
 
@@ -131,6 +134,60 @@ test('dummy Identity Token codec issues inspectable unsigned tokens and validate
   )
 })
 
+test('JWT/JWS Identity Token codec signs standard JWT claims and validates verifier inputs', async () => {
+  const codec = createJwtJwsIdentityTokenCodec({ tokenTtlSeconds: 60 })
+  const identityToken = await codec.issueIdentityToken({
+    audience: { service: 'todo' },
+    contractVersion: 'v1',
+    subject: 'user:ada',
+  })
+  const [encodedHeader, encodedPayload, encodedSignature, extra] = identityToken.split('.')
+
+  assert.ok(encodedHeader)
+  assert.ok(encodedPayload)
+  assert.ok(encodedSignature)
+  assert.equal(extra, undefined)
+
+  const header = JSON.parse(Buffer.from(encodedHeader, 'base64url').toString('utf8'))
+  const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'))
+  assert.deepEqual(header, { alg: 'EdDSA', kid: 'local-development', typ: 'JWT' })
+  assert.equal(payload.iss, 'megiddo.identity')
+  assert.equal(payload.sub, 'user:ada')
+  assert.equal(payload.aud, 'todo')
+  assert.equal(typeof payload.iat, 'number')
+  assert.equal(typeof payload.exp, 'number')
+  assert.equal(payload.contractVersion, 'v1')
+
+  const claims = await codec.verifyIdentityToken({ audience: { service: 'todo' }, identityToken })
+  assert.equal(claims.subject, 'user:ada')
+  assert.deepEqual(claims.audience, { service: 'todo' })
+  assert.equal(claims.contractVersion, 'v1')
+  assert.equal(claims.issuedAt, payload.iat * 1000)
+
+  await assert.rejects(
+    codec.verifyIdentityToken({ audience: { service: 'api-gateway' }, identityToken }),
+    /Identity Token audience mismatch: expected api-gateway/,
+  )
+
+  const expiredCodec = createJwtJwsIdentityTokenCodec({ tokenTtlSeconds: -1 })
+  const expiredToken = await expiredCodec.issueIdentityToken({ audience: { service: 'todo' }, subject: 'user:ada' })
+  await assert.rejects(
+    expiredCodec.verifyIdentityToken({ audience: { service: 'todo' }, identityToken: expiredToken }),
+    /Identity Token expired/,
+  )
+
+  await assert.rejects(
+    codec.verifyIdentityToken({ audience: { service: 'todo' }, identityToken: 'not-a-jwt' }),
+    /Invalid JWT\/JWS Identity Token format/,
+  )
+
+  const unsupportedHeaderToken = `${encodeJson({ alg: 'none', typ: 'JWT' })}.${encodedPayload}.${encodedSignature}`
+  await assert.rejects(
+    codec.verifyIdentityToken({ audience: { service: 'todo' }, identityToken: unsupportedHeaderToken }),
+    /Unsupported JWT\/JWS Identity Token header/,
+  )
+})
+
 test('IDENTITY_TOKEN_CODEC=dummy selects dummy tokens through Identity token issuance', async () => {
   const identityApp = createIdentityApp({ env: { IDENTITY_TOKEN_CODEC: 'dummy' } })
   const identityToken = await issueToken(identityApp, 'dummy:alice', 'todo')
@@ -144,8 +201,24 @@ test('IDENTITY_TOKEN_CODEC=dummy selects dummy tokens through Identity token iss
   assert.equal(claims.subject, 'dummy:alice')
 })
 
+test('IDENTITY_TOKEN_CODEC=jwt-jws selects JWT/JWS tokens through the Identity to Todo seam', async () => {
+  const env = { ...(await createJwtJwsIdentityTokenKeyPairEnv()), IDENTITY_TOKEN_CODEC: 'jwt-jws' }
+  const identityApp = createIdentityApp({ env })
+  const todoApp = createTodoApp({ env })
+  const identityToken = await issueToken(identityApp, 'user:ada', 'todo')
+
+  assert.doesNotMatch(identityToken, /^dummy\./)
+  assert.equal(identityToken.split('.').length, 3)
+
+  const createdResponse = await postRpc(todoApp, '/rpc/v1/todos/create', {
+    identityToken,
+    title: 'JWT/JWS todo',
+  })
+  assert.equal(createdResponse.status, 200)
+})
+
 test('Identity protects browser-session service-token issuance for Gateway Todo calls', async () => {
-  const codec = createDevelopmentIdentityTokenCodec()
+  const codec = createJwtJwsIdentityTokenCodec()
   const identityApp = createIdentityApp({
     env: { IDENTITY_INTERNAL_SERVICE_AUTH_SECRET: 'test-secret' },
     tokenSigner: codec,

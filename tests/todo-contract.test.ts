@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { type TodoResourceV1, todoContractV1 } from '@megiddo/contracts'
-import { createDevelopmentIdentityTokenCodec } from '@megiddo/platform'
+import { createJwtJwsIdentityTokenCodec } from '@megiddo/platform'
 import { createTodoApp } from '@megiddo/todo'
 
 interface TodoResponseBody {
@@ -17,7 +17,7 @@ test('contracts package exports the explicit Todo v1 contract surface', () => {
 })
 
 test('Todo Service exposes representative v1 todo behavior through its Hono app', async () => {
-  const codec = createDevelopmentIdentityTokenCodec()
+  const codec = createJwtJwsIdentityTokenCodec()
   const identityToken = await codec.issueIdentityToken({ audience: { service: 'todo' }, subject: 'dev:viewer' })
   const app = createTodoApp({ tokenVerifier: codec })
 

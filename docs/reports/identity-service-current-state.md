@@ -3,6 +3,8 @@
 Date: 2026-07-06
 Commit: `9875c65dcfc04ce7305cba7f0e3152de27a94e99`
 
+Update: issue #34 replaced the transitional custom compact token codec with the `jwt-jws` codec as the real-token direction. This report preserves the earlier baseline for context; do not treat the compact format described below as the current production direction.
+
 ## Summary
 
 The `identity` service currently provides a development identity-token issuer and a health endpoint. It is not just a placeholder: it signs compact Ed25519 tokens and the API Gateway/Todo service verify and exchange those tokens at service boundaries. However, it is explicitly development-grade. Any caller can ask Identity to mint a token for any subject and any audience, users are auto-created by subject string, and tokens lack production controls such as expiry, issuer, key identifiers, rotation, revocation, and public key discovery.
@@ -179,11 +181,11 @@ Identity behavior:
 
 There is no environment variable, build mode, runtime config, or feature flag that selects between fake login and real login. The only login path exposed to the frontend is the development sign-in path.
 
-Development token compatibility is governed by key sharing, not by a fake/real switch.
+At the baseline commit, development token compatibility was governed by key sharing, not by a fake/real switch.
 
-- Identity defaults to `createDevelopmentIdentityTokenCodec()` as token signer in `apps/identity/src/app.ts`.
-- API Gateway defaults to `createDevelopmentIdentityTokenCodec()` as token verifier in `apps/api/src/app.ts`.
-- Todo defaults to `createDevelopmentIdentityTokenCodec()` as token verifier in `apps/todo/src/app.ts`.
+- Identity defaulted to the transitional development token codec as token signer in `apps/identity/src/app.ts`.
+- API Gateway defaulted to the transitional development token codec as token verifier in `apps/api/src/app.ts`.
+- Todo defaulted to the transitional development token codec as token verifier in `apps/todo/src/app.ts`.
 - `scripts/run-local-dev.mts` generates one development keypair and injects it into every service process.
 - The env vars are `MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64` and `MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64`.
 

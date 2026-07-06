@@ -5,6 +5,7 @@ import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
+import { createJwtJwsIdentityTokenKeyPairEnv } from '@megiddo/platform'
 import { createFrontendApi } from '../../apps/frontend/src/api/frontend-api-adapter'
 import { createCookieJarFetch } from '../support/cookie-jar-fetch'
 
@@ -185,6 +186,73 @@ test('local development workflow runs real services over localhost for the authe
   }
 })
 
+test('local dummy auth can run the authenticated todo path with real JWT/JWS tokens', async () => {
+  const [apiPort, identityPort, todoPort] = await Promise.all([getFreePort(), getFreePort(), getFreePort()])
+  const dataDirectory = await mkdtemp(join(tmpdir(), 'megiddo-local-jwt-jws-'))
+  const identityUrl = `http://127.0.0.1:${identityPort}`
+  const todoUrl = `http://127.0.0.1:${todoPort}`
+  const apiUrl = `http://127.0.0.1:${apiPort}`
+  const jwtJwsKeyEnv = await createJwtJwsIdentityTokenKeyPairEnv()
+  const services: Array<Awaited<ReturnType<typeof startService>>> = []
+
+  try {
+    services.push(
+      await startService({
+        env: {
+          ...jwtJwsKeyEnv,
+          IDENTITY_DATABASE_PATH: join(dataDirectory, 'identity.sqlite'),
+          IDENTITY_TOKEN_CODEC: 'jwt-jws',
+          MEGIDDO_AUTH_PROFILE: 'local-dummy',
+          PORT: String(identityPort),
+        },
+        healthUrl: `${identityUrl}/health`,
+        packageName: '@megiddo/identity',
+      }),
+    )
+    services.push(
+      await startService({
+        env: {
+          ...jwtJwsKeyEnv,
+          IDENTITY_TOKEN_CODEC: 'jwt-jws',
+          MEGIDDO_AUTH_PROFILE: 'local-dummy',
+          PORT: String(todoPort),
+          TODO_DATABASE_PATH: join(dataDirectory, 'todo.sqlite'),
+        },
+        healthUrl: `${todoUrl}/health`,
+        packageName: '@megiddo/todo',
+      }),
+    )
+    services.push(
+      await startService({
+        env: {
+          IDENTITY_SERVICE_URL: identityUrl,
+          PORT: String(apiPort),
+          TODO_SERVICE_URL: todoUrl,
+        },
+        healthUrl: `${apiUrl}/health`,
+        packageName: '@megiddo/api',
+      }),
+    )
+
+    const frontendApi = createFrontendApi({ baseUrl: apiUrl, fetch: createCookieJarFetch() })
+
+    assert.deepEqual(await frontendApi.signIn({ method: 'dummy', principalId: 'dummy:alice' }), {
+      state: 'logged-in',
+      user: { displayName: 'Alice', id: 'dummy:alice' },
+    })
+    const created = await frontendApi.createTodo({ title: 'JWT/JWS local service todo' })
+
+    assert.deepEqual(created, { id: created.id, status: 'open', title: 'JWT/JWS local service todo' })
+  } catch (error) {
+    const serviceLogs = services.map(({ logs }) => logs()).join('\n')
+    assert.fail(`${error instanceof Error ? error.stack : String(error)}\n${serviceLogs}`)
+  } finally {
+    for (const { child } of services.toReversed()) {
+      stopService(child)
+    }
+  }
+})
+
 test('documented pnpm dev workflow supports authenticated todo creation across real local services', async () => {
   const [apiPort, identityPort, todoPort, frontendPort] = await Promise.all([
     getFreePort(),
@@ -195,6 +263,8 @@ test('documented pnpm dev workflow supports authenticated todo creation across r
   const dataDirectory = await mkdtemp(join(tmpdir(), 'megiddo-pnpm-dev-'))
   const apiUrl = `http://127.0.0.1:${apiPort}`
   const frontendUrl = `http://127.0.0.1:${frontendPort}`
+  const identityUrl = `http://127.0.0.1:${identityPort}`
+  const todoUrl = `http://127.0.0.1:${todoPort}`
   const workflow = await startLocalWorkflow({
     apiUrl,
     env: {
@@ -208,6 +278,11 @@ test('documented pnpm dev workflow supports authenticated todo creation across r
   })
 
   try {
+    await Promise.all([
+      waitForHealth(`${identityUrl}/health`, workflow.logs),
+      waitForHealth(`${todoUrl}/health`, workflow.logs),
+    ])
+
     const frontendApi = createFrontendApi({ baseUrl: apiUrl, fetch: createCookieJarFetch() })
 
     assert.deepEqual(await frontendApi.getGatewayStatus(), {

@@ -1,6 +1,6 @@
 import {
-  createDevelopmentIdentityTokenCodec,
   createDummyIdentityTokenCodec,
+  createJwtJwsIdentityTokenCodec,
   handleInstrumentedOrpcServerRequest,
   type IdentityTokenVerifier,
   orpcProcedureFromRequest,
@@ -27,11 +27,14 @@ interface TodoAppOptions {
 }
 
 const createDefaultTokenVerifier = (env: NodeJS.ProcessEnv) => {
-  if (env.IDENTITY_TOKEN_CODEC === 'dummy' || env.MEGIDDO_AUTH_PROFILE === 'local-dummy') {
+  if (
+    env.IDENTITY_TOKEN_CODEC === 'dummy' ||
+    (!env.IDENTITY_TOKEN_CODEC && env.MEGIDDO_AUTH_PROFILE === 'local-dummy')
+  ) {
     return createDummyIdentityTokenCodec()
   }
 
-  return createDevelopmentIdentityTokenCodec()
+  return createJwtJwsIdentityTokenCodec({ env })
 }
 
 export const createTodoApp = ({
