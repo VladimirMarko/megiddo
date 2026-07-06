@@ -43,3 +43,32 @@ test('frontend contract boundary check rejects future UI component contract and 
     await rm(rootDir, { force: true, recursive: true })
   }
 })
+
+test('frontend contract boundary check respects requested paths', async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), 'megiddo-frontend-boundary-paths-'))
+
+  try {
+    await mkdir(join(rootDir, 'apps/frontend/src/components'), { recursive: true })
+    await mkdir(join(rootDir, 'apps/todo/src'), { recursive: true })
+    await writeFile(
+      join(rootDir, 'apps/frontend/src/components/violating-card.tsx'),
+      "import type { TodoResourceV1 } from '@megiddo/contracts'\n\nexport type ViolatingCardTodo = TodoResourceV1\n",
+    )
+    await writeFile(join(rootDir, 'apps/frontend/src/components/clean-card.tsx'), 'export const cleanCard = true\n')
+    await writeFile(join(rootDir, 'apps/todo/src/router.ts'), "import { todoContractV1 } from '@megiddo/contracts'\n")
+
+    const cleanResult = await checkFrontendContractBoundaries({
+      paths: ['apps/frontend/src/components/clean-card.tsx'],
+      rootDir,
+    })
+    const unrelatedResult = await checkFrontendContractBoundaries({ paths: ['apps/todo/src/router.ts'], rootDir })
+    const directoryResult = await checkFrontendContractBoundaries({ paths: ['apps/frontend/src/components'], rootDir })
+
+    assert.deepEqual(cleanResult.violations, [])
+    assert.deepEqual(unrelatedResult.violations, [])
+    assert.equal(directoryResult.violations.length, 1)
+    assert.equal(directoryResult.violations[0]?.path, 'apps/frontend/src/components/violating-card.tsx')
+  } finally {
+    await rm(rootDir, { force: true, recursive: true })
+  }
+})

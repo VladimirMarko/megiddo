@@ -1,5 +1,5 @@
-import { readdir, readFile } from 'node:fs/promises'
-import { join, relative, sep } from 'node:path'
+import { readdir, readFile, stat } from 'node:fs/promises'
+import { join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export interface FrontendContractBoundaryViolation {
@@ -13,6 +13,7 @@ export interface FrontendContractBoundaryResult {
 }
 
 interface FrontendContractBoundaryOptions {
+  paths?: string[]
   rootDir: string
 }
 
@@ -27,6 +28,8 @@ const isMissingDirectoryError = (caught: unknown): caught is NodeJS.ErrnoExcepti
   caught instanceof Error && 'code' in caught && caught.code === 'ENOENT'
 
 const isSourceFile = (filePath: string) => filePath.endsWith('.ts') || filePath.endsWith('.tsx')
+
+const isPathInside = (path: string, parentPath: string) => path === parentPath || path.startsWith(`${parentPath}/`)
 
 const listSourceFiles = async (dir: string): Promise<string[]> => {
   let entries: Awaited<ReturnType<typeof readdir>>
@@ -58,11 +61,49 @@ const listSourceFiles = async (dir: string): Promise<string[]> => {
 
 const lineForIndex = (source: string, index: number) => source.slice(0, index).split('\n').length
 
+const listRequestedSourceFiles = async (rootDir: string, paths: string[]): Promise<string[]> => {
+  if (paths.length === 0) {
+    return listSourceFiles(join(rootDir, frontendSourcePath))
+  }
+
+  const sourceRoot = toRepoPath(resolve(rootDir, frontendSourcePath))
+  const files = await Promise.all(
+    paths.map(async path => {
+      const absolutePath = resolve(rootDir, path)
+      const repoPath = toRepoPath(absolutePath)
+
+      if (!isPathInside(repoPath, sourceRoot)) {
+        return []
+      }
+
+      let pathStat: Awaited<ReturnType<typeof stat>>
+
+      try {
+        pathStat = await stat(absolutePath)
+      } catch (caught) {
+        if (isMissingDirectoryError(caught)) {
+          return []
+        }
+
+        throw caught
+      }
+
+      if (pathStat.isDirectory()) {
+        return listSourceFiles(absolutePath)
+      }
+
+      return isSourceFile(absolutePath) ? [absolutePath] : []
+    }),
+  )
+
+  return files.flat()
+}
+
 export const checkFrontendContractBoundaries = async ({
+  paths = [],
   rootDir,
 }: FrontendContractBoundaryOptions): Promise<FrontendContractBoundaryResult> => {
-  const sourceDir = join(rootDir, frontendSourcePath)
-  const files = await listSourceFiles(sourceDir)
+  const files = await listRequestedSourceFiles(rootDir, paths)
   const violations: FrontendContractBoundaryViolation[] = []
 
   for (const file of files) {
@@ -93,7 +134,7 @@ export const checkFrontendContractBoundaries = async ({
 }
 
 const runCli = async () => {
-  const result = await checkFrontendContractBoundaries({ rootDir: process.cwd() })
+  const result = await checkFrontendContractBoundaries({ paths: process.argv.slice(2), rootDir: process.cwd() })
 
   if (result.violations.length > 0) {
     console.error(result.message)
