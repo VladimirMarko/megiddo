@@ -19,6 +19,10 @@ interface DevelopmentUserRow {
   id: string
 }
 
+interface TableColumnRow {
+  name: string
+}
+
 export const createEmbeddedDevelopmentAuthProviderAdapter = ({
   databasePath,
   seedDemoAccounts = false,
@@ -35,11 +39,16 @@ export const createEmbeddedDevelopmentAuthProviderAdapter = ({
     );
   `)
 
-  try {
+  const developmentUserColumns = database.prepare('PRAGMA table_info(development_users);').all() as TableColumnRow[]
+  const hasDisplayNameColumn = developmentUserColumns.some(column => column.name === 'display_name')
+
+  if (!hasDisplayNameColumn) {
     database.exec('ALTER TABLE development_users ADD COLUMN display_name TEXT;')
-  } catch {
-    // Existing databases created after this migration already have the column.
   }
+
+  const demoAccountIds = dummyDemoAccounts.map(account => account.principalId)
+  const demoAccountPlaceholders = demoAccountIds.map(() => '?').join(', ')
+  const demoAccountOrder = demoAccountIds.map((_, index) => `WHEN ? THEN ${index}`).join(' ')
 
   const findUser = database.prepare(`
     SELECT id, display_name
@@ -53,8 +62,8 @@ export const createEmbeddedDevelopmentAuthProviderAdapter = ({
   const listDemoUsers = database.prepare(`
     SELECT id, display_name
     FROM development_users
-    WHERE id IN (${dummyDemoAccounts.map(() => '?').join(', ')})
-    ORDER BY CASE id ${dummyDemoAccounts.map((account, index) => `WHEN '${account.principalId}' THEN ${index}`).join(' ')} END
+    WHERE id IN (${demoAccountPlaceholders})
+    ORDER BY CASE id ${demoAccountOrder} END
   `)
   const insertDemoUser = database.prepare(`
     INSERT OR IGNORE INTO development_users (id, display_name)
@@ -76,7 +85,9 @@ export const createEmbeddedDevelopmentAuthProviderAdapter = ({
         return []
       }
 
-      return (listDemoUsers.all(...dummyDemoAccounts.map(account => account.principalId)) as DevelopmentUserRow[]).map(
+      const rows = listDemoUsers.all(...demoAccountIds, ...demoAccountIds) as DevelopmentUserRow[]
+
+      return rows.map(
         (row): DummyAuthAccountResourceV1 => ({ displayName: row.display_name ?? row.id, principalId: row.id }),
       )
     },

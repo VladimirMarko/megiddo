@@ -26,25 +26,26 @@ export const createIdentityServiceClient = ({
   fetch,
   serviceName = 'api-gateway',
 }: IdentityServiceClientOptions = {}): IdentityServiceClient => {
-  const link = new RPCLink({
-    fetch: createInstrumentedOrpcClientFetch({
-      fetch,
-      procedure: 'v1.development.identityTokens.issue',
-      serviceName,
-    }),
-    url: identityRpcUrl(baseUrl),
-  })
-  const client = createORPCClient<IdentityContractClientV1>(link)
+  const createInstrumentedIdentityClient = (procedure: string) =>
+    createORPCClient<IdentityContractClientV1>(
+      new RPCLink({
+        fetch: createInstrumentedOrpcClientFetch({ fetch, procedure, serviceName }),
+        url: identityRpcUrl(baseUrl),
+      }),
+    )
+  const authCapabilitiesClient = createInstrumentedIdentityClient('v1.auth.capabilities')
+  const signInClient = createInstrumentedIdentityClient('v1.auth.signIn')
+  const developmentIdentityTokensClient = createInstrumentedIdentityClient('v1.development.identityTokens.issue')
 
   return {
     getAuthCapabilities() {
-      return client.v1.auth.capabilities()
+      return authCapabilitiesClient.v1.auth.capabilities()
     },
     signIn(input) {
-      return client.v1.auth.signIn(input)
+      return signInClient.v1.auth.signIn(input)
     },
     issueDevelopmentIdentityToken(input) {
-      return client.v1.development.identityTokens.issue(input)
+      return developmentIdentityTokensClient.v1.development.identityTokens.issue(input)
     },
   }
 }
