@@ -1,6 +1,7 @@
 # Identity Service Current State
 
 Date: 2026-07-06
+Commit: `9875c65dcfc04ce7305cba7f0e3152de27a94e99`
 
 ## Summary
 
@@ -154,6 +155,41 @@ Frontend behavior:
 - Stores the returned identity token in memory.
 - Sends it to API Gateway as `Authorization: Bearer <token>`.
 - Clears the in-memory token on sign-out or expired state.
+
+## Fake Login And Development Token Switches
+
+The fake login UI is not behind a feature flag today. It is the current product path.
+
+Frontend behavior:
+
+- `apps/frontend/src/todo-app.tsx` calls `api.signInDevelopment()` when the user clicks "Sign in".
+- `apps/frontend/src/api/frontend-api-adapter.ts` exposes `signInDevelopment` on the frontend API seam.
+- That adapter calls API Gateway's `v1.viewer.session.signInDevelopment` procedure.
+
+API Gateway behavior:
+
+- `apps/api/src/router.ts` implements `v1.viewer.session.signInDevelopment`.
+- The handler calls `identityClient.issueDevelopmentIdentityToken` with audience `api-gateway`.
+- Gateway returns a logged-in session containing the issued `identityToken`.
+
+Identity behavior:
+
+- `apps/identity/src/router.ts` exposes `v1.development.identityTokens.issue`.
+- `apps/identity/src/identity-use-cases.ts` resolves or creates a development user and signs a token.
+
+There is no environment variable, build mode, runtime config, or feature flag that selects between fake login and real login. The only login path exposed to the frontend is the development sign-in path.
+
+Development token compatibility is governed by key sharing, not by a fake/real switch.
+
+- Identity defaults to `createDevelopmentIdentityTokenCodec()` as token signer in `apps/identity/src/app.ts`.
+- API Gateway defaults to `createDevelopmentIdentityTokenCodec()` as token verifier in `apps/api/src/app.ts`.
+- Todo defaults to `createDevelopmentIdentityTokenCodec()` as token verifier in `apps/todo/src/app.ts`.
+- `scripts/run-local-dev.mts` generates one development keypair and injects it into every service process.
+- The env vars are `MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64` and `MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64`.
+
+If services share those env vars, Identity-issued development tokens verify across API Gateway and Todo. If the vars are missing, each codec instance can generate its own in-memory keypair, which means separately-started services may not trust each other's tokens.
+
+The intended workflow is documented in `docs/adr/0011-use-real-service-processes-in-dev-and-fakes-in-focused-tests.md`: `pnpm dev` is the supported full local topology because it starts Identity, Todo, API Gateway, and Frontend with one shared development Identity Token keypair. `pnpm dev:turbo` does not do that unless the caller manually supplies matching token key environment variables and service URLs.
 
 ## Existing Tests And Docs
 
