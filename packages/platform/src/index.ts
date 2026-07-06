@@ -248,6 +248,15 @@ interface JwtJwsIdentityTokenCodecOptions {
   tokenTtlSeconds?: number
 }
 
+interface JwtJwsIdentityTokenClaims {
+  aud: string
+  contractVersion?: string
+  exp: number
+  iat: number
+  iss: typeof jwtJwsIdentityTokenIssuer
+  sub: string
+}
+
 const readJwtJwsIdentityTokenKeyPair = (env: NodeJS.ProcessEnv = process.env): JwtJwsIdentityTokenCodecOptions => {
   const privateKeyPemBase64 = env[privateKeyEnvName]
   const publicKeyPemBase64 = env[publicKeyEnvName]
@@ -310,17 +319,16 @@ const parseJwtJwsIdentityTokenPayload = (payload: string) => {
     throw new Error('Invalid JWT/JWS Identity Token claims')
   }
 
-  return { aud, contractVersion, exp, iat, iss, sub }
+  return { aud, contractVersion, exp, iat, iss, sub } satisfies JwtJwsIdentityTokenClaims
 }
 
 export const createJwtJwsIdentityTokenCodec = (
-  options: JwtJwsIdentityTokenCodecOptions = readJwtJwsIdentityTokenKeyPair(),
+  options: JwtJwsIdentityTokenCodecOptions = {},
 ): IdentityTokenSigner & IdentityTokenVerifier => {
-  const {
-    privateKeyPem,
-    publicKeyPem,
-    tokenTtlSeconds = jwtJwsIdentityTokenTtlSeconds,
-  } = { ...readJwtJwsIdentityTokenKeyPair(options.env), ...options }
+  const keyPairOptions = readJwtJwsIdentityTokenKeyPair(options.env)
+  const privateKeyPem = options.privateKeyPem ?? keyPairOptions.privateKeyPem
+  const publicKeyPem = options.publicKeyPem ?? keyPairOptions.publicKeyPem
+  const tokenTtlSeconds = options.tokenTtlSeconds ?? jwtJwsIdentityTokenTtlSeconds
   let keyPair: JwtJwsIdentityTokenKeyPair | undefined
 
   const ensureKeyPair = async () => {
@@ -339,17 +347,16 @@ export const createJwtJwsIdentityTokenCodec = (
       const { createPrivateKey, sign } = await import('node:crypto')
       const { privateKeyPem } = await ensureKeyPair()
       const issuedAtSeconds = Math.floor(Date.now() / 1000)
+      const tokenClaims: JwtJwsIdentityTokenClaims = {
+        aud: claims.audience.service,
+        contractVersion: claims.contractVersion,
+        exp: issuedAtSeconds + tokenTtlSeconds,
+        iat: issuedAtSeconds,
+        iss: jwtJwsIdentityTokenIssuer,
+        sub: claims.subject,
+      }
       const header = base64UrlEncode(JSON.stringify(jwtJwsIdentityTokenHeader))
-      const payload = base64UrlEncode(
-        JSON.stringify({
-          aud: claims.audience.service,
-          contractVersion: claims.contractVersion,
-          exp: issuedAtSeconds + tokenTtlSeconds,
-          iat: issuedAtSeconds,
-          iss: jwtJwsIdentityTokenIssuer,
-          sub: claims.subject,
-        }),
-      )
+      const payload = base64UrlEncode(JSON.stringify(tokenClaims))
       const signedContent = `${header}.${payload}`
       const signature = sign(null, Buffer.from(signedContent), createPrivateKey(privateKeyPem))
 
@@ -378,21 +385,21 @@ export const createJwtJwsIdentityTokenCodec = (
         throw new Error('Invalid JWT/JWS Identity Token signature')
       }
 
-      const jwtClaims = parseJwtJwsIdentityTokenPayload(payload)
+      const tokenClaims = parseJwtJwsIdentityTokenPayload(payload)
 
-      if (jwtClaims.aud !== audience.service) {
+      if (tokenClaims.aud !== audience.service) {
         throw new Error(`Identity Token audience mismatch: expected ${audience.service}`)
       }
 
-      if (jwtClaims.exp <= Math.floor(Date.now() / 1000)) {
+      if (tokenClaims.exp <= Math.floor(Date.now() / 1000)) {
         throw new Error('Identity Token expired')
       }
 
       const claims = IdentityTokenClaimsSchemaV1.parse({
-        audience: { service: jwtClaims.aud },
-        contractVersion: jwtClaims.contractVersion,
-        issuedAt: jwtClaims.iat * 1000,
-        subject: jwtClaims.sub,
+        audience: { service: tokenClaims.aud },
+        contractVersion: tokenClaims.contractVersion,
+        issuedAt: tokenClaims.iat * 1000,
+        subject: tokenClaims.sub,
       })
 
       return claims
