@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 
-const reportPath = new URL('../docs/reports/local-opentelemetry-viewers.md', import.meta.url)
+const reportPath = new URL('../docs/reports/2026-07-05-local-opentelemetry-viewers.md', import.meta.url)
 const tracePath = new URL('../docs/reports/evidence/known-megiddo-trace.otlp.json', import.meta.url)
 
 const candidateHeadings = ['otel-gui', 'Aspire Dashboard standalone', 'otel-desktop-viewer', 'otel-tui']

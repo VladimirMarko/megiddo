@@ -1,5 +1,8 @@
 # Environment Variables as of 2026-07-06
 
+Date: 2026-07-06
+Commit: `0916d3c80f3c43a167afbe670b59e81acf8ff76b`
+
 This document collates the environment variables currently known from application code, scripts, tests, and existing docs. It is a snapshot, not yet an executable schema.
 
 ## Current State
