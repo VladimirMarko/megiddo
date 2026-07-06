@@ -1,8 +1,7 @@
+import { tcpPortEnvSchema } from '@megiddo/platform/env-schema-fragments'
 import { z } from 'zod'
 
 export type ScriptRuntimeEnv = Record<string, string | boolean | number | undefined>
-
-const tcpPortSchema = z.coerce.number().int().min(1).max(65535)
 
 const parseScriptEnv = <T,>(schema: z.ZodType<T>, runtimeEnv: ScriptRuntimeEnv): T => {
   const result = schema.safeParse(runtimeEnv)
@@ -15,11 +14,11 @@ const parseScriptEnv = <T,>(schema: z.ZodType<T>, runtimeEnv: ScriptRuntimeEnv):
 }
 
 const localDevScriptEnvSchema = z.object({
-  API_PORT: tcpPortSchema.default(3000),
-  FRONTEND_PORT: tcpPortSchema.default(5173),
-  IDENTITY_PORT: tcpPortSchema.default(3002),
+  API_PORT: tcpPortEnvSchema.default(3000),
+  FRONTEND_PORT: tcpPortEnvSchema.default(5173),
+  IDENTITY_PORT: tcpPortEnvSchema.default(3002),
   MEGIDDO_LOCAL_DATA_DIR: z.string().min(1).optional(),
-  TODO_PORT: tcpPortSchema.default(3001),
+  TODO_PORT: tcpPortEnvSchema.default(3001),
 })
 
 const localDevResetScriptEnvSchema = z.object({
@@ -28,8 +27,8 @@ const localDevResetScriptEnvSchema = z.object({
 
 const telemetryViewerScriptEnvSchema = z.object({
   OTEL_GUI_BIN: z.string().min(1).optional(),
-  OTEL_GUI_PORT: tcpPortSchema.optional(),
-  PORT: tcpPortSchema.optional(),
+  OTEL_GUI_PORT: tcpPortEnvSchema.optional(),
+  PORT: tcpPortEnvSchema.optional(),
 })
 
 export const createLocalDevScriptEnv = (runtimeEnv: ScriptRuntimeEnv) => ({

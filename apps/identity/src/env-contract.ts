@@ -1,15 +1,19 @@
 import { defaultInternalServiceAuthSecret } from '@megiddo/platform'
+import {
+  enabledEnvFlagSchema,
+  identityTokenCodecEnvSchema,
+  localDummyAuthProfileEnvSchema,
+  tcpPortEnvSchema,
+} from '@megiddo/platform/env-schema-fragments'
 import { createEnv } from '@t3-oss/env-core'
 import { z } from 'zod'
 
 export type IdentityRuntimeEnv = Record<string, string | boolean | number | undefined>
 
 export const identityAuthProviderSchema = z.enum(['dummy', 'better-auth'])
-export const identityTokenCodecSchema = z.enum(['dummy', 'jwt-jws'])
+export const identityTokenCodecSchema = identityTokenCodecEnvSchema
 
 const identityNodeEnvSchema = z.enum(['development', 'test', 'production'])
-const identityAuthProfileSchema = z.enum(['local-dummy'])
-const identityDummyAuthDemoAccountsSchema = z.enum(['enabled'])
 
 export const createIdentityEnv = (runtimeEnv: IdentityRuntimeEnv) =>
   createEnv({
@@ -21,14 +25,14 @@ export const createIdentityEnv = (runtimeEnv: IdentityRuntimeEnv) =>
       IDENTITY_BETTER_AUTH_BASE_URL: z.string().optional(),
       IDENTITY_BETTER_AUTH_DATABASE_PATH: z.string().min(1).default('.data/identity/better-auth.sqlite'),
       IDENTITY_DATABASE_PATH: z.string().min(1).default('.data/identity/identity.sqlite'),
-      IDENTITY_DUMMY_AUTH_DEMO_ACCOUNTS: identityDummyAuthDemoAccountsSchema.optional(),
+      IDENTITY_DUMMY_AUTH_DEMO_ACCOUNTS: enabledEnvFlagSchema.optional(),
       IDENTITY_INTERNAL_SERVICE_AUTH_SECRET: z.string().min(1).default(defaultInternalServiceAuthSecret),
       IDENTITY_TOKEN_CODEC: identityTokenCodecSchema.optional(),
-      MEGIDDO_AUTH_PROFILE: identityAuthProfileSchema.optional(),
+      MEGIDDO_AUTH_PROFILE: localDummyAuthProfileEnvSchema.optional(),
       MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64: z.string().optional(),
       MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64: z.string().optional(),
       NODE_ENV: identityNodeEnvSchema.optional(),
-      PORT: z.coerce.number().int().min(1).max(65535).default(3002),
+      PORT: tcpPortEnvSchema.default(3002),
     },
   })
 
