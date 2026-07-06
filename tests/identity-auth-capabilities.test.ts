@@ -119,3 +119,69 @@ test('Identity dummy sign-up persists a principal, signs in immediately, and rej
   })
   assert.equal(duplicateResponse.status, 400)
 })
+
+test('Identity exposes Better Auth password capabilities and resolves password browser sessions', async () => {
+  const app = createIdentityApp({
+    env: {
+      IDENTITY_AUTH_PROVIDER: 'better-auth',
+      IDENTITY_TOKEN_CODEC: 'dummy',
+    },
+  })
+
+  const capabilitiesResponse = await postRpc(app, '/rpc/v1/auth/capabilities')
+  assert.equal(capabilitiesResponse.status, 200)
+  assert.deepEqual(await capabilitiesResponse.json(), {
+    json: {
+      password: {
+        signIn: 'available',
+        signUp: 'available',
+      },
+      signInMethods: ['password'],
+      signUpMethods: ['password'],
+    },
+  })
+
+  const signUpResponse = await postRpc(app, '/rpc/v1/auth/signUp', {
+    displayName: 'Pat Password',
+    email: 'pat@example.com',
+    method: 'password',
+    password: 'password123',
+  })
+  assert.equal(signUpResponse.status, 200)
+
+  const signUp = (await signUpResponse.json()) as {
+    json: { browserSession: { id: string }; user: { displayName: string; id: string } }
+  }
+  assert.equal(signUp.json.user.displayName, 'Pat Password')
+  assert.equal(typeof signUp.json.user.id, 'string')
+  assert.notEqual(signUp.json.user.id, '')
+  assert.equal(typeof signUp.json.browserSession.id, 'string')
+  assert.notEqual(signUp.json.browserSession.id, '')
+
+  const currentResponse = await postRpc(app, '/rpc/v1/auth/current', { sessionId: signUp.json.browserSession.id })
+  assert.equal(currentResponse.status, 200)
+  assert.deepEqual(await currentResponse.json(), {
+    json: { state: 'logged-in', user: { displayName: 'Pat Password', id: signUp.json.user.id } },
+  })
+
+  const signOutResponse = await postRpc(app, '/rpc/v1/auth/signOut', { sessionId: signUp.json.browserSession.id })
+  assert.equal(signOutResponse.status, 200)
+  assert.deepEqual(await signOutResponse.json(), { json: { state: 'logged-out' } })
+
+  const expiredResponse = await postRpc(app, '/rpc/v1/auth/current', { sessionId: signUp.json.browserSession.id })
+  assert.equal(expiredResponse.status, 200)
+  assert.deepEqual(await expiredResponse.json(), { json: { state: 'expired' } })
+
+  const signInResponse = await postRpc(app, '/rpc/v1/auth/signIn', {
+    email: 'pat@example.com',
+    method: 'password',
+    password: 'password123',
+  })
+  assert.equal(signInResponse.status, 200)
+
+  const signIn = (await signInResponse.json()) as {
+    json: { browserSession: { id: string }; user: { displayName: string; id: string } }
+  }
+  assert.deepEqual(signIn.json.user, { displayName: 'Pat Password', id: signUp.json.user.id })
+  assert.notEqual(signIn.json.browserSession.id, signUp.json.browserSession.id)
+})

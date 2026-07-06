@@ -91,32 +91,47 @@ export const AuthCapabilitiesResourceSchemaV1 = z.object({
       signUp: z.literal('available'),
     })
     .optional(),
-  signInMethods: z.array(z.literal('dummy')),
-  signUpMethods: z.array(z.literal('dummy')),
+  password: z
+    .object({
+      signIn: z.literal('available'),
+      signUp: z.literal('available'),
+    })
+    .optional(),
+  signInMethods: z.array(z.union([z.literal('dummy'), z.literal('password')])),
+  signUpMethods: z.array(z.union([z.literal('dummy'), z.literal('password')])),
 })
 
-export const AuthSignInInputSchemaV1 = z.object({
-  method: z.literal('dummy'),
-  principalId: z.string().min(1),
-})
+export const AuthSignInInputSchemaV1 = z.discriminatedUnion('method', [
+  z.object({
+    method: z.literal('dummy'),
+    principalId: z.string().min(1),
+  }),
+  z.object({
+    email: z.email(),
+    method: z.literal('password'),
+    password: z.string().min(8),
+  }),
+])
 
-export const AuthSignUpInputSchemaV1 = z.object({
-  displayName: z.string().trim().min(1),
-  method: z.literal('dummy'),
-})
+export const AuthSignUpInputSchemaV1 = z.discriminatedUnion('method', [
+  z.object({
+    displayName: z.string().trim().min(1),
+    method: z.literal('dummy'),
+  }),
+  z.object({
+    displayName: z.string().trim().min(1),
+    email: z.email(),
+    method: z.literal('password'),
+    password: z.string().min(8),
+  }),
+])
 
 export const BrowserSessionInputSchemaV1 = z.object({ sessionId: BrowserSessionIdSchemaV1 })
 
 export const GatewayAuthSessionInputSchemaV1 = z.undefined()
 export const GatewayAuthCapabilitiesInputSchemaV1 = z.undefined()
-export const GatewayAuthSignInInputSchemaV1 = z.object({
-  method: z.literal('dummy'),
-  principalId: z.string().min(1),
-})
-export const GatewayAuthSignUpInputSchemaV1 = z.object({
-  displayName: z.string().trim().min(1),
-  method: z.literal('dummy'),
-})
+export const GatewayAuthSignInInputSchemaV1 = AuthSignInInputSchemaV1
+export const GatewayAuthSignUpInputSchemaV1 = AuthSignUpInputSchemaV1
 export const GatewayAuthSignOutInputSchemaV1 = z.undefined()
 export const GatewayStatusInputSchemaV1 = z.undefined()
 export const OperationalHealthInputSchemaV1 = z.undefined()

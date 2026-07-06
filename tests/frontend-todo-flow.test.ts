@@ -742,3 +742,71 @@ test('production Frontend API Adapter signs up a dummy principal and can select 
   })
   assert.deepEqual(selectedLaterTodos, [created])
 })
+
+test('production Frontend API Adapter completes the Better Auth browser Todo flow', async () => {
+  const codec = createDevelopmentIdentityTokenCodec()
+  const identityApp = createIdentityApp({
+    env: {
+      IDENTITY_AUTH_PROVIDER: 'better-auth',
+      IDENTITY_TOKEN_CODEC: 'dummy',
+    },
+    tokenSigner: codec,
+  })
+  const todoApp = createTodoServiceApp({ tokenVerifier: codec })
+  const identityClient = createIdentityServiceClient({
+    baseUrl: 'http://identity-service.test',
+    fetch(request) {
+      const url = new URL(request.url)
+      return identityApp.request(`${url.pathname}${url.search}`, request)
+    },
+  })
+  const todoClient = createTodoServiceClient({
+    baseUrl: 'http://todo-service.test',
+    fetch(request) {
+      const url = new URL(request.url)
+      return todoApp.request(`${url.pathname}${url.search}`, request)
+    },
+  })
+  const app = createApiGatewayApp({ identityClient, todoClient })
+  const api = createFrontendApi({
+    baseUrl: 'http://api-gateway.test',
+    fetch: createCookieJarFetch(request => {
+      const url = new URL(request.url)
+      return app.request(`${url.pathname}${url.search}`, request)
+    }),
+  })
+
+  const capabilities = await api.getAuthCapabilities()
+  const signedUp = await api.signUp({
+    displayName: 'Better Auth Pat',
+    email: 'better-auth-pat@example.com',
+    method: 'password',
+    password: 'password123',
+  })
+  const created = await api.createTodo({ title: 'Better Auth owns this todo' })
+  const current = await api.getAuthSession()
+  await api.signOut()
+  const signedOut = await api.getAuthSession()
+  const signedIn = await api.signIn({
+    email: 'better-auth-pat@example.com',
+    method: 'password',
+    password: 'password123',
+  })
+  const todosAfterSignIn = await api.listTodos()
+
+  assert.deepEqual(capabilities, {
+    password: {
+      signIn: 'available',
+      signUp: 'available',
+    },
+    signInMethods: ['password'],
+    signUpMethods: ['password'],
+  })
+  assert.equal(signedUp.state, 'logged-in')
+  assert.equal(signedUp.user.displayName, 'Better Auth Pat')
+  assert.deepEqual(created, { id: created.id, title: 'Better Auth owns this todo', status: 'open' })
+  assert.deepEqual(current, signedUp)
+  assert.deepEqual(signedOut, { state: 'logged-out' })
+  assert.deepEqual(signedIn, signedUp)
+  assert.deepEqual(todosAfterSignIn, [created])
+})

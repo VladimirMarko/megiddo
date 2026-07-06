@@ -153,6 +153,27 @@ function TodoScreen() {
     await loadTodosForSignedInSession(nextSession)
   }
 
+  const signInWithPassword = async ({ email, password }: { email: string; password: string }) => {
+    const nextSession = await api.signIn({ email, method: 'password', password })
+    setAuthSession(nextSession)
+    await loadTodosForSignedInSession(nextSession)
+  }
+
+  const signUpWithPassword = async ({
+    displayName,
+    email,
+    password,
+  }: {
+    displayName: string
+    email: string
+    password: string
+  }) => {
+    const nextSession = await api.signUp({ displayName, email, method: 'password', password })
+    setAuthSession(nextSession)
+    setAuthCapabilities(await api.getAuthCapabilities())
+    await loadTodosForSignedInSession(nextSession)
+  }
+
   const signOut = async () => {
     setAuthSession(await api.signOut())
     setTodos([])
@@ -223,6 +244,8 @@ function TodoScreen() {
         message="Sign in to manage todos."
         onDummySignIn={principalId => void signIn(principalId)}
         onDummySignUp={displayName => void signUp(displayName)}
+        onPasswordSignIn={input => void signInWithPassword(input)}
+        onPasswordSignUp={input => void signUpWithPassword(input)}
       />
     )
   }
@@ -236,6 +259,8 @@ function TodoScreen() {
         messageRole="alert"
         onDummySignIn={principalId => void signIn(principalId)}
         onDummySignUp={displayName => void signUp(displayName)}
+        onPasswordSignIn={input => void signInWithPassword(input)}
+        onPasswordSignUp={input => void signUpWithPassword(input)}
       />
     )
   }

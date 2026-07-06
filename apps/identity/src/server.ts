@@ -1,6 +1,7 @@
 import { serve } from '@hono/node-server'
 import { configureLocalTelemetry } from '@megiddo/platform/local-telemetry'
 import { createIdentityApp } from './app'
+import { createEmbeddedBetterAuthProviderAdapter } from './embedded-better-auth-provider-adapter'
 import { createEmbeddedDevelopmentAuthProviderAdapter } from './embedded-development-auth-provider-adapter'
 import { resolveIdentityModeConfig } from './identity-mode-config'
 
@@ -14,7 +15,10 @@ const authProvider =
           process.env.MEGIDDO_AUTH_PROFILE === 'local-dummy' ||
           process.env.IDENTITY_DUMMY_AUTH_DEMO_ACCOUNTS === 'enabled',
       })
-    : undefined
+    : createEmbeddedBetterAuthProviderAdapter({
+        baseURL: process.env.BETTER_AUTH_URL ?? process.env.IDENTITY_BETTER_AUTH_BASE_URL,
+        databasePath: process.env.IDENTITY_BETTER_AUTH_DATABASE_PATH ?? '.data/identity/better-auth.sqlite',
+      })
 const closeAuthProvider = () => authProvider?.close()
 
 await configureLocalTelemetry()

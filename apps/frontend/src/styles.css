@@ -169,6 +169,20 @@ button {
   cursor: not-allowed;
 }
 
+.password-auth-form {
+  border: 1px solid #eeeeee;
+  background: linear-gradient(180deg, #fff, #fafafa);
+  padding: 1rem;
+}
+
+.password-auth-form + .password-auth-form {
+  border-top: 1px solid #eeeeee;
+}
+
+.password-auth-form button {
+  width: 100%;
+}
+
 h1 {
   margin: 0;
   color: black;
