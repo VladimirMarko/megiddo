@@ -1,5 +1,9 @@
 export { createIdentityApp } from './app'
 export {
+  createEmbeddedBetterAuthProviderAdapter,
+  type EmbeddedBetterAuthProviderAdapter,
+} from './embedded-better-auth-provider-adapter'
+export {
   createEmbeddedDevelopmentAuthProviderAdapter,
   type EmbeddedDevelopmentAuthProviderAdapter,
 } from './embedded-development-auth-provider-adapter'

@@ -6,6 +6,7 @@ import {
   DisallowedServiceTokenAudienceError,
   ExpiredBrowserSessionError,
   InvalidDummyDisplayNameError,
+  PasswordAuthError,
   PrincipalCollisionError,
   UnknownPrincipalError,
 } from './identity-use-cases'
@@ -74,7 +75,7 @@ export const createIdentityRouter = (identity: IdentityUseCases) =>
           try {
             return await identity.signIn(input)
           } catch (error) {
-            if (error instanceof UnknownPrincipalError) {
+            if (error instanceof UnknownPrincipalError || error instanceof PasswordAuthError) {
               throw new ORPCError('BAD_REQUEST', { message: error.message })
             }
 
@@ -85,7 +86,11 @@ export const createIdentityRouter = (identity: IdentityUseCases) =>
           try {
             return await identity.signUp(input)
           } catch (error) {
-            if (error instanceof PrincipalCollisionError || error instanceof InvalidDummyDisplayNameError) {
+            if (
+              error instanceof PrincipalCollisionError ||
+              error instanceof InvalidDummyDisplayNameError ||
+              error instanceof PasswordAuthError
+            ) {
               throw new ORPCError('BAD_REQUEST', { message: error.message })
             }
 

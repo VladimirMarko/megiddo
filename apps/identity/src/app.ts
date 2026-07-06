@@ -8,6 +8,7 @@ import {
 } from '@megiddo/platform'
 import { RPCHandler } from '@orpc/server/fetch'
 import { Hono } from 'hono'
+import { createEmbeddedBetterAuthProviderAdapter } from './embedded-better-auth-provider-adapter'
 import { type IdentityModeConfig, resolveIdentityModeConfig } from './identity-mode-config'
 import type { AuthProviderAdapter } from './identity-use-cases'
 import { createDevelopmentAuthProviderAdapter, createIdentityUseCases } from './identity-use-cases'
@@ -28,12 +29,15 @@ interface IdentityAppOptions {
   tokenSigner?: IdentityTokenSigner
 }
 
-const createAuthProviderForMode = ({ authProvider }: IdentityModeConfig) => {
+const createAuthProviderForMode = ({ authProvider }: IdentityModeConfig, env: NodeJS.ProcessEnv) => {
   if (authProvider === 'dummy') {
     return createDevelopmentAuthProviderAdapter()
   }
 
-  throw new Error('IDENTITY_AUTH_PROVIDER=better-auth is not implemented yet')
+  return createEmbeddedBetterAuthProviderAdapter({
+    baseURL: env.BETTER_AUTH_URL ?? env.IDENTITY_BETTER_AUTH_BASE_URL,
+    databasePath: env.IDENTITY_BETTER_AUTH_DATABASE_PATH,
+  })
 }
 
 const createTokenSignerForMode = ({ tokenCodec }: IdentityModeConfig) => {
@@ -52,7 +56,7 @@ export const createIdentityApp = ({
   tokenSigner,
 }: IdentityAppOptions = {}) => {
   const identityModeConfig = resolveIdentityModeConfig(env)
-  const resolvedAuthProvider = authProvider ?? createAuthProviderForMode(identityModeConfig)
+  const resolvedAuthProvider = authProvider ?? createAuthProviderForMode(identityModeConfig, env)
   const resolvedTokenSigner = tokenSigner ?? createTokenSignerForMode(identityModeConfig)
   const app = new Hono()
   const identity = createIdentityUseCases({

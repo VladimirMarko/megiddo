@@ -44,7 +44,10 @@ export class DisallowedServiceTokenAudienceError extends Error {
   }
 }
 
+export class PasswordAuthError extends Error {}
+
 export interface AuthProviderAdapter {
+  supportsPasswordAuth?: boolean
   createBrowserSession(user: UserReferenceResourceV1): Promise<{ id: string }>
   createDummyPrincipal(input: DummyAuthAccountResourceV1): Promise<UserReferenceResourceV1>
   deleteBrowserSession(sessionId: string): Promise<void>
@@ -52,6 +55,8 @@ export interface AuthProviderAdapter {
   resolveBrowserSession(sessionId: string): Promise<UserReferenceResourceV1 | undefined>
   resolveDummyPrincipal(principalId: string): Promise<UserReferenceResourceV1 | undefined>
   resolveDevelopmentUser(subject?: string): Promise<UserReferenceResourceV1>
+  signInWithPassword?(input: Extract<AuthSignInInputV1, { method: 'password' }>): Promise<BrowserSessionIssueOutputV1>
+  signUpWithPassword?(input: Extract<AuthSignUpInputV1, { method: 'password' }>): Promise<BrowserSessionIssueOutputV1>
 }
 
 export interface IdentityUseCases {
@@ -187,16 +192,36 @@ export const createIdentityUseCases = ({
 }): IdentityUseCases => ({
   async getAuthCapabilities() {
     const accounts = await authProvider.listDummyAccounts()
+    const passwordAuthAvailable = authProvider.supportsPasswordAuth === true
+    const dummyAuthAvailable = accounts.length > 0 || !passwordAuthAvailable
+    const signInMethods: AuthCapabilitiesResourceV1['signInMethods'] = accounts.length > 0 ? ['dummy'] : []
+    const signUpMethods: AuthCapabilitiesResourceV1['signUpMethods'] = dummyAuthAvailable ? ['dummy'] : []
 
-    return {
-      dummy: {
-        accounts,
-        signIn: accounts.length > 0 ? 'available' : undefined,
-        signUp: 'available',
-      },
-      signInMethods: accounts.length > 0 ? ['dummy'] : [],
-      signUpMethods: ['dummy'],
+    if (passwordAuthAvailable) {
+      signInMethods.push('password')
+      signUpMethods.push('password')
     }
+
+    const dummy = {
+      accounts,
+      signIn: accounts.length > 0 ? ('available' as const) : undefined,
+      signUp: 'available' as const,
+    }
+    const password = { signIn: 'available' as const, signUp: 'available' as const }
+
+    if (dummyAuthAvailable && passwordAuthAvailable) {
+      return { dummy, password, signInMethods, signUpMethods }
+    }
+
+    if (dummyAuthAvailable) {
+      return { dummy, signInMethods, signUpMethods }
+    }
+
+    if (passwordAuthAvailable) {
+      return { password, signInMethods, signUpMethods }
+    }
+
+    return { signInMethods, signUpMethods }
   },
   async getBrowserSession(sessionId) {
     const user = await authProvider.resolveBrowserSession(sessionId)
@@ -204,6 +229,14 @@ export const createIdentityUseCases = ({
     return user ? { state: 'logged-in', user } : { state: 'expired' }
   },
   async signIn(input) {
+    if (input.method === 'password') {
+      if (!authProvider.signInWithPassword) {
+        throw new PasswordAuthError('Password sign-in is not available')
+      }
+
+      return authProvider.signInWithPassword(input)
+    }
+
     const user = await authProvider.resolveDummyPrincipal(input.principalId)
 
     if (!user) {
@@ -213,6 +246,14 @@ export const createIdentityUseCases = ({
     return createBrowserSessionForUser({ authProvider, user })
   },
   async signUp(input) {
+    if (input.method === 'password') {
+      if (!authProvider.signUpWithPassword) {
+        throw new PasswordAuthError('Password sign-up is not available')
+      }
+
+      return authProvider.signUpWithPassword(input)
+    }
+
     const principalId = dummyPrincipalIdFromDisplayName(input.displayName)
     const user = await authProvider.createDummyPrincipal({ displayName: input.displayName.trim(), principalId })
 
