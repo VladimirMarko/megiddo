@@ -62,6 +62,12 @@ export const IdentityTokenIssueInputSchemaV1 = z.object({
   contractVersion: z.string().min(1).optional(),
 })
 
+export const BrowserSessionIdentityTokenIssueInputSchemaV1 = z.object({
+  sessionId: BrowserSessionIdSchemaV1,
+  audience: IdentityTokenAudienceSchemaV1,
+  contractVersion: z.string().min(1).optional(),
+})
+
 export const IdentityTokenIssueOutputSchemaV1 = z.object({
   identityToken: IdentityTokenSchemaV1,
   user: UserReferenceResourceSchemaV1,
@@ -139,6 +145,7 @@ export type IdentityTokenAudienceV1 = z.infer<typeof IdentityTokenAudienceSchema
 export type IdentityTokenClaimsV1 = z.infer<typeof IdentityTokenClaimsSchemaV1>
 export type IdentityTokenIssueInputV1 = z.infer<typeof IdentityTokenIssueInputSchemaV1>
 export type IdentityTokenIssueOutputV1 = z.infer<typeof IdentityTokenIssueOutputSchemaV1>
+export type BrowserSessionIdentityTokenIssueInputV1 = z.infer<typeof BrowserSessionIdentityTokenIssueInputSchemaV1>
 export type AuthenticatedTodoInputV1 = z.infer<typeof AuthenticatedTodoInputSchemaV1>
 export type GatewayAuthSignInInputV1 = z.infer<typeof GatewayAuthSignInInputSchemaV1>
 export type GatewayAuthSignUpInputV1 = z.infer<typeof GatewayAuthSignUpInputSchemaV1>
@@ -206,6 +213,13 @@ export const identityContractV1 = {
     development: {
       identityTokens: {
         issue: oc.input(IdentityTokenIssueInputSchemaV1).output(IdentityTokenIssueOutputSchemaV1),
+      },
+    },
+    internal: {
+      identityTokens: {
+        issueForBrowserSession: oc
+          .input(BrowserSessionIdentityTokenIssueInputSchemaV1)
+          .output(IdentityTokenIssueOutputSchemaV1),
       },
     },
     auth: {

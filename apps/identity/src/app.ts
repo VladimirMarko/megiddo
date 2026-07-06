@@ -1,5 +1,6 @@
 import {
   createDevelopmentIdentityTokenCodec,
+  defaultInternalServiceAuthSecret,
   handleInstrumentedOrpcServerRequest,
   type IdentityTokenSigner,
   identityRpcMountPath,
@@ -22,6 +23,7 @@ const requestWithoutIdentityRpcMountPath = (request: Request) => {
 interface IdentityAppOptions {
   authProvider?: AuthProviderAdapter
   env?: NodeJS.ProcessEnv
+  internalServiceAuthSecret?: string
   serviceName?: string
   tokenSigner?: IdentityTokenSigner
 }
@@ -45,6 +47,7 @@ const createTokenSignerForMode = ({ tokenCodec }: IdentityModeConfig) => {
 export const createIdentityApp = ({
   authProvider,
   env = process.env,
+  internalServiceAuthSecret = env.IDENTITY_INTERNAL_SERVICE_AUTH_SECRET ?? defaultInternalServiceAuthSecret,
   serviceName = 'identity',
   tokenSigner,
 }: IdentityAppOptions = {}) => {
@@ -71,7 +74,7 @@ export const createIdentityApp = ({
   app.use(`${identityRpcMountPath}/*`, async (context, next) => {
     const request = requestWithoutIdentityRpcMountPath(context.req.raw)
     const { matched, response } = await handleInstrumentedOrpcServerRequest({
-      handle: () => handler.handle(request),
+      handle: () => handler.handle(request, { context: { internalServiceAuthSecret, request } }),
       procedure: orpcProcedureFromRequest(request),
       request,
       serviceName,

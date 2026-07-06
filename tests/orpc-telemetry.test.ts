@@ -100,7 +100,7 @@ test('backend oRPC calls export consistent spans and failed client metadata', as
   const identityClientSpan = assertSpan(
     spans,
     {
-      'orpc.procedure': 'v1.development.identityTokens.issue',
+      'orpc.procedure': 'v1.internal.identityTokens.issueForBrowserSession',
       'orpc.role': 'client',
       'service.name': 'api-gateway',
     },
@@ -109,7 +109,7 @@ test('backend oRPC calls export consistent spans and failed client metadata', as
   const identityServerSpan = assertSpan(
     spans,
     {
-      'orpc.procedure': 'v1.development.identityTokens.issue',
+      'orpc.procedure': 'v1.internal.identityTokens.issueForBrowserSession',
       'orpc.role': 'server',
       'service.name': 'identity',
     },

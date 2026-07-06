@@ -62,22 +62,22 @@ const readGatewaySession = async (identityClient: IdentityServiceClient, request
   return identityClient.resolveBrowserSession({ sessionId })
 }
 
-const requireGatewaySession = async (identityClient: IdentityServiceClient, request: Request) => {
-  const session = await readGatewaySession(identityClient, request)
+const requireBrowserSessionId = (request: Request) => {
+  const sessionId = browserSessionId(request)
 
-  if (session.state !== 'logged-in') {
+  if (!sessionId) {
     throw new ORPCError('UNAUTHORIZED', { message: 'Authentication required' })
   }
 
-  return session
+  return sessionId
 }
 
-const issueTodoIdentityToken = async (identityClient: IdentityServiceClient, subject: string) =>
+const issueTodoIdentityToken = async (identityClient: IdentityServiceClient, sessionId: string) =>
   (
-    await identityClient.issueDevelopmentIdentityToken({
+    await identityClient.issueBrowserSessionIdentityToken({
       audience: todoServiceAudienceV1,
       contractVersion: 'v1',
-      subject,
+      sessionId,
     })
   ).identityToken
 
@@ -87,10 +87,7 @@ const createAuthenticatedTodoInput = async <Input extends object>(
   input: Input,
 ) => ({
   ...input,
-  identityToken: await issueTodoIdentityToken(
-    identityClient,
-    (await requireGatewaySession(identityClient, request)).user.id,
-  ),
+  identityToken: await issueTodoIdentityToken(identityClient, requireBrowserSessionId(request)),
 })
 
 const createTodoInputForRequest =

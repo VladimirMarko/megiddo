@@ -5,6 +5,10 @@ export const apiGatewayRpcMountPath = '/rpc'
 export const identityRpcMountPath = '/rpc'
 export const todoRpcMountPath = '/rpc'
 
+export const internalServiceHeader = 'x-megiddo-internal-service'
+export const internalServiceSecretHeader = 'x-megiddo-internal-service-secret'
+export const defaultInternalServiceAuthSecret = 'local-development-internal-service-secret'
+
 export const apiGatewayRpcUrl = (baseUrl: string) => `${baseUrl.replace(/\/$/, '')}${apiGatewayRpcMountPath}`
 export const identityRpcUrl = (baseUrl: string) => `${baseUrl.replace(/\/$/, '')}${identityRpcMountPath}`
 export const todoRpcUrl = (baseUrl: string) => `${baseUrl.replace(/\/$/, '')}${todoRpcMountPath}`

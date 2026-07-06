@@ -72,6 +72,11 @@ test('API Gateway composes frontend-shaped todo procedures through a Todo client
       assert.equal(input.subject, 'dev:viewer')
       return { identityToken: 'fake-token', user: { id: 'dev:viewer' } }
     },
+    async issueBrowserSessionIdentityToken(input) {
+      assert.equal(input.sessionId, 'browser-session')
+      assert.equal(input.audience.service, 'todo')
+      return { identityToken: 'fake-token', user: { id: 'dev:viewer' } }
+    },
   }
   const todoClient: TodoServiceClient = {
     async listTodos(input) {
@@ -189,6 +194,10 @@ test('API Gateway browser auth uses Identity-owned sessions without returning se
       calls.push(`issueTodo:${input.subject}:${input.audience.service}`)
       return { identityToken: 'todo-token-for-alice', user: { id: input.subject ?? 'missing' } }
     },
+    async issueBrowserSessionIdentityToken(input) {
+      calls.push(`issueTodoForSession:${input.sessionId}:${input.audience.service}`)
+      return { identityToken: 'todo-token-for-alice', user: { id: 'dummy:alice' } }
+    },
   }
   const todoClient: TodoServiceClient = {
     async listTodos(input) {
@@ -241,8 +250,7 @@ test('API Gateway browser auth uses Identity-owned sessions without returning se
   assert.deepEqual(calls, [
     'signIn:dummy:alice',
     'current:session-alice',
-    'current:session-alice',
-    'issueTodo:dummy:alice:todo',
+    'issueTodoForSession:session-alice:todo',
     'signOut:session-alice',
   ])
 })
@@ -314,4 +322,29 @@ test('API Gateway production Todo client reaches Todo over the Todo oRPC contrac
 
   assert.equal(listResponse.status, 200)
   assert.deepEqual(await listResponse.json(), { json: [created.json] })
+
+  const bobSignInResponse = await postRpc(apiApp, '/rpc/v1/viewer/session/signIn', {
+    method: 'dummy',
+    principalId: 'dummy:bob',
+  })
+  assert.equal(bobSignInResponse.status, 200)
+  const bobSignInCookie = bobSignInResponse.headers.get('set-cookie')
+  assert.ok(bobSignInCookie)
+  const bobSessionCookie = bobSignInCookie.split(';')[0]
+
+  const bobListResponse = await postRpcWithCookie(apiApp, '/rpc/v1/viewer/todos/list', bobSessionCookie)
+  assert.equal(bobListResponse.status, 200)
+  assert.deepEqual(await bobListResponse.json(), { json: [] })
+
+  const bobCompleteAliceTodoResponse = await postRpcWithCookie(
+    apiApp,
+    '/rpc/v1/viewer/todos/complete',
+    bobSessionCookie,
+    { id: created.json.id },
+  )
+  assert.equal(bobCompleteAliceTodoResponse.status, 500)
+
+  const aliceListAfterBobResponse = await postRpcWithCookie(apiApp, '/rpc/v1/viewer/todos/list', sessionCookie)
+  assert.equal(aliceListAfterBobResponse.status, 200)
+  assert.deepEqual(await aliceListAfterBobResponse.json(), { json: [created.json] })
 })

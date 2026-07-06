@@ -3,13 +3,20 @@ import type {
   AuthSessionResourceV1,
   AuthSignInInputV1,
   AuthSignUpInputV1,
+  BrowserSessionIdentityTokenIssueInputV1,
   BrowserSessionInputV1,
   BrowserSessionIssueOutputV1,
   IdentityContractClientV1,
   IdentityTokenIssueInputV1,
   IdentityTokenIssueOutputV1,
 } from '@megiddo/contracts'
-import { createInstrumentedOrpcClientFetch, identityRpcUrl } from '@megiddo/platform'
+import {
+  createInstrumentedOrpcClientFetch,
+  defaultInternalServiceAuthSecret,
+  identityRpcUrl,
+  internalServiceHeader,
+  internalServiceSecretHeader,
+} from '@megiddo/platform'
 import { createORPCClient } from '@orpc/client'
 import { RPCLink } from '@orpc/client/fetch'
 
@@ -20,32 +27,53 @@ export interface IdentityServiceClient {
   resolveBrowserSession(input: BrowserSessionInputV1): Promise<AuthSessionResourceV1>
   deleteBrowserSession(input: BrowserSessionInputV1): Promise<AuthSessionResourceV1>
   issueDevelopmentIdentityToken(input: IdentityTokenIssueInputV1): Promise<IdentityTokenIssueOutputV1>
+  issueBrowserSessionIdentityToken(input: BrowserSessionIdentityTokenIssueInputV1): Promise<IdentityTokenIssueOutputV1>
 }
 
 interface IdentityServiceClientOptions {
   baseUrl?: string
   fetch?: (request: Request) => Promise<Response>
+  internalServiceAuthSecret?: string
   serviceName?: string
 }
 
 export const createIdentityServiceClient = ({
   baseUrl = 'http://localhost:3002',
   fetch,
+  internalServiceAuthSecret = process.env.IDENTITY_INTERNAL_SERVICE_AUTH_SECRET ?? defaultInternalServiceAuthSecret,
   serviceName = 'api-gateway',
 }: IdentityServiceClientOptions = {}): IdentityServiceClient => {
-  const createInstrumentedIdentityClient = (procedure: string) =>
-    createORPCClient<IdentityContractClientV1>(
+  const createInstrumentedIdentityClient = (procedure: string, internalServiceAuth = false) => {
+    const instrumentedFetch = createInstrumentedOrpcClientFetch({ fetch, procedure, serviceName })
+
+    return createORPCClient<IdentityContractClientV1>(
       new RPCLink({
-        fetch: createInstrumentedOrpcClientFetch({ fetch, procedure, serviceName }),
+        fetch: request => {
+          if (!internalServiceAuth) {
+            return instrumentedFetch(request)
+          }
+
+          const headers = new Headers(request.headers)
+          headers.set(internalServiceHeader, serviceName)
+          headers.set(internalServiceSecretHeader, internalServiceAuthSecret)
+
+          return instrumentedFetch(new Request(request, { headers }))
+        },
         url: identityRpcUrl(baseUrl),
       }),
     )
+  }
+
   const authCapabilitiesClient = createInstrumentedIdentityClient('v1.auth.capabilities')
   const currentClient = createInstrumentedIdentityClient('v1.auth.current')
   const signInClient = createInstrumentedIdentityClient('v1.auth.signIn')
   const signUpClient = createInstrumentedIdentityClient('v1.auth.signUp')
   const signOutClient = createInstrumentedIdentityClient('v1.auth.signOut')
-  const developmentIdentityTokensClient = createInstrumentedIdentityClient('v1.development.identityTokens.issue')
+  const developmentIdentityTokensClient = createInstrumentedIdentityClient('v1.development.identityTokens.issue', true)
+  const browserSessionIdentityTokensClient = createInstrumentedIdentityClient(
+    'v1.internal.identityTokens.issueForBrowserSession',
+    true,
+  )
 
   return {
     getAuthCapabilities() {
@@ -65,6 +93,9 @@ export const createIdentityServiceClient = ({
     },
     issueDevelopmentIdentityToken(input) {
       return developmentIdentityTokensClient.v1.development.identityTokens.issue(input)
+    },
+    issueBrowserSessionIdentityToken(input) {
+      return browserSessionIdentityTokensClient.v1.internal.identityTokens.issueForBrowserSession(input)
     },
   }
 }

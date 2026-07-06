@@ -4,6 +4,7 @@ import type {
   AuthSessionResourceV1,
   AuthSignInInputV1,
   AuthSignUpInputV1,
+  BrowserSessionIdentityTokenIssueInputV1,
   BrowserSessionIssueOutputV1,
   DummyAuthAccountResourceV1,
   IdentityTokenAudienceV1,
@@ -31,6 +32,18 @@ export class InvalidDummyDisplayNameError extends Error {
   }
 }
 
+export class ExpiredBrowserSessionError extends Error {
+  constructor(sessionId: string) {
+    super(`Browser session is expired: ${sessionId}`)
+  }
+}
+
+export class DisallowedServiceTokenAudienceError extends Error {
+  constructor(callerService: string, audienceService: string) {
+    super(`${callerService} cannot issue ${audienceService} Identity Tokens`)
+  }
+}
+
 export interface AuthProviderAdapter {
   createBrowserSession(user: UserReferenceResourceV1): Promise<{ id: string }>
   createDummyPrincipal(input: DummyAuthAccountResourceV1): Promise<UserReferenceResourceV1>
@@ -48,6 +61,10 @@ export interface IdentityUseCases {
   signUp(input: AuthSignUpInputV1): Promise<BrowserSessionIssueOutputV1>
   signOut(sessionId: string): Promise<AuthSessionResourceV1>
   issueDevelopmentIdentityToken(input: IdentityTokenIssueInputV1): Promise<IdentityTokenIssueOutputV1>
+  issueBrowserSessionIdentityToken(input: {
+    callerService: string
+    tokenRequest: BrowserSessionIdentityTokenIssueInputV1
+  }): Promise<IdentityTokenIssueOutputV1>
 }
 
 export const dummyDemoAccounts = [
@@ -153,6 +170,14 @@ const createBrowserSessionForUser = async ({
   user,
 })
 
+const serviceTokenAudienceAllowlist = new Map([['api-gateway', new Set(['todo'])]])
+
+const assertServiceTokenAudienceAllowed = (callerService: string, audienceService: string) => {
+  if (!serviceTokenAudienceAllowlist.get(callerService)?.has(audienceService)) {
+    throw new DisallowedServiceTokenAudienceError(callerService, audienceService)
+  }
+}
+
 export const createIdentityUseCases = ({
   authProvider,
   tokenSigner,
@@ -204,6 +229,22 @@ export const createIdentityUseCases = ({
     return issueIdentityTokenForUser({
       audience: input.audience,
       contractVersion: input.contractVersion,
+      tokenSigner,
+      user,
+    })
+  },
+  async issueBrowserSessionIdentityToken({ callerService, tokenRequest }) {
+    assertServiceTokenAudienceAllowed(callerService, tokenRequest.audience.service)
+
+    const user = await authProvider.resolveBrowserSession(tokenRequest.sessionId)
+
+    if (!user) {
+      throw new ExpiredBrowserSessionError(tokenRequest.sessionId)
+    }
+
+    return issueIdentityTokenForUser({
+      audience: tokenRequest.audience,
+      contractVersion: tokenRequest.contractVersion,
       tokenSigner,
       user,
     })

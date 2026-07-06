@@ -1,17 +1,65 @@
 import { identityContractV1, identityOperationalHealthV1 } from '@megiddo/contracts'
+import { internalServiceHeader, internalServiceSecretHeader } from '@megiddo/platform'
 import { implement, ORPCError } from '@orpc/server'
 import type { IdentityUseCases } from './identity-use-cases'
-import { InvalidDummyDisplayNameError, PrincipalCollisionError, UnknownPrincipalError } from './identity-use-cases'
+import {
+  DisallowedServiceTokenAudienceError,
+  ExpiredBrowserSessionError,
+  InvalidDummyDisplayNameError,
+  PrincipalCollisionError,
+  UnknownPrincipalError,
+} from './identity-use-cases'
 
-const identityV1 = implement(identityContractV1)
+interface IdentityContext {
+  internalServiceAuthSecret: string
+  request: Request
+}
+
+const identityV1 = implement<typeof identityContractV1, IdentityContext>(identityContractV1)
+
+const requireInternalCallerService = ({ internalServiceAuthSecret, request }: IdentityContext) => {
+  const callerService = request.headers.get(internalServiceHeader)
+  const callerSecret = request.headers.get(internalServiceSecretHeader)
+
+  if (!callerService || callerSecret !== internalServiceAuthSecret) {
+    throw new ORPCError('UNAUTHORIZED', { message: 'Internal service authentication required' })
+  }
+
+  return callerService
+}
 
 export const createIdentityRouter = (identity: IdentityUseCases) =>
   identityV1.router({
     v1: {
       development: {
         identityTokens: {
-          issue: identityV1.v1.development.identityTokens.issue.handler(({ input }) =>
-            identity.issueDevelopmentIdentityToken(input),
+          issue: identityV1.v1.development.identityTokens.issue.handler(({ context, input }) => {
+            requireInternalCallerService(context)
+
+            return identity.issueDevelopmentIdentityToken(input)
+          }),
+        },
+      },
+      internal: {
+        identityTokens: {
+          issueForBrowserSession: identityV1.v1.internal.identityTokens.issueForBrowserSession.handler(
+            async ({ context, input }) => {
+              const callerService = requireInternalCallerService(context)
+
+              try {
+                return await identity.issueBrowserSessionIdentityToken({ callerService, tokenRequest: input })
+              } catch (error) {
+                if (error instanceof DisallowedServiceTokenAudienceError) {
+                  throw new ORPCError('FORBIDDEN', { message: error.message })
+                }
+
+                if (error instanceof ExpiredBrowserSessionError) {
+                  throw new ORPCError('UNAUTHORIZED', { message: error.message })
+                }
+
+                throw error
+              }
+            },
           ),
         },
       },

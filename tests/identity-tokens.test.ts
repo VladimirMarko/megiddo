@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createIdentityApp } from '@megiddo/identity'
-import { createDevelopmentIdentityTokenCodec } from '@megiddo/platform'
+import {
+  createDevelopmentIdentityTokenCodec,
+  internalServiceHeader,
+  internalServiceSecretHeader,
+} from '@megiddo/platform'
 import { createTodoApp } from '@megiddo/todo'
 
 const postRpc = (
@@ -16,17 +20,37 @@ const postRpc = (
   })
 
 const issueToken = async (identityApp: ReturnType<typeof createIdentityApp>, subject: string, service: string) => {
-  const response = await postRpc(identityApp, '/rpc/v1/development/identityTokens/issue', {
-    audience: { service },
-    contractVersion: 'v1',
-    subject,
-  })
+  const response = await postRpcWithHeaders(
+    identityApp,
+    '/rpc/v1/development/identityTokens/issue',
+    {
+      audience: { service },
+      contractVersion: 'v1',
+      subject,
+    },
+    {
+      [internalServiceHeader]: 'test-harness',
+      [internalServiceSecretHeader]: 'local-development-internal-service-secret',
+    },
+  )
 
   assert.equal(response.status, 200)
 
   const body = (await response.json()) as { json: { identityToken: string } }
   return body.json.identityToken
 }
+
+const postRpcWithHeaders = (
+  app: { request: (path: string, init: RequestInit) => Promise<Response> },
+  path: string,
+  json: unknown,
+  headers: HeadersInit,
+) =>
+  app.request(path, {
+    body: JSON.stringify({ json }),
+    headers: { 'content-type': 'application/json', ...headers },
+    method: 'POST',
+  })
 
 test('Identity issues development Identity Tokens that Todo verifies for owner-only access', async () => {
   const codec = createDevelopmentIdentityTokenCodec()
@@ -54,4 +78,72 @@ test('Identity issues development Identity Tokens that Todo verifies for owner-o
 
   const wrongAudienceResponse = await postRpc(todoApp, '/rpc/v1/todos/list', { identityToken: apiAudienceToken })
   assert.equal(wrongAudienceResponse.status, 401)
+})
+
+test('Identity protects browser-session service-token issuance for Gateway Todo calls', async () => {
+  const codec = createDevelopmentIdentityTokenCodec()
+  const identityApp = createIdentityApp({
+    env: { IDENTITY_INTERNAL_SERVICE_AUTH_SECRET: 'test-secret' },
+    tokenSigner: codec,
+  })
+
+  const signInResponse = await postRpc(identityApp, '/rpc/v1/auth/signIn', {
+    method: 'dummy',
+    principalId: 'dummy:alice',
+  })
+  assert.equal(signInResponse.status, 200)
+  const signedIn = (await signInResponse.json()) as { json: { browserSession: { id: string } } }
+
+  const publicDevelopmentTokenResponse = await postRpc(identityApp, '/rpc/v1/development/identityTokens/issue', {
+    audience: { service: 'analytics' },
+    contractVersion: 'v1',
+    subject: 'dummy:bob',
+  })
+  assert.equal(publicDevelopmentTokenResponse.status, 401)
+
+  const publicResponse = await postRpc(identityApp, '/rpc/v1/internal/identityTokens/issueForBrowserSession', {
+    audience: { service: 'todo' },
+    contractVersion: 'v1',
+    sessionId: signedIn.json.browserSession.id,
+  })
+  assert.equal(publicResponse.status, 401)
+
+  const disallowedAudienceResponse = await postRpcWithHeaders(
+    identityApp,
+    '/rpc/v1/internal/identityTokens/issueForBrowserSession',
+    {
+      audience: { service: 'analytics' },
+      contractVersion: 'v1',
+      sessionId: signedIn.json.browserSession.id,
+    },
+    {
+      [internalServiceHeader]: 'api-gateway',
+      [internalServiceSecretHeader]: 'test-secret',
+    },
+  )
+  assert.equal(disallowedAudienceResponse.status, 403)
+
+  const issueResponse = await postRpcWithHeaders(
+    identityApp,
+    '/rpc/v1/internal/identityTokens/issueForBrowserSession',
+    {
+      audience: { service: 'todo' },
+      contractVersion: 'v1',
+      sessionId: signedIn.json.browserSession.id,
+    },
+    {
+      [internalServiceHeader]: 'api-gateway',
+      [internalServiceSecretHeader]: 'test-secret',
+    },
+  )
+  assert.equal(issueResponse.status, 200)
+
+  const issued = (await issueResponse.json()) as { json: { identityToken: string; user: { id: string } } }
+  const claims = await codec.verifyIdentityToken({
+    audience: { service: 'todo' },
+    identityToken: issued.json.identityToken,
+  })
+
+  assert.equal(issued.json.user.id, 'dummy:alice')
+  assert.equal(claims.subject, 'dummy:alice')
 })
