@@ -4,6 +4,12 @@ import { type AuthProviderAdapter, createIdentityApp } from '@megiddo/identity'
 import type { IdentityTokenSigner } from '@megiddo/platform'
 
 const authProvider: AuthProviderAdapter = {
+  async listDummyAccounts() {
+    return []
+  },
+  async resolveDummyPrincipal() {
+    return undefined
+  },
   async resolveDevelopmentUser(subject = 'dev:viewer') {
     return { id: subject }
   },

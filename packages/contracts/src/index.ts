@@ -15,6 +15,7 @@ export const TodoResourceSchemaV1 = z.object({
 
 export const UserReferenceResourceSchemaV1 = z.object({
   id: z.string().min(1),
+  displayName: z.string().min(1).optional(),
 })
 
 export const IdentityTokenSchemaV1 = z.string().min(1)
@@ -62,8 +63,34 @@ export const IdentityTokenIssueOutputSchemaV1 = z.object({
   user: UserReferenceResourceSchemaV1,
 })
 
+export const DummyAuthAccountResourceSchemaV1 = z.object({
+  displayName: z.string().min(1),
+  principalId: z.string().min(1),
+})
+
+export const AuthCapabilitiesResourceSchemaV1 = z.object({
+  dummy: z
+    .object({
+      accounts: z.array(DummyAuthAccountResourceSchemaV1),
+      signIn: z.literal('available'),
+    })
+    .optional(),
+  signInMethods: z.array(z.literal('dummy')),
+})
+
+export const AuthSignInInputSchemaV1 = z.object({
+  audience: IdentityTokenAudienceSchemaV1,
+  contractVersion: z.string().min(1).optional(),
+  method: z.literal('dummy'),
+  principalId: z.string().min(1),
+})
+
 export const GatewayAuthSessionInputSchemaV1 = z.undefined()
-export const GatewayAuthSignInInputSchemaV1 = z.object({ subject: z.string().min(1).optional() }).optional()
+export const GatewayAuthCapabilitiesInputSchemaV1 = z.undefined()
+export const GatewayAuthSignInInputSchemaV1 = z.object({
+  method: z.literal('dummy'),
+  principalId: z.string().min(1),
+})
 export const GatewayAuthSignOutInputSchemaV1 = z.undefined()
 export const GatewayStatusInputSchemaV1 = z.undefined()
 export const OperationalHealthInputSchemaV1 = z.undefined()
@@ -82,6 +109,9 @@ export type OperationalHealthResourceV1 = z.infer<typeof OperationalHealthResour
 export type TodoResourceV1 = z.infer<typeof TodoResourceSchemaV1>
 export type UserReferenceResourceV1 = z.infer<typeof UserReferenceResourceSchemaV1>
 export type AuthSessionResourceV1 = z.infer<typeof AuthSessionResourceSchemaV1>
+export type AuthCapabilitiesResourceV1 = z.infer<typeof AuthCapabilitiesResourceSchemaV1>
+export type AuthSignInInputV1 = z.infer<typeof AuthSignInInputSchemaV1>
+export type DummyAuthAccountResourceV1 = z.infer<typeof DummyAuthAccountResourceSchemaV1>
 export type IdentityTokenAudienceV1 = z.infer<typeof IdentityTokenAudienceSchemaV1>
 export type IdentityTokenClaimsV1 = z.infer<typeof IdentityTokenClaimsSchemaV1>
 export type IdentityTokenIssueInputV1 = z.infer<typeof IdentityTokenIssueInputSchemaV1>
@@ -127,8 +157,9 @@ export const apiGatewayContractV1 = {
     operational: operationalHealthContractFragmentV1,
     viewer: {
       session: {
+        capabilities: oc.input(GatewayAuthCapabilitiesInputSchemaV1).output(AuthCapabilitiesResourceSchemaV1),
         current: oc.input(GatewayAuthSessionInputSchemaV1).output(AuthSessionResourceSchemaV1),
-        signInDevelopment: oc.input(GatewayAuthSignInInputSchemaV1).output(AuthSessionResourceSchemaV1),
+        signIn: oc.input(GatewayAuthSignInInputSchemaV1).output(AuthSessionResourceSchemaV1),
         signOut: oc.input(GatewayAuthSignOutInputSchemaV1).output(AuthSessionResourceSchemaV1),
       },
       todos: {
@@ -151,6 +182,10 @@ export const identityContractV1 = {
       identityTokens: {
         issue: oc.input(IdentityTokenIssueInputSchemaV1).output(IdentityTokenIssueOutputSchemaV1),
       },
+    },
+    auth: {
+      capabilities: oc.input(GatewayAuthCapabilitiesInputSchemaV1).output(AuthCapabilitiesResourceSchemaV1),
+      signIn: oc.input(AuthSignInInputSchemaV1).output(IdentityTokenIssueOutputSchemaV1),
     },
     operational: operationalHealthContractFragmentV1,
   },

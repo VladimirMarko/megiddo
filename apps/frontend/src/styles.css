@@ -48,6 +48,84 @@ button {
   gap: 0.5rem;
 }
 
+.auth-shell {
+  gap: 1.75rem;
+}
+
+.auth-eyebrow {
+  margin: 0.75rem 0 0;
+  color: #9b9b9b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.auth-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  border: 1px solid #ececec;
+  background: white;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 7%);
+  padding: 1.25rem;
+}
+
+.auth-copy h2,
+.auth-copy p {
+  margin: 0;
+}
+
+.auth-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.auth-copy h2 {
+  font-size: 1.35rem;
+  letter-spacing: -0.04em;
+}
+
+.auth-copy p {
+  color: #767676;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.auth-account-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.auth-account-list button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  border: 1px solid #eeeeee;
+  background: #fbfbfb;
+  padding: 0.9rem;
+  text-align: left;
+}
+
+.auth-account-list button:hover {
+  border-color: #cfcfcf;
+  background: #f4f4f4;
+}
+
+.auth-account-list span {
+  font-weight: 700;
+}
+
+.auth-account-list small {
+  color: #8f8f8f;
+}
+
 h1 {
   margin: 0;
   color: black;
@@ -205,8 +283,17 @@ h1 {
   }
 
   .session-bar,
+  .auth-account-list,
   .todo-content {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .auth-account-list {
+    display: flex;
+  }
+
+  .auth-account-list button {
+    width: 100%;
   }
 }

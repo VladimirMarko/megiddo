@@ -10,6 +10,9 @@ const authProvider =
   identityModeConfig.authProvider === 'dummy'
     ? createEmbeddedDevelopmentAuthProviderAdapter({
         databasePath: process.env.IDENTITY_DATABASE_PATH ?? '.data/identity/identity.sqlite',
+        seedDemoAccounts:
+          process.env.MEGIDDO_AUTH_PROFILE === 'local-dummy' ||
+          process.env.IDENTITY_DUMMY_AUTH_DEMO_ACCOUNTS === 'enabled',
       })
     : undefined
 const closeAuthProvider = () => authProvider?.close()

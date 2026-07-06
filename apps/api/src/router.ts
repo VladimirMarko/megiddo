@@ -101,11 +101,13 @@ export const createApiGatewayRouter = ({
           current: apiGatewayV1.v1.viewer.session.current.handler(({ context }) =>
             readGatewaySession(tokenVerifier, context.request),
           ),
-          signInDevelopment: apiGatewayV1.v1.viewer.session.signInDevelopment.handler(async ({ input }) => {
-            const issued = await identityClient.issueDevelopmentIdentityToken({
+          capabilities: apiGatewayV1.v1.viewer.session.capabilities.handler(() => identityClient.getAuthCapabilities()),
+          signIn: apiGatewayV1.v1.viewer.session.signIn.handler(async ({ input }) => {
+            const issued = await identityClient.signIn({
               audience: apiGatewayAudienceV1,
               contractVersion: 'v1',
-              subject: input?.subject,
+              method: input.method,
+              principalId: input.principalId,
             })
 
             return { identityToken: issued.identityToken, state: 'logged-in' as const, user: issued.user }

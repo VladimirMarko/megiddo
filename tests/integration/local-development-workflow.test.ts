@@ -161,9 +161,9 @@ test('local development workflow runs real services over localhost for the authe
       message: 'frontend is connected',
       service: 'api-gateway',
     })
-    assert.deepEqual(await frontendApi.signInDevelopment({ subject: 'dev:localhost' }), {
+    assert.deepEqual(await frontendApi.signIn({ method: 'dummy', principalId: 'dummy:alice' }), {
       state: 'logged-in',
-      user: { id: 'dev:localhost' },
+      user: { displayName: 'Alice', id: 'dummy:alice' },
     })
 
     const created = await frontendApi.createTodo({ title: 'Local service boundary todo' })
@@ -213,9 +213,9 @@ test('documented pnpm dev workflow supports authenticated todo creation across r
       message: 'frontend is connected',
       service: 'api-gateway',
     })
-    assert.deepEqual(await frontendApi.signInDevelopment({ subject: 'dev:pnpm-dev' }), {
+    assert.deepEqual(await frontendApi.signIn({ method: 'dummy', principalId: 'dummy:bob' }), {
       state: 'logged-in',
-      user: { id: 'dev:pnpm-dev' },
+      user: { displayName: 'Bob', id: 'dummy:bob' },
     })
 
     // This covers the regression where Identity accepted sign-in, but API could not

@@ -58,6 +58,8 @@ export const createLocalDevProcessDefinitions = ({
     args: ['--port', frontendPort],
     env: {
       PORT: frontendPort,
+      UI_DUMMY_AUTH_LOGIN_SHORTCUT: 'enabled',
+      VITE_UI_DUMMY_AUTH_LOGIN_SHORTCUT: 'enabled',
     },
     packageName: '@megiddo/frontend',
   },

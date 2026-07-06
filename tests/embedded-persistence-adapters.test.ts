@@ -37,3 +37,23 @@ test('Identity embedded development auth persistence survives adapter recreation
   assert.deepEqual(await secondAuthProvider.resolveDevelopmentUser('dev:ada'), { id: 'dev:ada' })
   secondAuthProvider.close()
 })
+
+test('Identity embedded dummy demo accounts are persisted principals when seeding is enabled', async () => {
+  const databasePath = join(await mkdtemp(join(tmpdir(), 'megiddo-identity-demo-')), 'identity.sqlite')
+  const firstAuthProvider = createEmbeddedDevelopmentAuthProviderAdapter({ databasePath, seedDemoAccounts: true })
+
+  assert.deepEqual(await firstAuthProvider.listDummyAccounts(), [
+    { displayName: 'Alice', principalId: 'dummy:alice' },
+    { displayName: 'Bob', principalId: 'dummy:bob' },
+  ])
+  firstAuthProvider.close()
+
+  const secondAuthProvider = createEmbeddedDevelopmentAuthProviderAdapter({ databasePath, seedDemoAccounts: true })
+
+  assert.deepEqual(await secondAuthProvider.resolveDummyPrincipal('dummy:alice'), {
+    displayName: 'Alice',
+    id: 'dummy:alice',
+  })
+  assert.equal(await secondAuthProvider.resolveDummyPrincipal('dummy:charlie'), undefined)
+  secondAuthProvider.close()
+})

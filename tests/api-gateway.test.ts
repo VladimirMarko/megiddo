@@ -32,8 +32,9 @@ const postAuthenticatedRpc = (
 
 test('contracts package exports the explicit API Gateway v1 contract surface', () => {
   assert.equal(typeof apiGatewayContractV1.v1.gateway.status, 'object')
+  assert.equal(typeof apiGatewayContractV1.v1.viewer.session.capabilities, 'object')
   assert.equal(typeof apiGatewayContractV1.v1.viewer.session.current, 'object')
-  assert.equal(typeof apiGatewayContractV1.v1.viewer.session.signInDevelopment, 'object')
+  assert.equal(typeof apiGatewayContractV1.v1.viewer.session.signIn, 'object')
   assert.equal(typeof apiGatewayContractV1.v1.viewer.session.signOut, 'object')
   assert.equal(typeof apiGatewayContractV1.v1.viewer.todos.list, 'object')
   assert.equal(typeof apiGatewayContractV1.v1.viewer.todos.create, 'object')
@@ -62,6 +63,12 @@ test('API Gateway composes frontend-shaped todo procedures through a Todo client
   const createdTodo: TodoResourceV1 = { id: 'todo-from-fake', title: 'Compose through Gateway', completed: false }
   const completedTodo: TodoResourceV1 = { ...createdTodo, completed: true }
   const identityClient = {
+    async getAuthCapabilities() {
+      return { signInMethods: [] }
+    },
+    async signIn() {
+      throw new Error('signIn should not be called')
+    },
     async issueDevelopmentIdentityToken(input) {
       assert.equal(input.subject, 'dev:viewer')
       return { identityToken: 'fake-token', user: { id: 'dev:viewer' } }
@@ -155,7 +162,25 @@ test('API Gateway production Todo client reaches Todo over the Todo oRPC contrac
     },
   })
   const apiApp = createApiGatewayApp({ identityClient, todoClient, tokenVerifier: codec })
-  const signInResponse = await postRpc(apiApp, '/rpc/v1/viewer/session/signInDevelopment', { subject: 'dev:viewer' })
+  const capabilitiesResponse = await postRpc(apiApp, '/rpc/v1/viewer/session/capabilities')
+  assert.equal(capabilitiesResponse.status, 200)
+  assert.deepEqual(await capabilitiesResponse.json(), {
+    json: {
+      dummy: {
+        accounts: [
+          { displayName: 'Alice', principalId: 'dummy:alice' },
+          { displayName: 'Bob', principalId: 'dummy:bob' },
+        ],
+        signIn: 'available',
+      },
+      signInMethods: ['dummy'],
+    },
+  })
+
+  const signInResponse = await postRpc(apiApp, '/rpc/v1/viewer/session/signIn', {
+    method: 'dummy',
+    principalId: 'dummy:alice',
+  })
   assert.equal(signInResponse.status, 200)
   const signIn = (await signInResponse.json()) as { json: { identityToken: string } }
 

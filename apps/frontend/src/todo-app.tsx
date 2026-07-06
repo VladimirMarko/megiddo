@@ -9,7 +9,12 @@ import {
 import { atom, Provider, useAtom, useSetAtom } from 'jotai'
 import * as React from 'react'
 import { type ReactElement, useEffect } from 'react'
-import type { FrontendApi, FrontendAuthSession, FrontendTodo } from './api/frontend-api-adapter'
+import type {
+  FrontendApi,
+  FrontendAuthCapabilities,
+  FrontendAuthSession,
+  FrontendTodo,
+} from './api/frontend-api-adapter'
 import { AuthSessionPrompt } from './components/auth-session-prompt'
 import { Title } from './components/title'
 import { TodoCreateForm } from './components/todo-create-form'
@@ -19,6 +24,7 @@ export type { FrontendApi } from './api/frontend-api-adapter'
 
 interface TodoRouteContext {
   api: FrontendApi
+  dummyAuthLoginShortcutEnabled: boolean
 }
 
 const todosAtom = atom<FrontendTodo[]>([])
@@ -40,6 +46,7 @@ const filteredTodosAtom = atom(get => {
 const loadingAtom = atom(true)
 const errorAtom = atom<string | undefined>(undefined)
 const authSessionAtom = atom<FrontendAuthSession | undefined>(undefined)
+const authCapabilitiesAtom = atom<FrontendAuthCapabilities | undefined>(undefined)
 
 const mutationErrorMessage = (caught: unknown, fallback: string) =>
   caught instanceof Error ? caught.message : fallback
@@ -56,15 +63,21 @@ const todoRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([todoRoute])
 
-export const createTodoRouter = (api: FrontendApi) =>
+export const createTodoRouter = (api: FrontendApi, dummyAuthLoginShortcutEnabled = false) =>
   createRouter({
-    context: { api },
+    context: { api, dummyAuthLoginShortcutEnabled },
     history: createBrowserHistory(),
     routeTree,
   })
 
-export const createTodoApp = ({ api }: { api: FrontendApi }): ReactElement => {
-  const router = createTodoRouter(api)
+export const createTodoApp = ({
+  api,
+  dummyAuthLoginShortcutEnabled = false,
+}: {
+  api: FrontendApi
+  dummyAuthLoginShortcutEnabled?: boolean
+}): ReactElement => {
+  const router = createTodoRouter(api, dummyAuthLoginShortcutEnabled)
   void router.load()
 
   return (
@@ -75,13 +88,14 @@ export const createTodoApp = ({ api }: { api: FrontendApi }): ReactElement => {
 }
 
 function TodoScreen() {
-  const { api } = todoRoute.useRouteContext()
+  const { api, dummyAuthLoginShortcutEnabled } = todoRoute.useRouteContext()
   const setTodos = useSetAtom(todosAtom)
   const [filteredTodos] = useAtom(filteredTodosAtom)
   const [filter, setFilter] = useAtom(filterAtom)
   const [loading, setLoading] = useAtom(loadingAtom)
   const [error, setError] = useAtom(errorAtom)
   const [authSession, setAuthSession] = useAtom(authSessionAtom)
+  const [authCapabilities, setAuthCapabilities] = useAtom(authCapabilitiesAtom)
   const runTodoMutation = async (mutation: () => Promise<void>, fallbackError: string) => {
     setError(undefined)
 
@@ -120,8 +134,8 @@ function TodoScreen() {
     }
   }
 
-  const signIn = async () => {
-    const nextSession = await api.signInDevelopment()
+  const signIn = async (principalId: string) => {
+    const nextSession = await api.signIn({ method: 'dummy', principalId })
     setAuthSession(nextSession)
 
     if (nextSession.state === 'logged-in') {
@@ -142,12 +156,14 @@ function TodoScreen() {
     const loadSession = async () => {
       try {
         const nextSession = await api.getAuthSession()
+        const nextCapabilities = await api.getAuthCapabilities()
 
         if (cancelled) {
           return
         }
 
         setAuthSession(nextSession)
+        setAuthCapabilities(nextCapabilities)
 
         if (nextSession.state !== 'logged-in') {
           setTodos([])
@@ -178,7 +194,7 @@ function TodoScreen() {
     return () => {
       cancelled = true
     }
-  }, [api, setAuthSession, setError, setLoading, setTodos])
+  }, [api, setAuthCapabilities, setAuthSession, setError, setLoading, setTodos])
 
   if (!authSession) {
     return (
@@ -190,16 +206,24 @@ function TodoScreen() {
   }
 
   if (authSession.state === 'logged-out') {
-    return <AuthSessionPrompt buttonText="Sign in" message="Sign in to manage todos." onSignIn={() => void signIn()} />
+    return (
+      <AuthSessionPrompt
+        capabilities={authCapabilities}
+        dummyAuthLoginShortcutEnabled={dummyAuthLoginShortcutEnabled}
+        message="Sign in to manage todos."
+        onDummySignIn={principalId => void signIn(principalId)}
+      />
+    )
   }
 
   if (authSession.state === 'expired') {
     return (
       <AuthSessionPrompt
-        buttonText="Sign in again"
+        capabilities={authCapabilities}
+        dummyAuthLoginShortcutEnabled={dummyAuthLoginShortcutEnabled}
         message="Session expired. Sign in again to manage todos."
         messageRole="alert"
-        onSignIn={() => void signIn()}
+        onDummySignIn={principalId => void signIn(principalId)}
       />
     )
   }

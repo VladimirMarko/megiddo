@@ -10,4 +10,8 @@ if (!root) {
 }
 
 const api = createFrontendApi()
-createRoot(root).render(createTodoApp({ api }))
+const env = import.meta.env as Record<string, string | undefined>
+const dummyAuthLoginShortcutEnabled =
+  env.UI_DUMMY_AUTH_LOGIN_SHORTCUT === 'enabled' || env.VITE_UI_DUMMY_AUTH_LOGIN_SHORTCUT === 'enabled'
+
+createRoot(root).render(createTodoApp({ api, dummyAuthLoginShortcutEnabled }))

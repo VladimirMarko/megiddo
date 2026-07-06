@@ -107,10 +107,13 @@ test('frontend todo flow renders and mutates todos through a fake Frontend API A
     async getGatewayStatus() {
       return { service: 'api-gateway', message: 'frontend is connected' }
     },
+    async getAuthCapabilities() {
+      return { signInMethods: [] }
+    },
     async getAuthSession() {
       return { state: 'logged-in', user: { id: 'dev:viewer' } }
     },
-    async signInDevelopment() {
+    async signIn() {
       return { state: 'logged-in', user: { id: 'dev:viewer' } }
     },
     async signOut() {
@@ -225,10 +228,13 @@ test('frontend todo flow surfaces mutation failures through a fake Frontend API 
     async getGatewayStatus() {
       return { service: 'api-gateway', message: 'frontend is connected' }
     },
+    async getAuthCapabilities() {
+      return { signInMethods: [] }
+    },
     async getAuthSession() {
       return { state: 'logged-in', user: { id: 'dev:viewer' } }
     },
-    async signInDevelopment() {
+    async signIn() {
       return { state: 'logged-in', user: { id: 'dev:viewer' } }
     },
     async signOut() {
@@ -354,10 +360,13 @@ test('frontend filters todos by completion status without reloading from the API
     async getGatewayStatus() {
       return { service: 'api-gateway', message: 'frontend is connected' }
     },
+    async getAuthCapabilities() {
+      return { signInMethods: [] }
+    },
     async getAuthSession() {
       return { state: 'logged-in', user: { id: 'dev:viewer' } }
     },
-    async signInDevelopment() {
+    async signIn() {
       return { state: 'logged-in', user: { id: 'dev:viewer' } }
     },
     async signOut() {
@@ -424,10 +433,13 @@ test('frontend renders auth session states through a fake Frontend API Adapter',
       async getGatewayStatus() {
         return { service: 'api-gateway', message: 'frontend is connected' }
       },
+      async getAuthCapabilities() {
+        return { signInMethods: [] }
+      },
       async getAuthSession() {
         return session
       },
-      async signInDevelopment() {
+      async signIn() {
         return { state: 'logged-in', user: { id: 'dev:viewer' } }
       },
       async signOut() {
@@ -474,6 +486,92 @@ test('frontend renders auth session states through a fake Frontend API Adapter',
   assert.match(await renderWithSession({ state: 'expired' }), /Session expired/)
 })
 
+test('frontend renders dummy sign-in shortcuts only when the UI shortcut setting is enabled', async () => {
+  const renderLoggedOut = async (dummyAuthLoginShortcutEnabled: boolean) => {
+    const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', {
+      url: 'http://localhost/',
+    })
+    const signIns: string[] = []
+    const api: FrontendApi = {
+      async getGatewayStatus() {
+        return { service: 'api-gateway', message: 'frontend is connected' }
+      },
+      async getAuthCapabilities() {
+        return {
+          dummy: {
+            accounts: [
+              { displayName: 'Alice', principalId: 'dummy:alice' },
+              { displayName: 'Bob', principalId: 'dummy:bob' },
+            ],
+            signIn: 'available',
+          },
+          signInMethods: ['dummy'],
+        }
+      },
+      async getAuthSession() {
+        return { state: 'logged-out' }
+      },
+      async signIn(input) {
+        signIns.push(input.principalId)
+        return { state: 'logged-in', user: { id: input.principalId } }
+      },
+      async signOut() {
+        return { state: 'logged-out' }
+      },
+      async listTodos() {
+        return []
+      },
+      async createTodo() {
+        throw new Error('createTodo should not be called')
+      },
+      async completeTodo() {
+        throw new Error('completeTodo should not be called')
+      },
+      async reopenTodo() {
+        throw new Error('reopenTodo should not be called')
+      },
+      async renameTodo() {
+        throw new Error('renameTodo should not be called')
+      },
+    }
+
+    let textContent = ''
+
+    await withBrowserGlobals(dom, async () => {
+      const rootElement = getElement<HTMLDivElement>('#root')
+      const root = createRoot(rootElement)
+
+      await act(async () => {
+        root.render(createFrontendTodoApp({ api, dummyAuthLoginShortcutEnabled }))
+        await settle()
+      })
+
+      await waitForText(rootElement, /Sign in to manage todos/)
+      textContent = rootElement.textContent ?? ''
+
+      if (dummyAuthLoginShortcutEnabled) {
+        await act(async () => {
+          getElement<HTMLButtonElement>('button').click()
+          await settle()
+        })
+      }
+
+      await act(async () => root.unmount())
+    })
+
+    return { signIns, textContent }
+  }
+
+  const disabled = await renderLoggedOut(false)
+  assert.doesNotMatch(disabled.textContent, /Continue as Alice/)
+  assert.deepEqual(disabled.signIns, [])
+
+  const enabled = await renderLoggedOut(true)
+  assert.match(enabled.textContent, /Continue as Alice/)
+  assert.match(enabled.textContent, /Continue as Bob/)
+  assert.deepEqual(enabled.signIns, ['dummy:alice'])
+})
+
 test('production Frontend API Adapter delegates todo calls to the API Gateway oRPC client', async () => {
   const codec = createDevelopmentIdentityTokenCodec()
   const identityApp = createIdentityApp({ tokenSigner: codec })
@@ -501,16 +599,26 @@ test('production Frontend API Adapter delegates todo calls to the API Gateway oR
     },
   })
 
-  await api.signInDevelopment()
+  await api.signIn({ method: 'dummy', principalId: 'dummy:alice' })
   const created = await api.createTodo({ title: 'Create through frontend adapter' })
   const completed = await api.completeTodo({ id: created.id })
   const reopened = await api.reopenTodo({ id: created.id })
   const renamed = await api.renameTodo({ id: created.id, title: 'Rename through frontend adapter' })
-  const todos = await api.listTodos()
+  const aliceTodos = await api.listTodos()
+
+  await api.signIn({ method: 'dummy', principalId: 'dummy:bob' })
+  const bobCreated = await api.createTodo({ title: 'Bob owns this todo' })
+  const bobTodos = await api.listTodos()
+
+  await api.signIn({ method: 'dummy', principalId: 'dummy:alice' })
+  const aliceTodosAfterBob = await api.listTodos()
 
   assert.deepEqual(created, { id: created.id, title: 'Create through frontend adapter', status: 'open' })
   assert.deepEqual(completed, { ...created, status: 'completed' })
   assert.deepEqual(reopened, created)
   assert.deepEqual(renamed, { ...created, title: 'Rename through frontend adapter' })
-  assert.deepEqual(todos, [renamed])
+  assert.deepEqual(aliceTodos, [renamed])
+  assert.deepEqual(bobCreated, { id: bobCreated.id, title: 'Bob owns this todo', status: 'open' })
+  assert.deepEqual(bobTodos, [bobCreated])
+  assert.deepEqual(aliceTodosAfterBob, [renamed])
 })

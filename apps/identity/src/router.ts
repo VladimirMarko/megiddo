@@ -1,6 +1,7 @@
 import { identityContractV1, identityOperationalHealthV1 } from '@megiddo/contracts'
-import { implement } from '@orpc/server'
+import { implement, ORPCError } from '@orpc/server'
 import type { IdentityUseCases } from './identity-use-cases'
+import { UnknownPrincipalError } from './identity-use-cases'
 
 const identityV1 = implement(identityContractV1)
 
@@ -13,6 +14,20 @@ export const createIdentityRouter = (identity: IdentityUseCases) =>
             identity.issueDevelopmentIdentityToken(input),
           ),
         },
+      },
+      auth: {
+        capabilities: identityV1.v1.auth.capabilities.handler(() => identity.getAuthCapabilities()),
+        signIn: identityV1.v1.auth.signIn.handler(async ({ input }) => {
+          try {
+            return await identity.signIn(input)
+          } catch (error) {
+            if (error instanceof UnknownPrincipalError) {
+              throw new ORPCError('BAD_REQUEST', { message: error.message })
+            }
+
+            throw error
+          }
+        }),
       },
       operational: {
         health: identityV1.v1.operational.health.handler(() => identityOperationalHealthV1),

@@ -1,5 +1,6 @@
 import type {
   ApiGatewayContractV1,
+  AuthCapabilitiesResourceV1,
   AuthSessionResourceV1,
   GatewayAuthSignInInputV1,
   GatewayStatus,
@@ -20,6 +21,7 @@ export type FrontendAuthSession =
       state: 'logged-in'
       user: FrontendLoggedInSession['user']
     }
+export type FrontendAuthCapabilities = AuthCapabilitiesResourceV1
 
 export type FrontendTodoStatus = 'open' | 'completed'
 
@@ -31,8 +33,9 @@ export interface FrontendTodo {
 
 export interface FrontendApi {
   getGatewayStatus(): Promise<GatewayStatus>
+  getAuthCapabilities(): Promise<FrontendAuthCapabilities>
   getAuthSession(): Promise<FrontendAuthSession>
-  signInDevelopment(input?: GatewayAuthSignInInputV1): Promise<FrontendAuthSession>
+  signIn(input: GatewayAuthSignInInputV1): Promise<FrontendAuthSession>
   signOut(): Promise<FrontendAuthSession>
   listTodos(): Promise<FrontendTodo[]>
   createTodo(input: GatewayTodoCreateInputV1): Promise<FrontendTodo>
@@ -85,11 +88,14 @@ export const createFrontendApi = ({
     getGatewayStatus() {
       return client.v1.gateway.status()
     },
+    getAuthCapabilities() {
+      return client.v1.viewer.session.capabilities()
+    },
     async getAuthSession() {
       return toFrontendSession(await client.v1.viewer.session.current())
     },
-    async signInDevelopment(input) {
-      return toFrontendSession(await client.v1.viewer.session.signInDevelopment(input))
+    async signIn(input) {
+      return toFrontendSession(await client.v1.viewer.session.signIn(input))
     },
     async signOut() {
       authIdentityToken = undefined
