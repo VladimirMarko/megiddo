@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createApiGatewayApp, createIdentityServiceClient, createTodoServiceClient } from '@megiddo/api'
-import { createIdentityApp, createIdentityEnv, createIdentityServiceConfig } from '@megiddo/identity'
+import { createIdentityApp } from '@megiddo/identity'
 import { createJwtJwsIdentityTokenCodec } from '@megiddo/platform'
 import { createTodoApp as createTodoServiceApp } from '@megiddo/todo'
 import { JSDOM } from 'jsdom'
@@ -10,10 +10,9 @@ import { createRoot } from 'react-dom/client'
 import { createFrontendApi, type FrontendTodo } from '../apps/frontend/src/api/frontend-api-adapter'
 import { createTodoApp as createFrontendTodoApp, type FrontendApi } from '../apps/frontend/src/todo-app'
 import { createCookieJarFetch } from './support/cookie-jar-fetch'
+import { identityServiceConfigFromEnv } from './support/identity-service-config'
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0))
-const identityServiceConfigFromEnv = (env: Parameters<typeof createIdentityEnv>[0]) =>
-  createIdentityServiceConfig(createIdentityEnv(env))
 const getWindow = (element: Element) => {
   const view = element.ownerDocument.defaultView
 

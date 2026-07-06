@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createIdentityApp, createIdentityEnv, createIdentityServiceConfig } from '@megiddo/identity'
+import { createIdentityApp } from '@megiddo/identity'
 import {
   createDummyIdentityTokenCodec,
   createJwtJwsIdentityTokenCodec,
@@ -9,6 +9,7 @@ import {
   internalServiceSecretHeader,
 } from '@megiddo/platform'
 import { createTodoApp, createTodoEnv, createTodoServiceConfig, createTodoServiceInfrastructure } from '@megiddo/todo'
+import { identityServiceConfigFromEnv } from './support/identity-service-config'
 
 const postRpc = (
   app: { request: (path: string, init: RequestInit) => Promise<Response> },
@@ -57,9 +58,6 @@ const postRpcWithHeaders = (
 const encodeDummyClaims = (claims: unknown) => `dummy.${Buffer.from(JSON.stringify(claims)).toString('base64url')}`
 
 const encodeJson = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url')
-
-const identityServiceConfigFromEnv = (env: Parameters<typeof createIdentityEnv>[0]) =>
-  createIdentityServiceConfig(createIdentityEnv(env))
 
 test('Identity issues JWT/JWS Identity Tokens that Todo verifies for owner-only access', async () => {
   const codec = createJwtJwsIdentityTokenCodec()

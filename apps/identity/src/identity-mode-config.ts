@@ -13,7 +13,7 @@ export interface IdentityModeConfig {
   tokenCodec: IdentityTokenCodecMode
 }
 
-export const resolveIdentityModeConfig = (runtimeEnv: IdentityRuntimeEnv): IdentityModeConfig => {
+export const resolveIdentityModeConfig = (runtimeEnv: IdentityRuntimeEnv = process.env): IdentityModeConfig => {
   const config = createIdentityServiceConfig(createIdentityEnv(runtimeEnv))
 
   return { authProvider: config.authProvider, tokenCodec: config.tokenCodec }

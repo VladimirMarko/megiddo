@@ -36,7 +36,7 @@ const createIdentityAuthProvider = (
   })
 }
 
-const createIdentityTokenSigner = (config: IdentityServiceConfig): IdentityTokenSigner => {
+export const createIdentityTokenSigner = (config: IdentityServiceConfig): IdentityTokenSigner => {
   if (config.tokenCodec === 'dummy') {
     return createDummyIdentityTokenCodec()
   }

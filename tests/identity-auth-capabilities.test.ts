@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createIdentityApp, createIdentityEnv, createIdentityServiceConfig } from '@megiddo/identity'
-
-const serviceConfigFromEnv = (env: Parameters<typeof createIdentityEnv>[0]) =>
-  createIdentityServiceConfig(createIdentityEnv(env))
+import { createIdentityApp } from '@megiddo/identity'
+import { identityServiceConfigFromEnv } from './support/identity-service-config'
 
 const postRpc = (app: ReturnType<typeof createIdentityApp>, path: string, json?: unknown) =>
   app.request(path, {
@@ -13,7 +11,9 @@ const postRpc = (app: ReturnType<typeof createIdentityApp>, path: string, json?:
   })
 
 test('Identity exposes seeded dummy auth capabilities and signs in only existing dummy principals', async () => {
-  const app = createIdentityApp({ serviceConfig: serviceConfigFromEnv({ MEGIDDO_AUTH_PROFILE: 'local-dummy' }) })
+  const app = createIdentityApp({
+    serviceConfig: identityServiceConfigFromEnv({ MEGIDDO_AUTH_PROFILE: 'local-dummy' }),
+  })
 
   const capabilitiesResponse = await postRpc(app, '/rpc/v1/auth/capabilities')
   assert.equal(capabilitiesResponse.status, 200)
@@ -65,7 +65,9 @@ test('Identity exposes seeded dummy auth capabilities and signs in only existing
 })
 
 test('Identity dummy sign-up persists a principal, signs in immediately, and rejects collisions', async () => {
-  const app = createIdentityApp({ serviceConfig: serviceConfigFromEnv({ MEGIDDO_AUTH_PROFILE: 'local-dummy' }) })
+  const app = createIdentityApp({
+    serviceConfig: identityServiceConfigFromEnv({ MEGIDDO_AUTH_PROFILE: 'local-dummy' }),
+  })
 
   const initialCapabilitiesResponse = await postRpc(app, '/rpc/v1/auth/capabilities')
   assert.equal(initialCapabilitiesResponse.status, 200)
@@ -125,7 +127,7 @@ test('Identity dummy sign-up persists a principal, signs in immediately, and rej
 
 test('Identity exposes Better Auth password capabilities and resolves password browser sessions', async () => {
   const app = createIdentityApp({
-    serviceConfig: serviceConfigFromEnv({
+    serviceConfig: identityServiceConfigFromEnv({
       IDENTITY_AUTH_PROVIDER: 'better-auth',
       IDENTITY_BETTER_AUTH_DATABASE_PATH: ':memory:',
       IDENTITY_TOKEN_CODEC: 'dummy',

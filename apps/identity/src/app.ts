@@ -1,6 +1,4 @@
 import {
-  createDummyIdentityTokenCodec,
-  createJwtJwsIdentityTokenCodec,
   handleInstrumentedOrpcServerRequest,
   type IdentityTokenSigner,
   identityRpcMountPath,
@@ -13,6 +11,7 @@ import { createEmbeddedBetterAuthProviderAdapter } from './embedded-better-auth-
 import { createIdentityEnv } from './env-contract'
 import type { AuthProviderAdapter } from './identity-use-cases'
 import { createDevelopmentAuthProviderAdapter, createIdentityUseCases } from './identity-use-cases'
+import { createIdentityTokenSigner } from './infrastructure'
 import { createIdentityRouter } from './router'
 
 const requestWithoutIdentityRpcMountPath = (request: Request) => {
@@ -43,19 +42,6 @@ const createAuthProviderForConfig = (config: IdentityServiceConfig) => {
   })
 }
 
-const createTokenSignerForConfig = (config: IdentityServiceConfig): IdentityTokenSigner => {
-  if (config.tokenCodec === 'dummy') {
-    return createDummyIdentityTokenCodec()
-  }
-
-  return createJwtJwsIdentityTokenCodec({
-    env: {
-      MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64: config.tokenPrivateKeyPemBase64,
-      MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64: config.tokenPublicKeyPemBase64,
-    },
-  })
-}
-
 export const createIdentityApp = ({
   authProvider,
   internalServiceAuthSecret,
@@ -65,7 +51,7 @@ export const createIdentityApp = ({
 }: IdentityAppOptions = {}) => {
   const resolvedAuthProvider = authProvider ?? createAuthProviderForConfig(serviceConfig)
   const resolvedInternalServiceAuthSecret = internalServiceAuthSecret ?? serviceConfig.internalServiceAuthSecret
-  const resolvedTokenSigner = tokenSigner ?? createTokenSignerForConfig(serviceConfig)
+  const resolvedTokenSigner = tokenSigner ?? createIdentityTokenSigner(serviceConfig)
   const app = new Hono()
   const identity = createIdentityUseCases({
     authProvider: resolvedAuthProvider,
