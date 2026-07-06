@@ -7,14 +7,28 @@ import {
   tcpPortEnvSchema,
 } from '@megiddo/platform/env-schema-fragments'
 
-test('shared env schema fragments cover repeated validation concerns without owning runtime env', () => {
-  assert.equal(tcpPortEnvSchema.parse('4321'), 4321)
-  assert.equal(identityTokenCodecEnvSchema.parse('jwt-jws'), 'jwt-jws')
-  assert.equal(localDummyAuthProfileEnvSchema.parse('local-dummy'), 'local-dummy')
-  assert.equal(enabledEnvFlagSchema.parse('enabled'), 'enabled')
+const acceptedEnvFragmentValues = [
+  [tcpPortEnvSchema, '4321', 4321],
+  [identityTokenCodecEnvSchema, 'jwt-jws', 'jwt-jws'],
+  [localDummyAuthProfileEnvSchema, 'local-dummy', 'local-dummy'],
+  [enabledEnvFlagSchema, 'enabled', 'enabled'],
+] as const
 
-  assert.equal(tcpPortEnvSchema.safeParse('0').success, false)
-  assert.equal(identityTokenCodecEnvSchema.safeParse('oauth').success, false)
-  assert.equal(localDummyAuthProfileEnvSchema.safeParse('production').success, false)
-  assert.equal(enabledEnvFlagSchema.safeParse('disabled').success, false)
+const rejectedEnvFragmentValues = [
+  [tcpPortEnvSchema, '0'],
+  [identityTokenCodecEnvSchema, 'oauth'],
+  [localDummyAuthProfileEnvSchema, 'production'],
+  [enabledEnvFlagSchema, 'disabled'],
+] as const
+
+test('shared env schema fragments parse accepted values', () => {
+  for (const [schema, input, expected] of acceptedEnvFragmentValues) {
+    assert.equal(schema.parse(input), expected)
+  }
+})
+
+test('shared env schema fragments reject invalid values', () => {
+  for (const [schema, input] of rejectedEnvFragmentValues) {
+    assert.equal(schema.safeParse(input).success, false)
+  }
 })
