@@ -3,6 +3,7 @@ import type {
   AuthSignInInputV1,
   AuthSignUpInputV1,
   DummyAuthAccountResourceV1,
+  IdentityTokenAudienceV1,
   IdentityTokenIssueInputV1,
   IdentityTokenIssueOutputV1,
   UserReferenceResourceV1,
@@ -101,8 +102,8 @@ const issueIdentityTokenForUser = async ({
   tokenSigner,
   user,
 }: {
-  audience: AuthSignInInputV1['audience']
-  contractVersion: AuthSignInInputV1['contractVersion']
+  audience: IdentityTokenAudienceV1
+  contractVersion?: string
   tokenSigner: IdentityTokenSigner
   user: UserReferenceResourceV1
 }) => {
@@ -126,7 +127,11 @@ export const createIdentityUseCases = ({
     const accounts = await authProvider.listDummyAccounts()
 
     return {
-      dummy: { accounts, signIn: accounts.length > 0 ? 'available' : undefined, signUp: 'available' },
+      dummy: {
+        accounts,
+        signIn: accounts.length > 0 ? 'available' : undefined,
+        signUp: 'available',
+      },
       signInMethods: accounts.length > 0 ? ['dummy'] : [],
       signUpMethods: ['dummy'],
     }
@@ -158,12 +163,12 @@ export const createIdentityUseCases = ({
   },
   async issueDevelopmentIdentityToken(input) {
     const user = await authProvider.resolveDevelopmentUser(input.subject)
-    const identityToken = await tokenSigner.issueIdentityToken({
+
+    return issueIdentityTokenForUser({
       audience: input.audience,
       contractVersion: input.contractVersion,
-      subject: user.id,
+      tokenSigner,
+      user,
     })
-
-    return { identityToken, user }
   },
 })

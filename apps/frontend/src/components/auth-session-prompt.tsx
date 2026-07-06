@@ -52,8 +52,7 @@ export function AuthSessionPrompt({
             className="auth-sign-up-form"
             onSubmit={event => {
               event.preventDefault()
-              const displayNameInput = event.currentTarget.elements.namedItem('displayName') as HTMLInputElement | null
-              onDummySignUp(displayNameInput?.value ?? '')
+              onDummySignUp(displayName)
             }}
           >
             <label>

@@ -134,23 +134,23 @@ function TodoScreen() {
     }
   }
 
-  const signIn = async (principalId: string) => {
-    const nextSession = await api.signIn({ method: 'dummy', principalId })
-    setAuthSession(nextSession)
-
+  const loadTodosForSignedInSession = async (nextSession: FrontendAuthSession) => {
     if (nextSession.state === 'logged-in') {
       await loadTodos()
     }
+  }
+
+  const signIn = async (principalId: string) => {
+    const nextSession = await api.signIn({ method: 'dummy', principalId })
+    setAuthSession(nextSession)
+    await loadTodosForSignedInSession(nextSession)
   }
 
   const signUp = async (displayName: string) => {
     const nextSession = await api.signUp({ displayName, method: 'dummy' })
     setAuthSession(nextSession)
     setAuthCapabilities(await api.getAuthCapabilities())
-
-    if (nextSession.state === 'logged-in') {
-      await loadTodos()
-    }
+    await loadTodosForSignedInSession(nextSession)
   }
 
   const signOut = async () => {

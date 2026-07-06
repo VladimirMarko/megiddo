@@ -96,15 +96,15 @@ export const createEmbeddedDevelopmentAuthProviderAdapter = ({
       return { displayName: account.displayName, id: account.principalId }
     },
     async listDummyAccounts() {
-      const rows = seedDemoAccounts
+      const demoRows = seedDemoAccounts
         ? (listDemoUsers.all(...demoAccountIds, ...demoAccountIds) as DevelopmentUserRow[])
         : []
-      const listedIds = new Set(rows.map(row => row.id))
+      const demoIds = new Set(demoRows.map(row => row.id))
       const createdRows = (listUsers.all() as DevelopmentUserRow[])
-        .filter(row => row.id.startsWith('dummy:') && !listedIds.has(row.id))
+        .filter(row => row.id.startsWith('dummy:') && !demoIds.has(row.id))
         .sort((left, right) => left.id.localeCompare(right.id))
 
-      return [...rows, ...createdRows].map(
+      return [...demoRows, ...createdRows].map(
         (row): DummyAuthAccountResourceV1 => ({ displayName: row.display_name ?? row.id, principalId: row.id }),
       )
     },
