@@ -81,12 +81,20 @@ A shared package for cross-cutting infrastructure seams such as configuration, l
 _Avoid_: Shared domain package, business logic package, service utility dump.
 
 **Service Env Contract**:
-The complete environment schema and accessor definition owned by one Service. It is composed from any needed Env Schema Fragments and validates only the variables that Service reads at runtime.
-_Avoid_: Global env object, repo-wide runtime configuration, validating unrelated service variables.
+The complete declarative environment schema owned by one Service. It is composed from any needed Env Schema Fragments and validates only the variables that Service reads at runtime.
+_Avoid_: Global env object, repo-wide runtime configuration, validating unrelated service variables, deciding application wiring, derived service configuration.
 
 **Script Env Contract**:
-The complete environment schema and accessor definition owned by one script. It is composed from any needed Env Schema Fragments and validates only the variables that script reads at runtime.
-_Avoid_: Global script env object, implicit process.env reads, validating service-only variables.
+The complete declarative environment schema owned by one script. It is composed from any needed Env Schema Fragments and validates only the variables that script reads at runtime.
+_Avoid_: Global script env object, implicit process.env reads, validating service-only variables, derived script configuration.
+
+**Service Config**:
+The service-owned configuration object computed from a Service Env Contract and supplied to the Service's application wiring.
+_Avoid_: Raw process.env reads in service wiring, schema definition, global configuration object.
+
+**Script Config**:
+The script-owned configuration object computed from a Script Env Contract and used by the script's execution logic.
+_Avoid_: Raw process.env reads in script logic, schema definition, global configuration object.
 
 **Runtime Env**:
 The concrete environment values supplied to a Service, frontend app, or script when it runs, such as `PORT=3001`.
