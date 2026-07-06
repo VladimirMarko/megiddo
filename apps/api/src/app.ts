@@ -1,9 +1,7 @@
 import { gatewayStatus } from '@megiddo/contracts'
 import {
   apiGatewayRpcMountPath,
-  createDevelopmentIdentityTokenCodec,
   handleInstrumentedOrpcServerRequest,
-  type IdentityTokenVerifier,
   orpcProcedureFromRequest,
 } from '@megiddo/platform'
 import { RPCHandler } from '@orpc/server/fetch'
@@ -27,30 +25,33 @@ const requestWithoutApiGatewayRpcMountPath = (request: Request) => {
 interface ApiGatewayAppOptions {
   identityClient?: IdentityServiceClient
   serviceName?: string
-  tokenVerifier?: IdentityTokenVerifier
   todoClient?: TodoServiceClient
 }
 
 export const createApiGatewayApp = ({
   identityClient = createIdentityServiceClient({ baseUrl: process.env.IDENTITY_SERVICE_URL }),
   serviceName = 'api-gateway',
-  tokenVerifier = createDevelopmentIdentityTokenCodec(),
   todoClient = createTodoServiceClient({ baseUrl: process.env.TODO_SERVICE_URL }),
 }: ApiGatewayAppOptions = {}) => {
   const app = new Hono()
-  const handler = new RPCHandler(createApiGatewayRouter({ identityClient, todoClient, tokenVerifier }))
+  const handler = new RPCHandler(createApiGatewayRouter({ identityClient, todoClient }))
 
   app.get('/health', context => context.json(gatewayStatus))
   app.use(`${apiGatewayRpcMountPath}/*`, async (context, next) => {
     const request = requestWithoutApiGatewayRpcMountPath(context.req.raw)
+    const responseHeaders = new Headers()
     const { matched, response } = await handleInstrumentedOrpcServerRequest({
-      handle: () => handler.handle(request, { context: { request } }),
+      handle: () => handler.handle(request, { context: { request, responseHeaders } }),
       procedure: orpcProcedureFromRequest(request),
       request,
       serviceName,
     })
 
     if (matched) {
+      responseHeaders.forEach((value, key) => {
+        response.headers.append(key, value)
+      })
+
       return response
     }
 

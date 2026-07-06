@@ -42,6 +42,24 @@ const waitForHealth = async (url: string, logs: () => string) => {
   throw new Error(`Timed out waiting for ${url}\n${logs()}`)
 }
 
+const createCookieJarFetch = () => {
+  let cookie: string | undefined
+
+  return async (request: Request) => {
+    const requestWithCookie = cookie
+      ? new Request(request, { headers: { ...Object.fromEntries(request.headers), cookie } })
+      : request
+    const response = await fetch(requestWithCookie)
+    const setCookie = response.headers.get('set-cookie')
+
+    if (setCookie) {
+      cookie = setCookie.split(';')[0]
+    }
+
+    return response
+  }
+}
+
 const startProcess = async ({
   args,
   env,
@@ -155,7 +173,7 @@ test('local development workflow runs real services over localhost for the authe
       }),
     )
 
-    const frontendApi = createFrontendApi({ baseUrl: apiUrl })
+    const frontendApi = createFrontendApi({ baseUrl: apiUrl, fetch: createCookieJarFetch() })
 
     assert.deepEqual(await frontendApi.getGatewayStatus(), {
       message: 'frontend is connected',
@@ -207,7 +225,7 @@ test('documented pnpm dev workflow supports authenticated todo creation across r
   })
 
   try {
-    const frontendApi = createFrontendApi({ baseUrl: apiUrl })
+    const frontendApi = createFrontendApi({ baseUrl: apiUrl, fetch: createCookieJarFetch() })
 
     assert.deepEqual(await frontendApi.getGatewayStatus(), {
       message: 'frontend is connected',

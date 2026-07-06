@@ -1,7 +1,10 @@
+import { randomUUID } from 'node:crypto'
 import type {
   AuthCapabilitiesResourceV1,
+  AuthSessionResourceV1,
   AuthSignInInputV1,
   AuthSignUpInputV1,
+  BrowserSessionIssueOutputV1,
   DummyAuthAccountResourceV1,
   IdentityTokenAudienceV1,
   IdentityTokenIssueInputV1,
@@ -29,16 +32,21 @@ export class InvalidDummyDisplayNameError extends Error {
 }
 
 export interface AuthProviderAdapter {
+  createBrowserSession(user: UserReferenceResourceV1): Promise<{ id: string }>
   createDummyPrincipal(input: DummyAuthAccountResourceV1): Promise<UserReferenceResourceV1>
+  deleteBrowserSession(sessionId: string): Promise<void>
   listDummyAccounts(): Promise<DummyAuthAccountResourceV1[]>
+  resolveBrowserSession(sessionId: string): Promise<UserReferenceResourceV1 | undefined>
   resolveDummyPrincipal(principalId: string): Promise<UserReferenceResourceV1 | undefined>
   resolveDevelopmentUser(subject?: string): Promise<UserReferenceResourceV1>
 }
 
 export interface IdentityUseCases {
   getAuthCapabilities(): Promise<AuthCapabilitiesResourceV1>
-  signIn(input: AuthSignInInputV1): Promise<IdentityTokenIssueOutputV1>
-  signUp(input: AuthSignUpInputV1): Promise<IdentityTokenIssueOutputV1>
+  getBrowserSession(sessionId: string): Promise<AuthSessionResourceV1>
+  signIn(input: AuthSignInInputV1): Promise<BrowserSessionIssueOutputV1>
+  signUp(input: AuthSignUpInputV1): Promise<BrowserSessionIssueOutputV1>
+  signOut(sessionId: string): Promise<AuthSessionResourceV1>
   issueDevelopmentIdentityToken(input: IdentityTokenIssueInputV1): Promise<IdentityTokenIssueOutputV1>
 }
 
@@ -53,8 +61,24 @@ export const createDevelopmentAuthProviderAdapter = ({
   demoAccounts?: DummyAuthAccountResourceV1[]
 } = {}): AuthProviderAdapter => {
   const principals = new Map(demoAccounts.map(account => [account.principalId, account]))
+  const browserSessions = new Map<string, string>()
+  const resolveDummyPrincipal = (principalId: string) => {
+    const account = principals.get(principalId)
+
+    if (!account) {
+      return undefined
+    }
+
+    return { displayName: account.displayName, id: account.principalId }
+  }
 
   return {
+    async createBrowserSession(user) {
+      const id = randomUUID()
+      browserSessions.set(id, user.id)
+
+      return { id }
+    },
     async createDummyPrincipal(account) {
       if (principals.has(account.principalId)) {
         throw new PrincipalCollisionError(account.principalId)
@@ -64,17 +88,19 @@ export const createDevelopmentAuthProviderAdapter = ({
 
       return { displayName: account.displayName, id: account.principalId }
     },
+    async deleteBrowserSession(sessionId) {
+      browserSessions.delete(sessionId)
+    },
     async listDummyAccounts() {
       return [...principals.values()]
     },
+    async resolveBrowserSession(sessionId) {
+      const principalId = browserSessions.get(sessionId)
+
+      return principalId ? resolveDummyPrincipal(principalId) : undefined
+    },
     async resolveDummyPrincipal(principalId) {
-      const account = principals.get(principalId)
-
-      if (!account) {
-        return undefined
-      }
-
-      return { displayName: account.displayName, id: account.principalId }
+      return resolveDummyPrincipal(principalId)
     },
     async resolveDevelopmentUser(subject = 'dev:viewer') {
       return { id: subject }
@@ -116,6 +142,17 @@ const issueIdentityTokenForUser = async ({
   return { identityToken, user }
 }
 
+const createBrowserSessionForUser = async ({
+  authProvider,
+  user,
+}: {
+  authProvider: AuthProviderAdapter
+  user: UserReferenceResourceV1
+}): Promise<BrowserSessionIssueOutputV1> => ({
+  browserSession: await authProvider.createBrowserSession(user),
+  user,
+})
+
 export const createIdentityUseCases = ({
   authProvider,
   tokenSigner,
@@ -136,6 +173,11 @@ export const createIdentityUseCases = ({
       signUpMethods: ['dummy'],
     }
   },
+  async getBrowserSession(sessionId) {
+    const user = await authProvider.resolveBrowserSession(sessionId)
+
+    return user ? { state: 'logged-in', user } : { state: 'expired' }
+  },
   async signIn(input) {
     const user = await authProvider.resolveDummyPrincipal(input.principalId)
 
@@ -143,23 +185,18 @@ export const createIdentityUseCases = ({
       throw new UnknownPrincipalError(input.principalId)
     }
 
-    return issueIdentityTokenForUser({
-      audience: input.audience,
-      contractVersion: input.contractVersion,
-      tokenSigner,
-      user,
-    })
+    return createBrowserSessionForUser({ authProvider, user })
   },
   async signUp(input) {
     const principalId = dummyPrincipalIdFromDisplayName(input.displayName)
     const user = await authProvider.createDummyPrincipal({ displayName: input.displayName.trim(), principalId })
 
-    return issueIdentityTokenForUser({
-      audience: input.audience,
-      contractVersion: input.contractVersion,
-      tokenSigner,
-      user,
-    })
+    return createBrowserSessionForUser({ authProvider, user })
+  },
+  async signOut(sessionId) {
+    await authProvider.deleteBrowserSession(sessionId)
+
+    return { state: 'logged-out' }
   },
   async issueDevelopmentIdentityToken(input) {
     const user = await authProvider.resolveDevelopmentUser(input.subject)

@@ -17,6 +17,7 @@ export const createIdentityRouter = (identity: IdentityUseCases) =>
       },
       auth: {
         capabilities: identityV1.v1.auth.capabilities.handler(() => identity.getAuthCapabilities()),
+        current: identityV1.v1.auth.current.handler(({ input }) => identity.getBrowserSession(input.sessionId)),
         signIn: identityV1.v1.auth.signIn.handler(async ({ input }) => {
           try {
             return await identity.signIn(input)
@@ -39,6 +40,7 @@ export const createIdentityRouter = (identity: IdentityUseCases) =>
             throw error
           }
         }),
+        signOut: identityV1.v1.auth.signOut.handler(({ input }) => identity.signOut(input.sessionId)),
       },
       operational: {
         health: identityV1.v1.operational.health.handler(() => identityOperationalHealthV1),

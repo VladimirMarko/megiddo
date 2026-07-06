@@ -77,6 +77,23 @@ const createTodoStore = (initialTodos: FrontendTodo[]) => {
     },
   }
 }
+const createCookieJarFetch = (fetch: (request: Request) => Promise<Response>) => {
+  let cookie: string | undefined
+
+  return async (request: Request) => {
+    const requestWithCookie = cookie
+      ? new Request(request, { headers: { ...Object.fromEntries(request.headers), cookie } })
+      : request
+    const response = await fetch(requestWithCookie)
+    const setCookie = response.headers.get('set-cookie')
+
+    if (setCookie) {
+      cookie = setCookie.split(';')[0]
+    }
+
+    return response
+  }
+}
 const withBrowserGlobals = async (dom: JSDOM, run: () => Promise<void>) => {
   const previousWindow = globalThis.window
   const previousDocument = globalThis.document
@@ -625,13 +642,13 @@ test('production Frontend API Adapter delegates todo calls to the API Gateway oR
       return todoApp.request(`${url.pathname}${url.search}`, request)
     },
   })
-  const app = createApiGatewayApp({ identityClient, todoClient, tokenVerifier: codec })
+  const app = createApiGatewayApp({ identityClient, todoClient })
   const api = createFrontendApi({
     baseUrl: 'http://api-gateway.test',
-    fetch(request) {
+    fetch: createCookieJarFetch(request => {
       const url = new URL(request.url)
       return app.request(`${url.pathname}${url.search}`, request)
-    },
+    }),
   })
 
   await api.signIn({ method: 'dummy', principalId: 'dummy:alice' })
@@ -658,6 +675,40 @@ test('production Frontend API Adapter delegates todo calls to the API Gateway oR
   assert.deepEqual(aliceTodosAfterBob, [renamed])
 })
 
+test('Frontend API Adapter relies on browser session cookies instead of storing service tokens', async () => {
+  const seenAuthorizationHeaders: Array<string | null> = []
+  const api = createFrontendApi({
+    baseUrl: 'http://api-gateway.test',
+    async fetch(request) {
+      const url = new URL(request.url)
+      seenAuthorizationHeaders.push(request.headers.get('authorization'))
+
+      if (url.pathname.endsWith('/v1/viewer/session/signIn')) {
+        return Response.json({ json: { state: 'logged-in', user: { id: 'dummy:alice' } } })
+      }
+
+      if (url.pathname.endsWith('/v1/viewer/session/current')) {
+        return Response.json({ json: { state: 'logged-in', user: { id: 'dummy:alice' } } })
+      }
+
+      if (url.pathname.endsWith('/v1/viewer/todos/list')) {
+        return Response.json({ json: [] })
+      }
+
+      throw new Error(`Unexpected request: ${url.pathname}`)
+    },
+  })
+
+  const signedIn = await api.signIn({ method: 'dummy', principalId: 'dummy:alice' })
+  const current = await api.getAuthSession()
+  const todos = await api.listTodos()
+
+  assert.deepEqual(signedIn, { state: 'logged-in', user: { id: 'dummy:alice' } })
+  assert.deepEqual(current, { state: 'logged-in', user: { id: 'dummy:alice' } })
+  assert.deepEqual(todos, [])
+  assert.deepEqual(seenAuthorizationHeaders, [null, null, null])
+})
+
 test('production Frontend API Adapter signs up a dummy principal and can select it later', async () => {
   const codec = createDevelopmentIdentityTokenCodec()
   const identityApp = createIdentityApp({ tokenSigner: codec })
@@ -676,13 +727,13 @@ test('production Frontend API Adapter signs up a dummy principal and can select 
       return todoApp.request(`${url.pathname}${url.search}`, request)
     },
   })
-  const app = createApiGatewayApp({ identityClient, todoClient, tokenVerifier: codec })
+  const app = createApiGatewayApp({ identityClient, todoClient })
   const api = createFrontendApi({
     baseUrl: 'http://api-gateway.test',
-    fetch(request) {
+    fetch: createCookieJarFetch(request => {
       const url = new URL(request.url)
       return app.request(`${url.pathname}${url.search}`, request)
-    },
+    }),
   })
 
   const signedUp = await api.signUp({ displayName: 'Charlie Example', method: 'dummy' })

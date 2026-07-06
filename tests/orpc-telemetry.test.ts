@@ -10,15 +10,17 @@ import { W3CTraceContextPropagator } from '@opentelemetry/core'
 import type { ReadableSpan } from '@opentelemetry/sdk-trace-base'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 
-const postAuthenticatedRpc = (
-  app: ReturnType<typeof createApiGatewayApp>,
-  path: string,
-  identityToken: string,
-  json?: unknown,
-) =>
+const postRpc = (app: ReturnType<typeof createApiGatewayApp>, path: string, json?: unknown) =>
   app.request(path, {
     body: json === undefined ? '{}' : JSON.stringify({ json }),
-    headers: { authorization: `Bearer ${identityToken}`, 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json' },
+    method: 'POST',
+  })
+
+const postRpcWithCookie = (app: ReturnType<typeof createApiGatewayApp>, path: string, cookie: string, json?: unknown) =>
+  app.request(path, {
+    body: json === undefined ? '{}' : JSON.stringify({ json }),
+    headers: { 'content-type': 'application/json', cookie },
     method: 'POST',
   })
 
@@ -60,15 +62,17 @@ test('backend oRPC calls export consistent spans and failed client metadata', as
   const apiApp = createApiGatewayApp({
     identityClient,
     todoClient,
-    tokenVerifier: codec,
   })
-  const identityToken = await codec.issueIdentityToken({
-    audience: { service: 'api-gateway' },
-    contractVersion: 'v1',
-    subject: 'dev:viewer',
+  const signInResponse = await postRpc(apiApp, '/rpc/v1/viewer/session/signIn', {
+    method: 'dummy',
+    principalId: 'dummy:alice',
   })
+  assert.equal(signInResponse.status, 200)
+  const setCookie = signInResponse.headers.get('set-cookie')
+  assert.ok(setCookie)
+  const cookie = setCookie.split(';')[0]
 
-  const response = await postAuthenticatedRpc(apiApp, '/rpc/v1/viewer/todos/create', identityToken, {
+  const response = await postRpcWithCookie(apiApp, '/rpc/v1/viewer/todos/create', cookie, {
     title: 'Trace me without payloads',
   })
 
@@ -76,7 +80,7 @@ test('backend oRPC calls export consistent spans and failed client metadata', as
   const created = (await response.json()) as { json: TodoResourceV1 }
   assert.equal(created.json.title, 'Trace me without payloads')
 
-  const failedResponse = await postAuthenticatedRpc(apiApp, '/rpc/v1/viewer/todos/complete', identityToken, {
+  const failedResponse = await postRpcWithCookie(apiApp, '/rpc/v1/viewer/todos/complete', cookie, {
     id: 'missing-todo',
   })
 

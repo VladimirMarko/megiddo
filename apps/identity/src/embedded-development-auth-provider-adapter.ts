@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { mkdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname } from 'node:path'
@@ -37,6 +38,11 @@ export const createEmbeddedDevelopmentAuthProviderAdapter = ({
       id TEXT PRIMARY KEY,
       display_name TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS browser_sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL
+    );
   `)
 
   const developmentUserColumns = database.prepare('PRAGMA table_info(development_users);').all() as TableColumnRow[]
@@ -73,6 +79,19 @@ export const createEmbeddedDevelopmentAuthProviderAdapter = ({
     SELECT id, display_name
     FROM development_users
   `)
+  const insertBrowserSession = database.prepare(`
+    INSERT INTO browser_sessions (id, user_id)
+    VALUES (?, ?)
+  `)
+  const findBrowserSession = database.prepare(`
+    SELECT user_id
+    FROM browser_sessions
+    WHERE id = ?
+  `)
+  const deleteBrowserSession = database.prepare(`
+    DELETE FROM browser_sessions
+    WHERE id = ?
+  `)
 
   if (seedDemoAccounts) {
     for (const account of dummyDemoAccounts) {
@@ -84,6 +103,12 @@ export const createEmbeddedDevelopmentAuthProviderAdapter = ({
     row.display_name ? { displayName: row.display_name, id: row.id } : { id: row.id }
 
   return {
+    async createBrowserSession(user) {
+      const id = randomUUID()
+      insertBrowserSession.run(id, user.id)
+
+      return { id }
+    },
     async createDummyPrincipal(account) {
       const existing = findUser.get(account.principalId) as DevelopmentUserRow | undefined
 
@@ -94,6 +119,9 @@ export const createEmbeddedDevelopmentAuthProviderAdapter = ({
       insertUser.run(account.principalId, account.displayName)
 
       return { displayName: account.displayName, id: account.principalId }
+    },
+    async deleteBrowserSession(sessionId) {
+      deleteBrowserSession.run(sessionId)
     },
     async listDummyAccounts() {
       const demoRows = seedDemoAccounts
@@ -107,6 +135,17 @@ export const createEmbeddedDevelopmentAuthProviderAdapter = ({
       return [...demoRows, ...createdRows].map(
         (row): DummyAuthAccountResourceV1 => ({ displayName: row.display_name ?? row.id, principalId: row.id }),
       )
+    },
+    async resolveBrowserSession(sessionId) {
+      const session = findBrowserSession.get(sessionId) as { user_id: string } | undefined
+
+      if (!session) {
+        return undefined
+      }
+
+      const existing = findUser.get(session.user_id) as DevelopmentUserRow | undefined
+
+      return existing ? toUserReference(existing) : undefined
     },
     async resolveDummyPrincipal(principalId) {
       const existing = findUser.get(principalId) as DevelopmentUserRow | undefined

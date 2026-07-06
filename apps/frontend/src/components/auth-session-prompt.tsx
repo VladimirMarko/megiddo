@@ -52,7 +52,10 @@ export function AuthSessionPrompt({
             className="auth-sign-up-form"
             onSubmit={event => {
               event.preventDefault()
-              onDummySignUp(displayName)
+              const FormDataConstructor = event.currentTarget.ownerDocument.defaultView?.FormData ?? FormData
+              const formData = new FormDataConstructor(event.currentTarget)
+              const submittedDisplayName = String(formData.get('displayName') ?? '')
+              onDummySignUp(submittedDisplayName)
             }}
           >
             <label>

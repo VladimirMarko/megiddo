@@ -19,6 +19,7 @@ export const UserReferenceResourceSchemaV1 = z.object({
 })
 
 export const IdentityTokenSchemaV1 = z.string().min(1)
+export const BrowserSessionIdSchemaV1 = z.string().min(1)
 
 export const OperationalHealthResourceSchemaV1 = z.discriminatedUnion('status', [
   z.object({ service: z.string().min(1), status: z.literal('ready') }).strict(),
@@ -35,11 +36,14 @@ export const AuthSessionResourceSchemaV1 = z.discriminatedUnion('state', [
   z.object({ state: z.literal('logged-out') }),
   z.object({ state: z.literal('expired') }),
   z.object({
-    identityToken: IdentityTokenSchemaV1.optional(),
     state: z.literal('logged-in'),
     user: UserReferenceResourceSchemaV1,
   }),
 ])
+
+export const BrowserSessionResourceSchemaV1 = z.object({
+  id: BrowserSessionIdSchemaV1,
+})
 
 export const IdentityTokenAudienceSchemaV1 = z.object({
   service: z.string().min(1),
@@ -63,6 +67,11 @@ export const IdentityTokenIssueOutputSchemaV1 = z.object({
   user: UserReferenceResourceSchemaV1,
 })
 
+export const BrowserSessionIssueOutputSchemaV1 = z.object({
+  browserSession: BrowserSessionResourceSchemaV1,
+  user: UserReferenceResourceSchemaV1,
+})
+
 export const DummyAuthAccountResourceSchemaV1 = z.object({
   displayName: z.string().min(1),
   principalId: z.string().min(1),
@@ -81,18 +90,16 @@ export const AuthCapabilitiesResourceSchemaV1 = z.object({
 })
 
 export const AuthSignInInputSchemaV1 = z.object({
-  audience: IdentityTokenAudienceSchemaV1,
-  contractVersion: z.string().min(1).optional(),
   method: z.literal('dummy'),
   principalId: z.string().min(1),
 })
 
 export const AuthSignUpInputSchemaV1 = z.object({
-  audience: IdentityTokenAudienceSchemaV1,
-  contractVersion: z.string().min(1).optional(),
   displayName: z.string().trim().min(1),
   method: z.literal('dummy'),
 })
+
+export const BrowserSessionInputSchemaV1 = z.object({ sessionId: BrowserSessionIdSchemaV1 })
 
 export const GatewayAuthSessionInputSchemaV1 = z.undefined()
 export const GatewayAuthCapabilitiesInputSchemaV1 = z.undefined()
@@ -125,6 +132,8 @@ export type AuthSessionResourceV1 = z.infer<typeof AuthSessionResourceSchemaV1>
 export type AuthCapabilitiesResourceV1 = z.infer<typeof AuthCapabilitiesResourceSchemaV1>
 export type AuthSignInInputV1 = z.infer<typeof AuthSignInInputSchemaV1>
 export type AuthSignUpInputV1 = z.infer<typeof AuthSignUpInputSchemaV1>
+export type BrowserSessionIssueOutputV1 = z.infer<typeof BrowserSessionIssueOutputSchemaV1>
+export type BrowserSessionInputV1 = z.infer<typeof BrowserSessionInputSchemaV1>
 export type DummyAuthAccountResourceV1 = z.infer<typeof DummyAuthAccountResourceSchemaV1>
 export type IdentityTokenAudienceV1 = z.infer<typeof IdentityTokenAudienceSchemaV1>
 export type IdentityTokenClaimsV1 = z.infer<typeof IdentityTokenClaimsSchemaV1>
@@ -201,8 +210,10 @@ export const identityContractV1 = {
     },
     auth: {
       capabilities: oc.input(GatewayAuthCapabilitiesInputSchemaV1).output(AuthCapabilitiesResourceSchemaV1),
-      signIn: oc.input(AuthSignInInputSchemaV1).output(IdentityTokenIssueOutputSchemaV1),
-      signUp: oc.input(AuthSignUpInputSchemaV1).output(IdentityTokenIssueOutputSchemaV1),
+      current: oc.input(BrowserSessionInputSchemaV1).output(AuthSessionResourceSchemaV1),
+      signIn: oc.input(AuthSignInInputSchemaV1).output(BrowserSessionIssueOutputSchemaV1),
+      signUp: oc.input(AuthSignUpInputSchemaV1).output(BrowserSessionIssueOutputSchemaV1),
+      signOut: oc.input(BrowserSessionInputSchemaV1).output(AuthSessionResourceSchemaV1),
     },
     operational: operationalHealthContractFragmentV1,
   },

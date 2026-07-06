@@ -18,18 +18,6 @@ const postRpc = (app: ReturnType<typeof createApiGatewayApp>, path: string, json
     method: 'POST',
   })
 
-const postAuthenticatedRpc = (
-  app: ReturnType<typeof createApiGatewayApp>,
-  path: string,
-  identityToken: string,
-  json?: unknown,
-) =>
-  app.request(path, {
-    body: json === undefined ? '{}' : JSON.stringify({ json }),
-    headers: { authorization: `Bearer ${identityToken}`, 'content-type': 'application/json' },
-    method: 'POST',
-  })
-
 test('contracts package exports the explicit API Gateway v1 contract surface', () => {
   assert.equal(typeof apiGatewayContractV1.v1.gateway.status, 'object')
   assert.equal(typeof apiGatewayContractV1.v1.viewer.session.capabilities, 'object')
@@ -67,25 +55,22 @@ test('API Gateway composes frontend-shaped todo procedures through a Todo client
     async getAuthCapabilities() {
       return { signInMethods: [], signUpMethods: [] }
     },
-    async signIn() {
+    async createBrowserSession() {
       throw new Error('signIn should not be called')
     },
-    async signUp() {
+    async createBrowserSessionForSignUp() {
       throw new Error('signUp should not be called')
+    },
+    async resolveBrowserSession(input) {
+      assert.equal(input.sessionId, 'browser-session')
+      return { state: 'logged-in' as const, user: { id: 'dev:viewer' } }
+    },
+    async deleteBrowserSession() {
+      throw new Error('deleteBrowserSession should not be called')
     },
     async issueDevelopmentIdentityToken(input) {
       assert.equal(input.subject, 'dev:viewer')
       return { identityToken: 'fake-token', user: { id: 'dev:viewer' } }
-    },
-  }
-  const tokenVerifier = {
-    async verifyIdentityToken({ identityToken }) {
-      assert.equal(identityToken, 'browser-token')
-      return {
-        audience: { service: 'api-gateway' },
-        issuedAt: 1,
-        subject: 'dev:viewer',
-      }
     },
   }
   const todoClient: TodoServiceClient = {
@@ -111,22 +96,42 @@ test('API Gateway composes frontend-shaped todo procedures through a Todo client
       return { ...createdTodo, title: input.title }
     },
   }
-  const app = createApiGatewayApp({ identityClient, todoClient, tokenVerifier })
+  const app = createApiGatewayApp({ identityClient, todoClient })
 
-  const createResponse = await postAuthenticatedRpc(app, '/rpc/v1/viewer/todos/create', 'browser-token', {
-    title: 'Compose through Gateway',
-  })
-  const completeResponse = await postAuthenticatedRpc(app, '/rpc/v1/viewer/todos/complete', 'browser-token', {
-    id: createdTodo.id,
-  })
-  const reopenResponse = await postAuthenticatedRpc(app, '/rpc/v1/viewer/todos/reopen', 'browser-token', {
-    id: createdTodo.id,
-  })
-  const renameResponse = await postAuthenticatedRpc(app, '/rpc/v1/viewer/todos/rename', 'browser-token', {
-    id: createdTodo.id,
-    title: 'Renamed through Gateway',
-  })
-  const listResponse = await postAuthenticatedRpc(app, '/rpc/v1/viewer/todos/list', 'browser-token')
+  const createResponse = await postRpcWithCookie(
+    app,
+    '/rpc/v1/viewer/todos/create',
+    'megiddo_session=browser-session',
+    {
+      title: 'Compose through Gateway',
+    },
+  )
+  const completeResponse = await postRpcWithCookie(
+    app,
+    '/rpc/v1/viewer/todos/complete',
+    'megiddo_session=browser-session',
+    {
+      id: createdTodo.id,
+    },
+  )
+  const reopenResponse = await postRpcWithCookie(
+    app,
+    '/rpc/v1/viewer/todos/reopen',
+    'megiddo_session=browser-session',
+    {
+      id: createdTodo.id,
+    },
+  )
+  const renameResponse = await postRpcWithCookie(
+    app,
+    '/rpc/v1/viewer/todos/rename',
+    'megiddo_session=browser-session',
+    {
+      id: createdTodo.id,
+      title: 'Renamed through Gateway',
+    },
+  )
+  const listResponse = await postRpcWithCookie(app, '/rpc/v1/viewer/todos/list', 'megiddo_session=browser-session')
 
   assert.equal(createResponse.status, 200)
   assert.equal(completeResponse.status, 200)
@@ -144,6 +149,101 @@ test('API Gateway composes frontend-shaped todo procedures through a Todo client
     'reopenTodo:todo-from-fake',
     'renameTodo:todo-from-fake:Renamed through Gateway',
     'listTodos',
+  ])
+})
+
+const postRpcWithCookie = (app: ReturnType<typeof createApiGatewayApp>, path: string, cookie: string, json?: unknown) =>
+  app.request(path, {
+    body: json === undefined ? '{}' : JSON.stringify({ json }),
+    headers: { 'content-type': 'application/json', cookie },
+    method: 'POST',
+  })
+
+test('API Gateway browser auth uses Identity-owned sessions without returning service tokens', async () => {
+  const calls: string[] = []
+  const identityClient = {
+    async getAuthCapabilities() {
+      return { signInMethods: ['dummy' as const], signUpMethods: ['dummy' as const] }
+    },
+    async createBrowserSession(input) {
+      calls.push(`signIn:${input.principalId}`)
+      return { browserSession: { id: 'session-alice' }, user: { id: 'dummy:alice' } }
+    },
+    async createBrowserSessionForSignUp(input) {
+      calls.push(`signUp:${input.displayName}`)
+      return {
+        browserSession: { id: 'session-charlie' },
+        user: { displayName: input.displayName, id: 'dummy:charlie' },
+      }
+    },
+    async resolveBrowserSession(input) {
+      calls.push(`current:${input.sessionId}`)
+      return input.sessionId === 'session-alice'
+        ? { state: 'logged-in' as const, user: { id: 'dummy:alice' } }
+        : { state: 'expired' as const }
+    },
+    async deleteBrowserSession(input) {
+      calls.push(`signOut:${input.sessionId}`)
+    },
+    async issueDevelopmentIdentityToken(input) {
+      calls.push(`issueTodo:${input.subject}:${input.audience.service}`)
+      return { identityToken: 'todo-token-for-alice', user: { id: input.subject ?? 'missing' } }
+    },
+  }
+  const todoClient: TodoServiceClient = {
+    async listTodos(input) {
+      assert.equal(input.identityToken, 'todo-token-for-alice')
+      return []
+    },
+    async createTodo() {
+      throw new Error('createTodo should not be called')
+    },
+    async completeTodo() {
+      throw new Error('completeTodo should not be called')
+    },
+    async reopenTodo() {
+      throw new Error('reopenTodo should not be called')
+    },
+    async renameTodo() {
+      throw new Error('renameTodo should not be called')
+    },
+  }
+  const app = createApiGatewayApp({ identityClient, todoClient })
+
+  const signInResponse = await postRpc(app, '/rpc/v1/viewer/session/signIn', {
+    method: 'dummy',
+    principalId: 'dummy:alice',
+  })
+  assert.equal(signInResponse.status, 200)
+  assert.deepEqual(await signInResponse.json(), { json: { state: 'logged-in', user: { id: 'dummy:alice' } } })
+  assert.match(signInResponse.headers.get('set-cookie') ?? '', /^megiddo_session=session-alice;/)
+
+  const currentResponse = await postRpcWithCookie(
+    app,
+    '/rpc/v1/viewer/session/current',
+    'megiddo_session=session-alice',
+  )
+  assert.equal(currentResponse.status, 200)
+  assert.deepEqual(await currentResponse.json(), { json: { state: 'logged-in', user: { id: 'dummy:alice' } } })
+
+  const listResponse = await postRpcWithCookie(app, '/rpc/v1/viewer/todos/list', 'megiddo_session=session-alice')
+  assert.equal(listResponse.status, 200)
+  assert.deepEqual(await listResponse.json(), { json: [] })
+
+  const signOutResponse = await postRpcWithCookie(
+    app,
+    '/rpc/v1/viewer/session/signOut',
+    'megiddo_session=session-alice',
+  )
+  assert.equal(signOutResponse.status, 200)
+  assert.deepEqual(await signOutResponse.json(), { json: { state: 'logged-out' } })
+  assert.match(signOutResponse.headers.get('set-cookie') ?? '', /^megiddo_session=;/)
+  assert.deepEqual(calls, [
+    'signIn:dummy:alice',
+    'current:session-alice',
+    'current:session-alice',
+    'issueTodo:dummy:alice:todo',
+    'signOut:session-alice',
   ])
 })
 
@@ -165,7 +265,7 @@ test('API Gateway production Todo client reaches Todo over the Todo oRPC contrac
       return todoApp.request(`${url.pathname}${url.search}`, request)
     },
   })
-  const apiApp = createApiGatewayApp({ identityClient, todoClient, tokenVerifier: codec })
+  const apiApp = createApiGatewayApp({ identityClient, todoClient })
   const capabilitiesResponse = await postRpc(apiApp, '/rpc/v1/viewer/session/capabilities')
   assert.equal(capabilitiesResponse.status, 200)
   assert.deepEqual(await capabilitiesResponse.json(), {
@@ -188,9 +288,20 @@ test('API Gateway production Todo client reaches Todo over the Todo oRPC contrac
     principalId: 'dummy:alice',
   })
   assert.equal(signInResponse.status, 200)
-  const signIn = (await signInResponse.json()) as { json: { identityToken: string } }
+  assert.deepEqual(await signInResponse.json(), {
+    json: { state: 'logged-in', user: { displayName: 'Alice', id: 'dummy:alice' } },
+  })
+  const signInCookie = signInResponse.headers.get('set-cookie')
+  assert.ok(signInCookie)
+  const sessionCookie = signInCookie.split(';')[0]
 
-  const createResponse = await postAuthenticatedRpc(apiApp, '/rpc/v1/viewer/todos/create', signIn.json.identityToken, {
+  const currentResponse = await postRpcWithCookie(apiApp, '/rpc/v1/viewer/session/current', sessionCookie)
+  assert.equal(currentResponse.status, 200)
+  assert.deepEqual(await currentResponse.json(), {
+    json: { state: 'logged-in', user: { displayName: 'Alice', id: 'dummy:alice' } },
+  })
+
+  const createResponse = await postRpcWithCookie(apiApp, '/rpc/v1/viewer/todos/create', sessionCookie, {
     title: 'Cross service Todo',
   })
   assert.equal(createResponse.status, 200)
@@ -199,7 +310,7 @@ test('API Gateway production Todo client reaches Todo over the Todo oRPC contrac
   assert.match(created.json.id, /^todo-/)
   assert.deepEqual(created.json, { id: created.json.id, title: 'Cross service Todo', completed: false })
 
-  const listResponse = await postAuthenticatedRpc(apiApp, '/rpc/v1/viewer/todos/list', signIn.json.identityToken)
+  const listResponse = await postRpcWithCookie(apiApp, '/rpc/v1/viewer/todos/list', sessionCookie)
 
   assert.equal(listResponse.status, 200)
   assert.deepEqual(await listResponse.json(), { json: [created.json] })

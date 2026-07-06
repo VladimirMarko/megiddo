@@ -30,21 +30,31 @@ test('Identity exposes seeded dummy auth capabilities and signs in only existing
   })
 
   const signInResponse = await postRpc(app, '/rpc/v1/auth/signIn', {
-    audience: { service: 'api-gateway' },
-    contractVersion: 'v1',
     method: 'dummy',
     principalId: 'dummy:alice',
   })
   assert.equal(signInResponse.status, 200)
 
-  const signIn = (await signInResponse.json()) as { json: { identityToken: string; user: { id: string } } }
+  const signIn = (await signInResponse.json()) as { json: { browserSession: { id: string }; user: { id: string } } }
   assert.equal(signIn.json.user.id, 'dummy:alice')
-  assert.equal(typeof signIn.json.identityToken, 'string')
-  assert.notEqual(signIn.json.identityToken, '')
+  assert.equal(typeof signIn.json.browserSession.id, 'string')
+  assert.notEqual(signIn.json.browserSession.id, '')
+
+  const currentResponse = await postRpc(app, '/rpc/v1/auth/current', { sessionId: signIn.json.browserSession.id })
+  assert.equal(currentResponse.status, 200)
+  assert.deepEqual(await currentResponse.json(), {
+    json: { state: 'logged-in', user: { displayName: 'Alice', id: 'dummy:alice' } },
+  })
+
+  const signOutResponse = await postRpc(app, '/rpc/v1/auth/signOut', { sessionId: signIn.json.browserSession.id })
+  assert.equal(signOutResponse.status, 200)
+  assert.deepEqual(await signOutResponse.json(), { json: { state: 'logged-out' } })
+
+  const expiredResponse = await postRpc(app, '/rpc/v1/auth/current', { sessionId: signIn.json.browserSession.id })
+  assert.equal(expiredResponse.status, 200)
+  assert.deepEqual(await expiredResponse.json(), { json: { state: 'expired' } })
 
   const unknownResponse = await postRpc(app, '/rpc/v1/auth/signIn', {
-    audience: { service: 'api-gateway' },
-    contractVersion: 'v1',
     method: 'dummy',
     principalId: 'dummy:charlie',
   })
@@ -72,20 +82,18 @@ test('Identity dummy sign-up persists a principal, signs in immediately, and rej
   })
 
   const signUpResponse = await postRpc(app, '/rpc/v1/auth/signUp', {
-    audience: { service: 'api-gateway' },
-    contractVersion: 'v1',
     displayName: 'Charlie Example',
     method: 'dummy',
   })
   assert.equal(signUpResponse.status, 200)
 
   const signUp = (await signUpResponse.json()) as {
-    json: { identityToken: string; user: { displayName: string; id: string } }
+    json: { browserSession: { id: string }; user: { displayName: string; id: string } }
   }
   assert.equal(signUp.json.user.id, 'dummy:charlie-example')
   assert.equal(signUp.json.user.displayName, 'Charlie Example')
-  assert.equal(typeof signUp.json.identityToken, 'string')
-  assert.notEqual(signUp.json.identityToken, '')
+  assert.equal(typeof signUp.json.browserSession.id, 'string')
+  assert.notEqual(signUp.json.browserSession.id, '')
 
   const updatedCapabilitiesResponse = await postRpc(app, '/rpc/v1/auth/capabilities')
   assert.equal(updatedCapabilitiesResponse.status, 200)
@@ -106,8 +114,6 @@ test('Identity dummy sign-up persists a principal, signs in immediately, and rej
   })
 
   const duplicateResponse = await postRpc(app, '/rpc/v1/auth/signUp', {
-    audience: { service: 'api-gateway' },
-    contractVersion: 'v1',
     displayName: 'Charlie Example',
     method: 'dummy',
   })

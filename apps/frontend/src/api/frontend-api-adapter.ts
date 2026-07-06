@@ -55,28 +55,14 @@ export const createFrontendApi = ({
   baseUrl = 'http://localhost:3000',
   fetch,
 }: FrontendApiOptions = {}): FrontendApi => {
-  const fetchWithAuth = async (request: Request) => {
-    const nextRequest = authIdentityToken
-      ? new Request(request, {
-          headers: { ...Object.fromEntries(request.headers), authorization: `Bearer ${authIdentityToken}` },
-        })
-      : request
-
-    return (fetch ?? globalThis.fetch)(nextRequest)
-  }
-  let authIdentityToken: string | undefined
-  const link = new RPCLink({ fetch: fetchWithAuth, url: apiGatewayRpcUrl(baseUrl) })
+  const fetchWithSession = async (request: Request) =>
+    (fetch ?? globalThis.fetch)(new Request(request, { credentials: 'include' }))
+  const link = new RPCLink({ fetch: fetchWithSession, url: apiGatewayRpcUrl(baseUrl) })
   const client = createORPCClient<ApiGatewayContractV1>(link)
   const toFrontendSession = (session: AuthSessionResourceV1): FrontendAuthSession => {
     if (session.state !== 'logged-in') {
-      if (session.state === 'expired') {
-        authIdentityToken = undefined
-      }
-
       return session
     }
-
-    authIdentityToken = session.identityToken ?? authIdentityToken
 
     return { state: 'logged-in', user: session.user }
   }
@@ -103,7 +89,6 @@ export const createFrontendApi = ({
       return toFrontendSession(await client.v1.viewer.session.signUp(input))
     },
     async signOut() {
-      authIdentityToken = undefined
       return toFrontendSession(await client.v1.viewer.session.signOut())
     },
     async listTodos() {
