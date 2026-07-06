@@ -8,7 +8,7 @@ import {
   internalServiceHeader,
   internalServiceSecretHeader,
 } from '@megiddo/platform'
-import { createTodoApp } from '@megiddo/todo'
+import { createTodoApp, createTodoEnv, createTodoServiceConfig, createTodoServiceInfrastructure } from '@megiddo/todo'
 
 const postRpc = (
   app: { request: (path: string, init: RequestInit) => Promise<Response> },
@@ -204,17 +204,26 @@ test('IDENTITY_TOKEN_CODEC=dummy selects dummy tokens through Identity token iss
 test('IDENTITY_TOKEN_CODEC=jwt-jws selects JWT/JWS tokens through the Identity to Todo seam', async () => {
   const env = { ...(await createJwtJwsIdentityTokenKeyPairEnv()), IDENTITY_TOKEN_CODEC: 'jwt-jws' }
   const identityApp = createIdentityApp({ env })
-  const todoApp = createTodoApp({ env })
-  const identityToken = await issueToken(identityApp, 'user:ada', 'todo')
+  const todoInfrastructure = createTodoServiceInfrastructure(createTodoServiceConfig(createTodoEnv(env)))
 
-  assert.doesNotMatch(identityToken, /^dummy\./)
-  assert.equal(identityToken.split('.').length, 3)
+  try {
+    const todoApp = createTodoApp({
+      repository: todoInfrastructure.repository,
+      tokenVerifier: todoInfrastructure.tokenVerifier,
+    })
+    const identityToken = await issueToken(identityApp, 'user:ada', 'todo')
 
-  const createdResponse = await postRpc(todoApp, '/rpc/v1/todos/create', {
-    identityToken,
-    title: 'JWT/JWS todo',
-  })
-  assert.equal(createdResponse.status, 200)
+    assert.doesNotMatch(identityToken, /^dummy\./)
+    assert.equal(identityToken.split('.').length, 3)
+
+    const createdResponse = await postRpc(todoApp, '/rpc/v1/todos/create', {
+      identityToken,
+      title: 'JWT/JWS todo',
+    })
+    assert.equal(createdResponse.status, 200)
+  } finally {
+    todoInfrastructure.close()
+  }
 })
 
 test('Identity protects browser-session service-token issuance for Gateway Todo calls', async () => {

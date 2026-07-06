@@ -1,21 +1,21 @@
 import { serve } from '@hono/node-server'
 import { configureLocalTelemetry } from '@megiddo/platform/local-telemetry'
 import { createTodoApp } from './app'
-import { createEmbeddedTodoRepository } from './embedded-todo-repository'
+import { createTodoEnv, createTodoServiceConfig } from './env'
+import { createTodoServiceInfrastructure } from './infrastructure'
 
-const port = Number.parseInt(process.env.PORT ?? '3001', 10)
-const repository = createEmbeddedTodoRepository({
-  databasePath: process.env.TODO_DATABASE_PATH ?? '.data/todo/todo.sqlite',
-})
-const closeRepository = () => repository.close()
+const env = createTodoEnv(process.env)
+const config = createTodoServiceConfig(env)
+const infrastructure = createTodoServiceInfrastructure(config)
+const closeInfrastructure = () => infrastructure.close()
 
 await configureLocalTelemetry()
 
 serve({
-  port,
-  fetch: createTodoApp({ repository }).fetch,
+  port: config.port,
+  fetch: createTodoApp({ repository: infrastructure.repository, tokenVerifier: infrastructure.tokenVerifier }).fetch,
 })
 
-process.on('exit', closeRepository)
+process.on('exit', closeInfrastructure)
 
-console.log(`Todo Service listening on http://localhost:${port}`)
+console.log(`Todo Service listening on http://localhost:${config.port}`)

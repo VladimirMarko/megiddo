@@ -1,6 +1,20 @@
 import assert from 'node:assert/strict'
+import { existsSync } from 'node:fs'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { test } from 'node:test'
-import { createTodoEnv, createTodoServiceConfig } from '@megiddo/todo'
+import { createDummyIdentityTokenCodec } from '@megiddo/platform'
+import { createTodoApp, createTodoEnv, createTodoServiceConfig, createTodoServiceInfrastructure } from '@megiddo/todo'
+
+type TestApp = { request: (path: string, init?: RequestInit) => Promise<Response> }
+
+const postRpc = (app: TestApp, path: string, json?: unknown) =>
+  app.request(path, {
+    body: json === undefined ? '{}' : JSON.stringify({ json }),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST',
+  })
 
 test('Todo env validates defaults from an explicit empty runtime env', () => {
   const env = createTodoEnv({})
@@ -39,4 +53,30 @@ test('Todo service config derives effective identity token codec', () => {
     'jwt-jws',
   )
   assert.equal(createTodoServiceConfig(createTodoEnv({ IDENTITY_TOKEN_CODEC: 'dummy' })).identityTokenCodec, 'dummy')
+})
+
+test('Todo service infrastructure is wired from derived service config', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'megiddo-todo-config-'))
+  const databasePath = join(directory, 'todo.sqlite')
+
+  try {
+    const config = createTodoServiceConfig(
+      createTodoEnv({ IDENTITY_TOKEN_CODEC: 'dummy', TODO_DATABASE_PATH: databasePath }),
+    )
+    const infrastructure = createTodoServiceInfrastructure(config)
+    const app = createTodoApp({ repository: infrastructure.repository, tokenVerifier: infrastructure.tokenVerifier })
+    const identityToken = await createDummyIdentityTokenCodec().issueIdentityToken({
+      audience: { service: 'todo' },
+      contractVersion: 'v1',
+      subject: 'dummy:alice',
+    })
+
+    const response = await postRpc(app, '/rpc/v1/todos/create', { identityToken, title: 'Config-wired todo' })
+
+    assert.equal(response.status, 200)
+    assert.equal(existsSync(databasePath), true)
+    infrastructure.close()
+  } finally {
+    await rm(directory, { force: true, recursive: true })
+  }
 })

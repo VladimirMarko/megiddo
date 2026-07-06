@@ -341,6 +341,7 @@ export const createJwtJwsIdentityTokenCodec = (
 
     return keyPair
   }
+  const ensurePublicKeyPem = async () => publicKeyPem ?? (await ensureKeyPair()).publicKeyPem
 
   return {
     async issueIdentityToken(claims) {
@@ -364,7 +365,7 @@ export const createJwtJwsIdentityTokenCodec = (
     },
     async verifyIdentityToken({ identityToken, audience }) {
       const { createPublicKey, verify } = await import('node:crypto')
-      const { publicKeyPem } = await ensureKeyPair()
+      const publicKeyPem = await ensurePublicKeyPem()
       const [header, payload, signature, extra] = identityToken.split('.')
 
       if (!header || !payload || !signature || extra) {

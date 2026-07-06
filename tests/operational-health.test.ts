@@ -8,6 +8,7 @@ import {
   todoContractV1,
 } from '@megiddo/contracts'
 import { createIdentityApp } from '@megiddo/identity'
+import { createDummyIdentityTokenCodec } from '@megiddo/platform'
 import { createTodoApp } from '@megiddo/todo'
 
 type TestApp = { request: (path: string, init?: RequestInit) => Promise<Response> }
@@ -46,7 +47,7 @@ const operationalHealthServices = [
     name: 'API Gateway',
   },
   {
-    createApp: createTodoApp,
+    createApp: () => createTodoApp({ tokenVerifier: createDummyIdentityTokenCodec() }),
     expectedHealth: { service: 'todo', status: 'ready' },
     name: 'Todo',
   },
