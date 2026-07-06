@@ -23,6 +23,12 @@ const steps: CheckStep[] = [
     name: 'Env Catalog artifact',
   },
   {
+    args: ['scripts/check-raw-env-access.mts'],
+    command: 'tsx',
+    forwardsPaths: true,
+    name: 'raw env access seam',
+  },
+  {
     args: ['biome', 'check', '--write'],
     command: 'pnpm',
     forwardsPaths: true,
