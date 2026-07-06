@@ -22,6 +22,15 @@ const metadataPaths = [
   'scripts/env-catalog.json',
 ]
 
+const catalogEntryFields = [
+  'allowedValues',
+  'defaultValue',
+  'description',
+  'owner',
+  'surface',
+  'variable',
+] as const satisfies readonly (keyof EnvCatalogEntry)[]
+
 export const knownInventoryVariableNames = [
   'API_PORT',
   'BETTER_AUTH_URL',
@@ -60,14 +69,7 @@ const isCatalogEntry = (value: unknown): value is EnvCatalogEntry => {
   }
 
   const candidate = value as Record<string, unknown>
-  return (
-    typeof candidate.allowedValues === 'string' &&
-    typeof candidate.defaultValue === 'string' &&
-    typeof candidate.description === 'string' &&
-    typeof candidate.owner === 'string' &&
-    typeof candidate.surface === 'string' &&
-    typeof candidate.variable === 'string'
-  )
+  return catalogEntryFields.every(field => typeof candidate[field] === 'string')
 }
 
 const readMetadataFile = (root: string, path: string): EnvCatalogEntry[] => {
@@ -126,17 +128,23 @@ const writeArtifact = (root: string) => {
   writeFileSync(join(root, envCatalogArtifactPath), renderEnvCatalogMarkdown(buildEnvCatalog(root)))
 }
 
+const runCli = (root: string, mode: string) => {
+  switch (mode) {
+    case '--write':
+      writeArtifact(root)
+      break
+    case '--check':
+      checkArtifact(root)
+      break
+    default:
+      throw new Error(`Unknown Env Catalog mode: ${mode}`)
+  }
+}
+
 const isMain = import.meta.url === pathToFileURL(process.argv[1] ?? '').href
 
 if (isMain) {
   const root = fileURLToPath(new URL('..', import.meta.url))
   const mode = process.argv[2] ?? '--check'
-
-  if (mode === '--write') {
-    writeArtifact(root)
-  } else if (mode === '--check') {
-    checkArtifact(root)
-  } else {
-    throw new Error(`Unknown Env Catalog mode: ${mode}`)
-  }
+  runCli(root, mode)
 }
