@@ -7,18 +7,22 @@ import { resolveIdentityModeConfig } from './identity-mode-config'
 
 const port = Number(process.env.PORT ?? 3002)
 const identityModeConfig = resolveIdentityModeConfig()
-const authProvider =
-  identityModeConfig.authProvider === 'dummy'
-    ? createEmbeddedDevelopmentAuthProviderAdapter({
-        databasePath: process.env.IDENTITY_DATABASE_PATH ?? '.data/identity/identity.sqlite',
-        seedDemoAccounts:
-          process.env.MEGIDDO_AUTH_PROFILE === 'local-dummy' ||
-          process.env.IDENTITY_DUMMY_AUTH_DEMO_ACCOUNTS === 'enabled',
-      })
-    : createEmbeddedBetterAuthProviderAdapter({
-        baseURL: process.env.BETTER_AUTH_URL ?? process.env.IDENTITY_BETTER_AUTH_BASE_URL,
-        databasePath: process.env.IDENTITY_BETTER_AUTH_DATABASE_PATH ?? '.data/identity/better-auth.sqlite',
-      })
+const createLocalAuthProvider = () => {
+  if (identityModeConfig.authProvider === 'dummy') {
+    return createEmbeddedDevelopmentAuthProviderAdapter({
+      databasePath: process.env.IDENTITY_DATABASE_PATH ?? '.data/identity/identity.sqlite',
+      seedDemoAccounts:
+        process.env.MEGIDDO_AUTH_PROFILE === 'local-dummy' ||
+        process.env.IDENTITY_DUMMY_AUTH_DEMO_ACCOUNTS === 'enabled',
+    })
+  }
+
+  return createEmbeddedBetterAuthProviderAdapter({
+    baseURL: process.env.BETTER_AUTH_URL ?? process.env.IDENTITY_BETTER_AUTH_BASE_URL,
+    databasePath: process.env.IDENTITY_BETTER_AUTH_DATABASE_PATH ?? '.data/identity/better-auth.sqlite',
+  })
+}
+const authProvider = createLocalAuthProvider()
 const closeAuthProvider = () => authProvider?.close()
 
 await configureLocalTelemetry()

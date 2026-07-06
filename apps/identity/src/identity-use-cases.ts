@@ -192,31 +192,36 @@ export const createIdentityUseCases = ({
 }): IdentityUseCases => ({
   async getAuthCapabilities() {
     const accounts = await authProvider.listDummyAccounts()
-    const dummyAuthAvailable = accounts.length > 0 || !authProvider.supportsPasswordAuth
+    const passwordAuthAvailable = authProvider.supportsPasswordAuth === true
+    const dummyAuthAvailable = accounts.length > 0 || !passwordAuthAvailable
     const signInMethods: AuthCapabilitiesResourceV1['signInMethods'] = accounts.length > 0 ? ['dummy'] : []
     const signUpMethods: AuthCapabilitiesResourceV1['signUpMethods'] = dummyAuthAvailable ? ['dummy'] : []
 
-    if (authProvider.supportsPasswordAuth) {
+    if (passwordAuthAvailable) {
       signInMethods.push('password')
       signUpMethods.push('password')
     }
 
-    return {
-      ...(dummyAuthAvailable
-        ? {
-            dummy: {
-              accounts,
-              signIn: accounts.length > 0 ? ('available' as const) : undefined,
-              signUp: 'available' as const,
-            },
-          }
-        : {}),
-      ...(authProvider.supportsPasswordAuth
-        ? { password: { signIn: 'available' as const, signUp: 'available' as const } }
-        : {}),
-      signInMethods,
-      signUpMethods,
+    const dummy = {
+      accounts,
+      signIn: accounts.length > 0 ? ('available' as const) : undefined,
+      signUp: 'available' as const,
     }
+    const password = { signIn: 'available' as const, signUp: 'available' as const }
+
+    if (dummyAuthAvailable && passwordAuthAvailable) {
+      return { dummy, password, signInMethods, signUpMethods }
+    }
+
+    if (dummyAuthAvailable) {
+      return { dummy, signInMethods, signUpMethods }
+    }
+
+    if (passwordAuthAvailable) {
+      return { password, signInMethods, signUpMethods }
+    }
+
+    return { signInMethods, signUpMethods }
   },
   async getBrowserSession(sessionId) {
     const user = await authProvider.resolveBrowserSession(sessionId)
