@@ -28,6 +28,18 @@ const requireInternalCallerService = ({ internalServiceAuthSecret, request }: Id
   return callerService
 }
 
+const toBrowserSessionIdentityTokenIssueError = (error: unknown) => {
+  if (error instanceof DisallowedServiceTokenAudienceError) {
+    return new ORPCError('FORBIDDEN', { message: error.message })
+  }
+
+  if (error instanceof ExpiredBrowserSessionError) {
+    return new ORPCError('UNAUTHORIZED', { message: error.message })
+  }
+
+  return error
+}
+
 export const createIdentityRouter = (identity: IdentityUseCases) =>
   identityV1.router({
     v1: {
@@ -49,15 +61,7 @@ export const createIdentityRouter = (identity: IdentityUseCases) =>
               try {
                 return await identity.issueBrowserSessionIdentityToken({ callerService, tokenRequest: input })
               } catch (error) {
-                if (error instanceof DisallowedServiceTokenAudienceError) {
-                  throw new ORPCError('FORBIDDEN', { message: error.message })
-                }
-
-                if (error instanceof ExpiredBrowserSessionError) {
-                  throw new ORPCError('UNAUTHORIZED', { message: error.message })
-                }
-
-                throw error
+                throw toBrowserSessionIdentityTokenIssueError(error)
               }
             },
           ),

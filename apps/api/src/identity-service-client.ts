@@ -37,27 +37,36 @@ interface IdentityServiceClientOptions {
   serviceName?: string
 }
 
+interface InstrumentedIdentityClientOptions {
+  withInternalServiceAuth?: boolean
+}
+
 export const createIdentityServiceClient = ({
   baseUrl = 'http://localhost:3002',
   fetch,
   internalServiceAuthSecret = process.env.IDENTITY_INTERNAL_SERVICE_AUTH_SECRET ?? defaultInternalServiceAuthSecret,
   serviceName = 'api-gateway',
 }: IdentityServiceClientOptions = {}): IdentityServiceClient => {
-  const createInstrumentedIdentityClient = (procedure: string, internalServiceAuth = false) => {
+  const withInternalServiceAuth = (request: Request) => {
+    const headers = new Headers(request.headers)
+    headers.set(internalServiceHeader, serviceName)
+    headers.set(internalServiceSecretHeader, internalServiceAuthSecret)
+
+    return new Request(request, { headers })
+  }
+
+  const createInstrumentedIdentityClient = (
+    procedure: string,
+    { withInternalServiceAuth: shouldAuthenticateInternalService = false }: InstrumentedIdentityClientOptions = {},
+  ) => {
     const instrumentedFetch = createInstrumentedOrpcClientFetch({ fetch, procedure, serviceName })
 
     return createORPCClient<IdentityContractClientV1>(
       new RPCLink({
         fetch: request => {
-          if (!internalServiceAuth) {
-            return instrumentedFetch(request)
-          }
+          const authenticatedRequest = shouldAuthenticateInternalService ? withInternalServiceAuth(request) : request
 
-          const headers = new Headers(request.headers)
-          headers.set(internalServiceHeader, serviceName)
-          headers.set(internalServiceSecretHeader, internalServiceAuthSecret)
-
-          return instrumentedFetch(new Request(request, { headers }))
+          return instrumentedFetch(authenticatedRequest)
         },
         url: identityRpcUrl(baseUrl),
       }),
@@ -69,10 +78,12 @@ export const createIdentityServiceClient = ({
   const signInClient = createInstrumentedIdentityClient('v1.auth.signIn')
   const signUpClient = createInstrumentedIdentityClient('v1.auth.signUp')
   const signOutClient = createInstrumentedIdentityClient('v1.auth.signOut')
-  const developmentIdentityTokensClient = createInstrumentedIdentityClient('v1.development.identityTokens.issue', true)
+  const developmentIdentityTokensClient = createInstrumentedIdentityClient('v1.development.identityTokens.issue', {
+    withInternalServiceAuth: true,
+  })
   const browserSessionIdentityTokensClient = createInstrumentedIdentityClient(
     'v1.internal.identityTokens.issueForBrowserSession',
-    true,
+    { withInternalServiceAuth: true },
   )
 
   return {
