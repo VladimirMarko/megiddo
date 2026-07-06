@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "turbo build",
-    "check": "tsx scripts/check-frontend-api-adapter-seam.mts && biome check --write",
+    "check": "tsx scripts/run-check.mts",
     "dev": "tsx scripts/run-local-dev.mts",
     "dev:api": "pnpm --filter @megiddo/api dev",
     "dev:frontend": "pnpm --filter @megiddo/frontend dev",
