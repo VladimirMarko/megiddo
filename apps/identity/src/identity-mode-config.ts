@@ -7,7 +7,9 @@ export interface IdentityModeConfig {
 }
 
 const authProviderModes = ['dummy', 'better-auth'] as const
+const authProfiles = ['local-dummy'] as const
 const tokenCodecModes = ['dummy', 'jwt-jws'] as const
+const localDummyModeConfig: IdentityModeConfig = { authProvider: 'dummy', tokenCodec: 'dummy' }
 
 const parseMode = <Mode extends string>({
   allowed,
@@ -22,31 +24,24 @@ const parseMode = <Mode extends string>({
     return undefined
   }
 
-  if ((allowed as readonly string[]).includes(value)) {
-    return value as Mode
+  const mode = allowed.find(mode => mode === value)
+
+  if (mode !== undefined) {
+    return mode
   }
 
   throw new Error(`${name} must be one of: ${allowed.join(', ')}`)
 }
 
 export const resolveIdentityModeConfig = (env: NodeJS.ProcessEnv = process.env): IdentityModeConfig => {
-  const profile = env.MEGIDDO_AUTH_PROFILE
-
-  if (profile !== undefined && profile !== 'local-dummy') {
-    throw new Error('MEGIDDO_AUTH_PROFILE must be one of: local-dummy')
-  }
-
-  const profileDefaults: IdentityModeConfig =
-    profile === 'local-dummy'
-      ? { authProvider: 'dummy', tokenCodec: 'dummy' }
-      : { authProvider: 'dummy', tokenCodec: 'dummy' }
+  parseMode({ allowed: authProfiles, name: 'MEGIDDO_AUTH_PROFILE', value: env.MEGIDDO_AUTH_PROFILE })
 
   const authProvider =
     parseMode({ allowed: authProviderModes, name: 'IDENTITY_AUTH_PROVIDER', value: env.IDENTITY_AUTH_PROVIDER }) ??
-    profileDefaults.authProvider
+    localDummyModeConfig.authProvider
   const tokenCodec =
     parseMode({ allowed: tokenCodecModes, name: 'IDENTITY_TOKEN_CODEC', value: env.IDENTITY_TOKEN_CODEC }) ??
-    profileDefaults.tokenCodec
+    localDummyModeConfig.tokenCodec
 
   if (env.NODE_ENV === 'production' && authProvider === 'dummy') {
     throw new Error('IDENTITY_AUTH_PROVIDER=dummy is not allowed when NODE_ENV=production')
