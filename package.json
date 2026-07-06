@@ -25,7 +25,7 @@
     "@megiddo/identity": "workspace:*",
     "@megiddo/platform": "workspace:*",
     "@megiddo/todo": "workspace:*",
-    "zod": "^4.4.3"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@ai-hero/sandcastle": "^0.12.0",
@@ -41,8 +41,8 @@
     "jsdom": "^29.1.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "tsx": "^4.22.5",
-    "turbo": "^2.10.2",
+    "tsx": "^4.23.0",
+    "turbo": "^2.10.3",
     "typescript": "catalog:"
   },
   "packageManager": "pnpm@11.9.0"

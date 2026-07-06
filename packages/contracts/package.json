@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@orpc/contract": "^1.14.6",
-    "zod": "^4.4.3"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@total-typescript/tsconfig": "catalog:",
