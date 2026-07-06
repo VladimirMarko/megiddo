@@ -15,7 +15,7 @@ test('raw env access check rejects unauthorized runtime env reads', async () => 
     const result = await checkRawEnvAccess({ rootDir })
 
     assert.deepEqual(result.violations, [{ line: 1, path: 'apps/api/src/app.ts' }])
-    assert.match(result.message, /raw runtime env access/)
+    assert.match(result.message, /Raw env access rule/)
   } finally {
     await rm(rootDir, { force: true, recursive: true })
   }

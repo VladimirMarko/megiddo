@@ -20,11 +20,16 @@ interface RawEnvAccessOptions {
 const ignoredDirectories = new Set(['.git', '.sandcastle', '.turbo', 'coverage', 'dist', 'node_modules'])
 const rawEnvAccessPattern = /\bprocess\.env\b|\bimport\.meta\.env\b/g
 
-const allowedExactPaths = new Set([
+const allowedRawEnvFilePaths = new Set([
   // Process entrypoints validate concrete runtime env and construct real infrastructure.
   'apps/api/src/server.ts',
   'apps/identity/src/server.ts',
   'apps/todo/src/server.ts',
+  // Env Contracts are the owning validation seam for runtime env values.
+  'apps/api/src/env-contract.ts',
+  'apps/identity/src/env-contract.ts',
+  'apps/todo/src/env-contract.ts',
+  'apps/frontend/src/env.ts',
   // Vite exposes only prefixed frontend env values; main.ts passes them into the frontend env contract.
   'apps/frontend/src/main.ts',
   // Local telemetry is best-effort process instrumentation configured at service startup.
@@ -33,14 +38,9 @@ const allowedExactPaths = new Set([
   'tests/integration/local-development-workflow.test.ts',
 ])
 
-const allowedPathPrefixes = [
-  // Env Contracts are the owning validation seam for runtime env values.
-  'apps/api/src/env-contract.ts',
-  'apps/identity/src/env-contract.ts',
-  'apps/todo/src/env-contract.ts',
-  'apps/frontend/src/env.ts',
+const allowedRawEnvDirectories = [
   // Tooling scripts are process seams rather than application runtime modules.
-  'scripts/',
+  'scripts',
 ]
 
 const toRepoPath = (path: string) => path.split(sep).join('/')
@@ -52,7 +52,8 @@ const isMissingDirectoryError = (caught: unknown): caught is NodeJS.ErrnoExcepti
   caught instanceof Error && 'code' in caught && caught.code === 'ENOENT'
 
 const isAllowedRawEnvPath = (repoPath: string) =>
-  allowedExactPaths.has(repoPath) || allowedPathPrefixes.some(path => repoPath === path || repoPath.startsWith(path))
+  allowedRawEnvFilePaths.has(repoPath) ||
+  allowedRawEnvDirectories.some(path => repoPath === path || repoPath.startsWith(`${path}/`))
 
 const listSourceFiles = async (dir: string): Promise<string[]> => {
   let entries: Awaited<ReturnType<typeof readdir>>
