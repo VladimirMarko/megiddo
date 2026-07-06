@@ -58,12 +58,12 @@ test('Todo service config derives effective identity token codec', () => {
 test('Todo service infrastructure is wired from derived service config', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'megiddo-todo-config-'))
   const databasePath = join(directory, 'todo.sqlite')
+  const config = createTodoServiceConfig(
+    createTodoEnv({ IDENTITY_TOKEN_CODEC: 'dummy', TODO_DATABASE_PATH: databasePath }),
+  )
+  const infrastructure = createTodoServiceInfrastructure(config)
 
   try {
-    const config = createTodoServiceConfig(
-      createTodoEnv({ IDENTITY_TOKEN_CODEC: 'dummy', TODO_DATABASE_PATH: databasePath }),
-    )
-    const infrastructure = createTodoServiceInfrastructure(config)
     const app = createTodoApp({ repository: infrastructure.repository, tokenVerifier: infrastructure.tokenVerifier })
     const identityToken = await createDummyIdentityTokenCodec().issueIdentityToken({
       audience: { service: 'todo' },
@@ -75,8 +75,8 @@ test('Todo service infrastructure is wired from derived service config', async (
 
     assert.equal(response.status, 200)
     assert.equal(existsSync(databasePath), true)
-    infrastructure.close()
   } finally {
+    infrastructure.close()
     await rm(directory, { force: true, recursive: true })
   }
 })

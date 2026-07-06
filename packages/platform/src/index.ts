@@ -341,7 +341,13 @@ export const createJwtJwsIdentityTokenCodec = (
 
     return keyPair
   }
-  const ensurePublicKeyPem = async () => publicKeyPem ?? (await ensureKeyPair()).publicKeyPem
+  const ensurePublicKeyPem = async () => {
+    if (publicKeyPem) {
+      return publicKeyPem
+    }
+
+    return (await ensureKeyPair()).publicKeyPem
+  }
 
   return {
     async issueIdentityToken(claims) {

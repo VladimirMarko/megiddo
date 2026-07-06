@@ -7,13 +7,17 @@ import { createTodoServiceInfrastructure } from './infrastructure'
 const env = createTodoEnv(process.env)
 const config = createTodoServiceConfig(env)
 const infrastructure = createTodoServiceInfrastructure(config)
+const todoApp = createTodoApp({
+  repository: infrastructure.repository,
+  tokenVerifier: infrastructure.tokenVerifier,
+})
 const closeInfrastructure = () => infrastructure.close()
 
 await configureLocalTelemetry()
 
 serve({
   port: config.port,
-  fetch: createTodoApp({ repository: infrastructure.repository, tokenVerifier: infrastructure.tokenVerifier }).fetch,
+  fetch: todoApp.fetch,
 })
 
 process.on('exit', closeInfrastructure)
