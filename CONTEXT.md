@@ -40,9 +40,21 @@ _Avoid_: Shared ownership, shared database, cross-service entity reuse.
 A stable identifier for a user owned by the Identity service and stored by another service when it needs to associate data with that user.
 _Avoid_: Copied user profile, embedded user entity.
 
+**Principal**:
+An entity that can be authenticated and receive authority, such as a user, service, account, or later an advertiser or publisher. A user is a kind of principal, but not every principal must be a human user.
+_Avoid_: Treating every authenticated subject as a user, display name as authority.
+
+**Subject Claim**:
+The token claim that names the authenticated principal the token is about.
+_Avoid_: Display label, username, service audience.
+
 **Identity Token**:
 A signed credential issued by the Identity service that lets another service verify the authenticated user without calling Identity for every request.
 _Avoid_: API session, shared secret, database lookup.
+
+**Token Codec**:
+The Identity service component that issues and verifies the wire format of Identity Tokens, such as dummy inspectable tokens for local development or JWT/JWS for real cryptographic tokens.
+_Avoid_: Auth provider, browser session store, user database.
 
 **Audience Claim**:
 A token claim that identifies which service or contract surface the Identity Token is intended for.
@@ -123,6 +135,18 @@ _Avoid_: Version branching in domain logic, contract-shaped application core.
 **Auth Provider Adapter**:
 An Identity service boundary around an authentication library such as Better Auth. It lets Identity use the library without spreading library-specific types and APIs throughout the service.
 _Avoid_: Better Auth as domain model, library-shaped service core.
+
+**Dummy Auth Provider**:
+An Auth Provider Adapter for local development and tests that stores persistent principals but provides no meaningful credential security. It lets callers sign in as existing dummy principals, and it never creates principals implicitly during sign-in.
+_Avoid_: Stateless subject assertion, production auth, auto-created typo accounts.
+
+**Dummy Demo Account**:
+A normal persisted dummy principal that is seeded for local development, such as Alice or Bob, and may be shown by the frontend as a one-click sign-in option when the UI shortcut flag is enabled.
+_Avoid_: Special virtual user, token fixture, hard-coded frontend account.
+
+**Browser Session**:
+An Identity-owned session credential, normally carried by browser cookies, that proves the browser has signed in without exposing Megiddo service tokens to frontend code.
+_Avoid_: Service token, frontend-held identity token, Todo authorization token.
 
 **Use Case**:
 A service-owned application operation that coordinates domain rules and infrastructure ports without depending on oRPC, HTTP, or a specific contract version.
