@@ -1,0 +1,34 @@
+[
+  {
+    "variable": "IDENTITY_INTERNAL_SERVICE_AUTH_SECRET",
+    "owner": "API Gateway",
+    "surface": "service",
+    "allowedValues": "non-empty string",
+    "defaultValue": "platform default internal-service secret",
+    "description": "Secret sent to Identity for internal service-token issuance calls; must match Identity."
+  },
+  {
+    "variable": "IDENTITY_SERVICE_URL",
+    "owner": "API Gateway",
+    "surface": "service",
+    "allowedValues": "URL",
+    "defaultValue": "http://localhost:3002",
+    "description": "Base URL used by API Gateway to call Identity."
+  },
+  {
+    "variable": "PORT",
+    "owner": "API Gateway",
+    "surface": "service",
+    "allowedValues": "TCP port string",
+    "defaultValue": "3000",
+    "description": "API Gateway listen port."
+  },
+  {
+    "variable": "TODO_SERVICE_URL",
+    "owner": "API Gateway",
+    "surface": "service",
+    "allowedValues": "URL",
+    "defaultValue": "http://localhost:3001",
+    "description": "Base URL used by API Gateway to call Todo."
+  }
+]

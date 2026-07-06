@@ -1,0 +1,34 @@
+[
+  {
+    "variable": "OTEL_EXPORTER_OTLP_ENDPOINT",
+    "owner": "Platform Local Telemetry",
+    "surface": "platform",
+    "allowedValues": "URL",
+    "defaultValue": "http://localhost:4318 in pnpm dev topology",
+    "description": "OTLP HTTP endpoint injected for local service telemetry."
+  },
+  {
+    "variable": "OTEL_EXPORTER_OTLP_PROTOCOL",
+    "owner": "Platform Local Telemetry",
+    "surface": "platform",
+    "allowedValues": "http/protobuf for local telemetry",
+    "defaultValue": "http/protobuf in pnpm dev topology",
+    "description": "OTLP exporter protocol injected for local service telemetry."
+  },
+  {
+    "variable": "OTEL_SERVICE_NAME",
+    "owner": "Platform Local Telemetry",
+    "surface": "platform",
+    "allowedValues": "service name string",
+    "defaultValue": "megiddo-service when unset by local telemetry setup; service-specific in pnpm dev",
+    "description": "OpenTelemetry service.name value used by local telemetry setup."
+  },
+  {
+    "variable": "OTEL_TRACES_EXPORTER",
+    "owner": "Platform Local Telemetry",
+    "surface": "platform",
+    "allowedValues": "otlp enables local telemetry setup",
+    "defaultValue": "unset disables Megiddo local telemetry setup",
+    "description": "Switch used by platform local telemetry setup to opt into OTLP tracing."
+  }
+]

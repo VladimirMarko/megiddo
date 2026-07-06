@@ -17,6 +17,12 @@ const steps: CheckStep[] = [
     name: 'frontend API Adapter seam',
   },
   {
+    args: ['scripts/env-catalog.mts', '--check'],
+    command: 'tsx',
+    forwardsPaths: false,
+    name: 'Env Catalog artifact',
+  },
+  {
     args: ['biome', 'check', '--write'],
     command: 'pnpm',
     forwardsPaths: true,

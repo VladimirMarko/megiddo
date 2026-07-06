@@ -1,0 +1,42 @@
+[
+  {
+    "variable": "IDENTITY_TOKEN_CODEC",
+    "owner": "Todo Service",
+    "surface": "service",
+    "allowedValues": "dummy, jwt-jws",
+    "defaultValue": "jwt-jws after config derivation unless local-dummy selects dummy",
+    "description": "Selects the Identity token verifier mode used by Todo."
+  },
+  {
+    "variable": "MEGIDDO_AUTH_PROFILE",
+    "owner": "Todo Service",
+    "surface": "service",
+    "allowedValues": "local-dummy",
+    "defaultValue": "unset",
+    "description": "Local convenience profile that selects dummy token verification when the codec is unset."
+  },
+  {
+    "variable": "MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64",
+    "owner": "Todo Service",
+    "surface": "service",
+    "allowedValues": "base64url-encoded PEM public key",
+    "defaultValue": "unset; required for JWT/JWS verification without an explicit key option",
+    "description": "Public key consumed by platform JWT/JWS Identity token verification."
+  },
+  {
+    "variable": "PORT",
+    "owner": "Todo Service",
+    "surface": "service",
+    "allowedValues": "TCP port string",
+    "defaultValue": "3001",
+    "description": "Todo listen port."
+  },
+  {
+    "variable": "TODO_DATABASE_PATH",
+    "owner": "Todo Service",
+    "surface": "service",
+    "allowedValues": "non-empty filesystem path",
+    "defaultValue": ".data/todo/todo.sqlite",
+    "description": "SQLite database path for Todo persistence."
+  }
+]
