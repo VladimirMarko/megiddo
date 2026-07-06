@@ -162,43 +162,54 @@ export interface IdentityTokenVerifier {
 
 const base64UrlEncode = (input: Buffer | string) => Buffer.from(input).toString('base64url')
 const base64UrlDecode = (input: string) => Buffer.from(input, 'base64url')
+const dummyIdentityTokenPrefix = 'dummy'
+const invalidDummyIdentityTokenClaimsError = () => new Error('Invalid dummy Identity Token claims')
+
+const parseDummyIdentityTokenClaims = (payload: string): unknown => {
+  try {
+    return JSON.parse(base64UrlDecode(payload).toString('utf8'))
+  } catch {
+    throw invalidDummyIdentityTokenClaimsError()
+  }
+}
+
+const readDummyIdentityTokenExpiresAt = (claims: unknown) => {
+  if (!claims || typeof claims !== 'object' || !('expiresAt' in claims)) {
+    return undefined
+  }
+
+  const { expiresAt } = claims
+
+  if (typeof expiresAt !== 'number' || !Number.isInteger(expiresAt)) {
+    throw invalidDummyIdentityTokenClaimsError()
+  }
+
+  return expiresAt
+}
 
 export const createDummyIdentityTokenCodec = (): IdentityTokenSigner & IdentityTokenVerifier => ({
   async issueIdentityToken(claims) {
-    return `dummy.${base64UrlEncode(JSON.stringify({ ...claims, issuedAt: Date.now() }))}`
+    return `${dummyIdentityTokenPrefix}.${base64UrlEncode(JSON.stringify({ ...claims, issuedAt: Date.now() }))}`
   },
   async verifyIdentityToken({ identityToken, audience }) {
     const [prefix, payload, extra] = identityToken.split('.')
 
-    if (prefix !== 'dummy' || !payload || extra) {
+    if (prefix !== dummyIdentityTokenPrefix || !payload || extra) {
       throw new Error('Invalid dummy Identity Token format')
     }
 
-    let decodedClaims: unknown
-    try {
-      decodedClaims = JSON.parse(base64UrlDecode(payload).toString('utf8'))
-    } catch {
-      throw new Error('Invalid dummy Identity Token claims')
-    }
-
+    const decodedClaims = parseDummyIdentityTokenClaims(payload)
     const parsedClaims = IdentityTokenClaimsSchemaV1.safeParse(decodedClaims)
     if (!parsedClaims.success) {
-      throw new Error('Invalid dummy Identity Token claims')
+      throw invalidDummyIdentityTokenClaimsError()
     }
 
     if (parsedClaims.data.audience.service !== audience.service) {
       throw new Error(`Identity Token audience mismatch: expected ${audience.service}`)
     }
 
-    const expiresAt =
-      decodedClaims && typeof decodedClaims === 'object' && 'expiresAt' in decodedClaims
-        ? decodedClaims.expiresAt
-        : undefined
+    const expiresAt = readDummyIdentityTokenExpiresAt(decodedClaims)
     if (expiresAt !== undefined) {
-      if (!Number.isInteger(expiresAt) || typeof expiresAt !== 'number') {
-        throw new Error('Invalid dummy Identity Token claims')
-      }
-
       if (expiresAt <= Date.now()) {
         throw new Error('Identity Token expired')
       }
