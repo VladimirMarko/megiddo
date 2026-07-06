@@ -4,7 +4,8 @@
   "type": "module",
   "exports": {
     ".": "./src/todo-app.tsx",
-    "./api": "./src/api/frontend-api-adapter.ts"
+    "./api": "./src/api/frontend-api-adapter.ts",
+    "./env": "./src/env.ts"
   },
   "scripts": {
     "build": "vite build",
@@ -14,11 +15,13 @@
     "@megiddo/contracts": "workspace:*",
     "@megiddo/platform": "workspace:*",
     "@orpc/client": "^1.14.6",
+    "@t3-oss/env-core": "^0.13.11",
     "@tanstack/react-form": "^1.33.0",
     "@tanstack/react-router": "^1.170.17",
     "jotai": "^2.20.1",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@total-typescript/tsconfig": "catalog:",

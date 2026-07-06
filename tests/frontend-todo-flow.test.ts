@@ -8,6 +8,7 @@ import { JSDOM } from 'jsdom'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createFrontendApi, type FrontendTodo } from '../apps/frontend/src/api/frontend-api-adapter'
+import { createFrontendConfig, createFrontendEnv } from '../apps/frontend/src/env'
 import { createTodoApp as createFrontendTodoApp, type FrontendApi } from '../apps/frontend/src/todo-app'
 import { createCookieJarFetch } from './support/cookie-jar-fetch'
 
@@ -500,7 +501,7 @@ test('frontend renders auth session states through a fake Frontend API Adapter',
 })
 
 test('frontend renders dummy shortcuts conditionally and submits the dummy sign-up flow', async () => {
-  const renderLoggedOut = async (dummyAuthLoginShortcutEnabled: boolean) => {
+  const renderLoggedOut = async (runtimeEnv: Parameters<typeof createFrontendEnv>[0]) => {
     const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', {
       url: 'http://localhost/',
     })
@@ -560,16 +561,17 @@ test('frontend renders dummy shortcuts conditionally and submits the dummy sign-
     await withBrowserGlobals(dom, async () => {
       const rootElement = getElement<HTMLDivElement>('#root')
       const root = createRoot(rootElement)
+      const config = createFrontendConfig(createFrontendEnv(runtimeEnv))
 
       await act(async () => {
-        root.render(createFrontendTodoApp({ api, dummyAuthLoginShortcutEnabled }))
+        root.render(createFrontendTodoApp({ api, dummyAuthLoginShortcutEnabled: config.dummyAuthLoginShortcutEnabled }))
         await settle()
       })
 
       await waitForText(rootElement, /Sign in to manage todos/)
       textContent = rootElement.textContent ?? ''
 
-      if (dummyAuthLoginShortcutEnabled) {
+      if (config.dummyAuthLoginShortcutEnabled) {
         await act(async () => {
           getElement<HTMLButtonElement>('button').click()
           await settle()
@@ -594,14 +596,14 @@ test('frontend renders dummy shortcuts conditionally and submits the dummy sign-
     return { signIns, signUps, textContent }
   }
 
-  const disabled = await renderLoggedOut(false)
+  const disabled = await renderLoggedOut({ UI_DUMMY_AUTH_LOGIN_SHORTCUT: 'enabled' })
   assert.doesNotMatch(disabled.textContent, /Continue as Alice/)
   assert.match(disabled.textContent, /Create a local identity/)
   assert.match(disabled.textContent, /Sign up and continue/)
   assert.deepEqual(disabled.signIns, [])
   assert.deepEqual(disabled.signUps, ['Charlie Example'])
 
-  const enabled = await renderLoggedOut(true)
+  const enabled = await renderLoggedOut({ VITE_UI_DUMMY_AUTH_LOGIN_SHORTCUT: 'enabled' })
   assert.match(enabled.textContent, /Continue as Alice/)
   assert.match(enabled.textContent, /Continue as Bob/)
   assert.deepEqual(enabled.signIns, ['dummy:alice'])
