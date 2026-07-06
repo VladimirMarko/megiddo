@@ -1,22 +1,21 @@
 import { spawn } from 'node:child_process'
+import { createTelemetryViewerScriptConfig, createTelemetryViewerScriptEnv } from './script-config-builder.mjs'
 
-const defaultOtlpHttpPort = '4318'
-const otlpHttpPort = process.env.PORT ?? process.env.OTEL_GUI_PORT ?? defaultOtlpHttpPort
-const viewerBinary = process.env.OTEL_GUI_BIN ?? 'otel-gui'
+const config = createTelemetryViewerScriptConfig(createTelemetryViewerScriptEnv(process.env))
 
 console.log('Starting local OpenTelemetry viewer:')
 console.log('- Viewer: otel-gui')
-console.log(`- OTLP HTTP ingest: http://localhost:${otlpHttpPort}/v1/traces`)
+console.log(`- OTLP HTTP ingest: http://localhost:${config.otlpHttpPort}/v1/traces`)
 console.log('- Pair with services by running pnpm dev in a separate terminal.')
 
-const child = spawn(viewerBinary, [], {
-  env: { ...process.env, PORT: otlpHttpPort },
+const child = spawn(config.viewerBinary, [], {
+  env: { ...process.env, PORT: config.otlpHttpPort },
   stdio: 'inherit',
 })
 
 child.once('error', error => {
   if ('code' in error && error.code === 'ENOENT') {
-    console.error(`Could not find ${viewerBinary} on PATH.`)
+    console.error(`Could not find ${config.viewerBinary} on PATH.`)
     console.error(
       'Install otel-gui from https://github.com/metafab/otel-gui/releases, or set OTEL_GUI_BIN to the downloaded executable path.',
     )

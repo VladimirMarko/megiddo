@@ -1,18 +1,15 @@
 import { rmSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { createLocalDevResetScriptConfig, createLocalDevResetScriptEnv } from './script-config-builder.mjs'
 
 const workspaceRoot = new URL('..', import.meta.url).pathname
-const defaultDataDirectory = join(workspaceRoot, '.data', 'local-dev')
-const configuredDataDirectory = process.env.MEGIDDO_LOCAL_DATA_DIR
-const dataDirectory = resolve(configuredDataDirectory ?? defaultDataDirectory)
-const workspaceDataRoot = resolve(workspaceRoot, '.data')
+const config = createLocalDevResetScriptConfig(createLocalDevResetScriptEnv(process.env), { workspaceRoot })
 
-if (!configuredDataDirectory && !dataDirectory.startsWith(`${workspaceDataRoot}/`)) {
+if (!config.dataDirectoryWasConfigured && !config.dataDirectory.startsWith(`${config.workspaceDataRoot}/`)) {
   throw new Error(
-    `Refusing to remove ${dataDirectory}. Default local development data must live under ${workspaceDataRoot}.`,
+    `Refusing to remove ${config.dataDirectory}. Default local development data must live under ${config.workspaceDataRoot}.`,
   )
 }
 
-rmSync(dataDirectory, { force: true, recursive: true })
+rmSync(config.dataDirectory, { force: true, recursive: true })
 
-console.log(`Removed local development data: ${dataDirectory}`)
+console.log(`Removed local development data: ${config.dataDirectory}`)
