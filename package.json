@@ -10,6 +10,7 @@
     "dev:frontend": "pnpm --filter @megiddo/frontend dev",
     "dev:identity": "pnpm --filter @megiddo/identity dev",
     "dev:local": "tsx scripts/run-local-dev.mts",
+    "dev:reset": "tsx scripts/reset-local-dev-data.mts",
     "dev:todo": "pnpm --filter @megiddo/todo dev",
     "dev:turbo": "turbo dev",
     "sandcastle": "tsx .sandcastle/main.mts",
