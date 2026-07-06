@@ -21,6 +21,10 @@ This starts real separate processes over localhost:
 
 Local service data is stored under `.data/local-dev` by default. Set `MEGIDDO_LOCAL_DATA_DIR` to use a different directory, which is useful for Sandcastle-style isolated workspaces.
 
+Node services and scripts do not load `.env` files themselves. T3 Env validates the runtime environment object the process receives; values should come from the shell, a process manager, package-script invocation, CI secret injection, or the `pnpm dev` local runner. The local runner injects service URLs, ports, local dummy auth, data paths, and local telemetry defaults directly into child process environments.
+
+Frontend commands are different because Vite owns browser env loading. Vite may read its normal `.env`, `.env.local`, `.env.[mode]`, and `.env.[mode].local` files, but browser-visible values still need the `VITE_` prefix and explicit frontend env contract wiring.
+
 ### Local Telemetry Viewer
 
 Services started by `pnpm dev` emit best-effort OpenTelemetry traces to `http://localhost:4318`. The selected local viewer is `otel-gui`, and it is started separately so Service startup never waits for viewer availability.
