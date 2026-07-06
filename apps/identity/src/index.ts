@@ -1,4 +1,5 @@
 export { createIdentityApp } from './app'
+export { createIdentityServiceConfig, type IdentityServiceConfig } from './config-builder'
 export {
   createEmbeddedBetterAuthProviderAdapter,
   type EmbeddedBetterAuthProviderAdapter,
@@ -8,15 +9,18 @@ export {
   type EmbeddedDevelopmentAuthProviderAdapter,
 } from './embedded-development-auth-provider-adapter'
 export {
+  createIdentityEnv,
   type IdentityAuthProviderMode,
-  type IdentityModeConfig,
+  type IdentityEnv,
+  type IdentityRuntimeEnv,
   type IdentityTokenCodecMode,
-  resolveIdentityModeConfig,
-} from './identity-mode-config'
+} from './env-contract'
+export { type IdentityModeConfig, resolveIdentityModeConfig } from './identity-mode-config'
 export {
   type AuthProviderAdapter,
   createDevelopmentAuthProviderAdapter,
   createIdentityUseCases,
   type IdentityUseCases,
 } from './identity-use-cases'
+export { createIdentityServiceInfrastructure, type IdentityServiceInfrastructure } from './infrastructure'
 export { createIdentityRouter, type IdentityRouter } from './router'

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createApiGatewayApp, createIdentityServiceClient, createTodoServiceClient } from '@megiddo/api'
-import { createIdentityApp } from '@megiddo/identity'
+import { createIdentityApp, createIdentityEnv, createIdentityServiceConfig } from '@megiddo/identity'
 import { createJwtJwsIdentityTokenCodec } from '@megiddo/platform'
 import { createTodoApp as createTodoServiceApp } from '@megiddo/todo'
 import { JSDOM } from 'jsdom'
@@ -12,6 +12,8 @@ import { createTodoApp as createFrontendTodoApp, type FrontendApi } from '../app
 import { createCookieJarFetch } from './support/cookie-jar-fetch'
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0))
+const identityServiceConfigFromEnv = (env: Parameters<typeof createIdentityEnv>[0]) =>
+  createIdentityServiceConfig(createIdentityEnv(env))
 const getWindow = (element: Element) => {
   const view = element.ownerDocument.defaultView
 
@@ -746,10 +748,11 @@ test('production Frontend API Adapter signs up a dummy principal and can select 
 test('production Frontend API Adapter completes the Better Auth browser Todo flow', async () => {
   const codec = createJwtJwsIdentityTokenCodec()
   const identityApp = createIdentityApp({
-    env: {
+    serviceConfig: identityServiceConfigFromEnv({
       IDENTITY_AUTH_PROVIDER: 'better-auth',
+      IDENTITY_BETTER_AUTH_DATABASE_PATH: ':memory:',
       IDENTITY_TOKEN_CODEC: 'dummy',
-    },
+    }),
     tokenSigner: codec,
   })
   const todoApp = createTodoServiceApp({ tokenVerifier: codec })

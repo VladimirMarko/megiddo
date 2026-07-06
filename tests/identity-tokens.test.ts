@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createIdentityApp } from '@megiddo/identity'
+import { createIdentityApp, createIdentityEnv, createIdentityServiceConfig } from '@megiddo/identity'
 import {
   createDummyIdentityTokenCodec,
   createJwtJwsIdentityTokenCodec,
@@ -57,6 +57,9 @@ const postRpcWithHeaders = (
 const encodeDummyClaims = (claims: unknown) => `dummy.${Buffer.from(JSON.stringify(claims)).toString('base64url')}`
 
 const encodeJson = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url')
+
+const identityServiceConfigFromEnv = (env: Parameters<typeof createIdentityEnv>[0]) =>
+  createIdentityServiceConfig(createIdentityEnv(env))
 
 test('Identity issues JWT/JWS Identity Tokens that Todo verifies for owner-only access', async () => {
   const codec = createJwtJwsIdentityTokenCodec()
@@ -189,7 +192,9 @@ test('JWT/JWS Identity Token codec signs standard JWT claims and validates verif
 })
 
 test('IDENTITY_TOKEN_CODEC=dummy selects dummy tokens through Identity token issuance', async () => {
-  const identityApp = createIdentityApp({ env: { IDENTITY_TOKEN_CODEC: 'dummy' } })
+  const identityApp = createIdentityApp({
+    serviceConfig: identityServiceConfigFromEnv({ IDENTITY_TOKEN_CODEC: 'dummy' }),
+  })
   const identityToken = await issueToken(identityApp, 'dummy:alice', 'todo')
 
   assert.match(identityToken, /^dummy\./)
@@ -203,7 +208,7 @@ test('IDENTITY_TOKEN_CODEC=dummy selects dummy tokens through Identity token iss
 
 test('IDENTITY_TOKEN_CODEC=jwt-jws selects JWT/JWS tokens through the Identity to Todo seam', async () => {
   const env = { ...(await createJwtJwsIdentityTokenKeyPairEnv()), IDENTITY_TOKEN_CODEC: 'jwt-jws' }
-  const identityApp = createIdentityApp({ env })
+  const identityApp = createIdentityApp({ serviceConfig: identityServiceConfigFromEnv(env) })
   const todoInfrastructure = createTodoServiceInfrastructure(createTodoServiceConfig(createTodoEnv(env)))
 
   try {
@@ -229,7 +234,7 @@ test('IDENTITY_TOKEN_CODEC=jwt-jws selects JWT/JWS tokens through the Identity t
 test('Identity protects browser-session service-token issuance for Gateway Todo calls', async () => {
   const codec = createJwtJwsIdentityTokenCodec()
   const identityApp = createIdentityApp({
-    env: { IDENTITY_INTERNAL_SERVICE_AUTH_SECRET: 'test-secret' },
+    serviceConfig: identityServiceConfigFromEnv({ IDENTITY_INTERNAL_SERVICE_AUTH_SECRET: 'test-secret' }),
     tokenSigner: codec,
   })
 
