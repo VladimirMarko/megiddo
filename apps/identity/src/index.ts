@@ -4,6 +4,12 @@ export {
   type EmbeddedDevelopmentAuthProviderAdapter,
 } from './embedded-development-auth-provider-adapter'
 export {
+  type IdentityAuthProviderMode,
+  type IdentityModeConfig,
+  type IdentityTokenCodecMode,
+  resolveIdentityModeConfig,
+} from './identity-mode-config'
+export {
   type AuthProviderAdapter,
   createDevelopmentAuthProviderAdapter,
   createIdentityUseCases,

@@ -32,6 +32,7 @@ export const createLocalDevProcessDefinitions = ({
     env: {
       ...createLocalTelemetryEnv('identity'),
       IDENTITY_DATABASE_PATH: join(dataDirectory, 'identity.sqlite'),
+      MEGIDDO_AUTH_PROFILE: 'local-dummy',
       PORT: identityPort,
     },
     packageName: '@megiddo/identity',

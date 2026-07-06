@@ -7,6 +7,7 @@ import {
 } from '@megiddo/platform'
 import { RPCHandler } from '@orpc/server/fetch'
 import { Hono } from 'hono'
+import { type IdentityModeConfig, resolveIdentityModeConfig } from './identity-mode-config'
 import type { AuthProviderAdapter } from './identity-use-cases'
 import { createDevelopmentAuthProviderAdapter, createIdentityUseCases } from './identity-use-cases'
 import { createIdentityRouter } from './router'
@@ -20,23 +21,53 @@ const requestWithoutIdentityRpcMountPath = (request: Request) => {
 
 interface IdentityAppOptions {
   authProvider?: AuthProviderAdapter
+  env?: NodeJS.ProcessEnv
   serviceName?: string
   tokenSigner?: IdentityTokenSigner
 }
 
+const createAuthProviderForMode = ({ authProvider }: IdentityModeConfig) => {
+  if (authProvider === 'dummy') {
+    return createDevelopmentAuthProviderAdapter()
+  }
+
+  throw new Error('IDENTITY_AUTH_PROVIDER=better-auth is not implemented yet')
+}
+
+const createTokenSignerForMode = ({ tokenCodec }: IdentityModeConfig) => {
+  if (tokenCodec === 'dummy') {
+    return createDevelopmentIdentityTokenCodec()
+  }
+
+  throw new Error('IDENTITY_TOKEN_CODEC=jwt-jws is not implemented yet')
+}
+
 export const createIdentityApp = ({
-  authProvider = createDevelopmentAuthProviderAdapter(),
+  authProvider,
+  env = process.env,
   serviceName = 'identity',
-  tokenSigner = createDevelopmentIdentityTokenCodec(),
+  tokenSigner,
 }: IdentityAppOptions = {}) => {
+  const identityModeConfig = resolveIdentityModeConfig(env)
+  const resolvedAuthProvider = authProvider ?? createAuthProviderForMode(identityModeConfig)
+  const resolvedTokenSigner = tokenSigner ?? createTokenSignerForMode(identityModeConfig)
   const app = new Hono()
   const identity = createIdentityUseCases({
-    authProvider,
-    tokenSigner,
+    authProvider: resolvedAuthProvider,
+    tokenSigner: resolvedTokenSigner,
   })
   const handler = new RPCHandler(createIdentityRouter(identity))
 
-  app.get('/health', context => context.json({ service: 'identity', message: 'identity service is running' }))
+  app.get('/health', context =>
+    context.json({
+      identity: {
+        authProvider: identityModeConfig.authProvider,
+        tokenCodec: identityModeConfig.tokenCodec,
+      },
+      service: 'identity',
+      message: 'identity service is running',
+    }),
+  )
   app.use(`${identityRpcMountPath}/*`, async (context, next) => {
     const request = requestWithoutIdentityRpcMountPath(context.req.raw)
     const { matched, response } = await handleInstrumentedOrpcServerRequest({

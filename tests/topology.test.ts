@@ -126,6 +126,8 @@ test('root dev injects best-effort local OpenTelemetry defaults for services', (
     assert.equal(processDefinition.env.OTEL_EXPORTER_OTLP_ENDPOINT, 'http://localhost:4318')
     assert.equal(processDefinition.env.OTEL_EXPORTER_OTLP_PROTOCOL, 'http/protobuf')
   }
+
+  assert.equal(processDefinitions[0]?.env.MEGIDDO_AUTH_PROFILE, 'local-dummy')
 })
 
 test('service packages do not depend on another service implementation package', () => {

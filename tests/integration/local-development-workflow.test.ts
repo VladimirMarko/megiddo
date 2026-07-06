@@ -128,6 +128,7 @@ test('local development workflow runs real services over localhost for the authe
         env: {
           ...tokenEnv,
           IDENTITY_DATABASE_PATH: join(dataDirectory, 'identity.sqlite'),
+          MEGIDDO_AUTH_PROFILE: 'local-dummy',
           PORT: String(identityPort),
         },
         healthUrl: `${identityUrl}/health`,
