@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { createDevelopmentIdentityTokenKeyPairEnv } from '@megiddo/platform'
 import { createFrontendApi } from '../../apps/frontend/src/api/frontend-api-adapter'
+import { createCookieJarFetch } from '../support/cookie-jar-fetch'
 
 const workspaceRoot = new URL('../..', import.meta.url).pathname
 
@@ -40,24 +41,6 @@ const waitForHealth = async (url: string, logs: () => string) => {
   }
 
   throw new Error(`Timed out waiting for ${url}\n${logs()}`)
-}
-
-const createCookieJarFetch = () => {
-  let cookie: string | undefined
-
-  return async (request: Request) => {
-    const requestWithCookie = cookie
-      ? new Request(request, { headers: { ...Object.fromEntries(request.headers), cookie } })
-      : request
-    const response = await fetch(requestWithCookie)
-    const setCookie = response.headers.get('set-cookie')
-
-    if (setCookie) {
-      cookie = setCookie.split(';')[0]
-    }
-
-    return response
-  }
 }
 
 const startProcess = async ({

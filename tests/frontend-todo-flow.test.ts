@@ -9,6 +9,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createFrontendApi, type FrontendTodo } from '../apps/frontend/src/api/frontend-api-adapter'
 import { createTodoApp as createFrontendTodoApp, type FrontendApi } from '../apps/frontend/src/todo-app'
+import { createCookieJarFetch } from './support/cookie-jar-fetch'
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0))
 const getWindow = (element: Element) => {
@@ -75,23 +76,6 @@ const createTodoStore = (initialTodos: FrontendTodo[]) => {
       todos = todos.map(todo => (todo.id === id ? { ...todo, status: 'open' } : todo))
       return getTodo(id)
     },
-  }
-}
-const createCookieJarFetch = (fetch: (request: Request) => Promise<Response>) => {
-  let cookie: string | undefined
-
-  return async (request: Request) => {
-    const requestWithCookie = cookie
-      ? new Request(request, { headers: { ...Object.fromEntries(request.headers), cookie } })
-      : request
-    const response = await fetch(requestWithCookie)
-    const setCookie = response.headers.get('set-cookie')
-
-    if (setCookie) {
-      cookie = setCookie.split(';')[0]
-    }
-
-    return response
   }
 }
 const withBrowserGlobals = async (dom: JSDOM, run: () => Promise<void>) => {

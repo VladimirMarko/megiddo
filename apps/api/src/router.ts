@@ -2,6 +2,7 @@ import {
   type ApiGatewayContractV1,
   apiGatewayContractV1,
   apiGatewayOperationalHealthV1,
+  type BrowserSessionIssueOutputV1,
   gatewayStatus,
   todoServiceAudienceV1,
 } from '@megiddo/contracts'
@@ -46,6 +47,11 @@ const clearBrowserSessionCookie = (headers: Headers) => {
   headers.append('set-cookie', `${apiGatewayBrowserSessionCookieName}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`)
 }
 
+const toLoggedInGatewaySession = (issued: BrowserSessionIssueOutputV1) => ({
+  state: 'logged-in' as const,
+  user: issued.user,
+})
+
 const readGatewaySession = async (identityClient: IdentityServiceClient, request: Request) => {
   const sessionId = browserSessionId(request)
 
@@ -75,7 +81,7 @@ const issueTodoIdentityToken = async (identityClient: IdentityServiceClient, sub
     })
   ).identityToken
 
-const createTodoIdentityInput = async <Input extends object>(
+const createAuthenticatedTodoInput = async <Input extends object>(
   identityClient: IdentityServiceClient,
   request: Request,
   input: Input,
@@ -90,7 +96,7 @@ const createTodoIdentityInput = async <Input extends object>(
 const createTodoInputForRequest =
   (identityClient: IdentityServiceClient, request: Request) =>
   <Input extends object>(input: Input) =>
-    createTodoIdentityInput(identityClient, request, input)
+    createAuthenticatedTodoInput(identityClient, request, input)
 
 export const createApiGatewayRouter = ({
   identityClient,
@@ -117,13 +123,13 @@ export const createApiGatewayRouter = ({
             const issued = await identityClient.createBrowserSession(input)
             setBrowserSessionCookie(context.responseHeaders, issued.browserSession.id)
 
-            return { state: 'logged-in' as const, user: issued.user }
+            return toLoggedInGatewaySession(issued)
           }),
           signUp: apiGatewayV1.v1.viewer.session.signUp.handler(async ({ context, input }) => {
             const issued = await identityClient.createBrowserSessionForSignUp(input)
             setBrowserSessionCookie(context.responseHeaders, issued.browserSession.id)
 
-            return { state: 'logged-in' as const, user: issued.user }
+            return toLoggedInGatewaySession(issued)
           }),
           signOut: apiGatewayV1.v1.viewer.session.signOut.handler(async ({ context }) => {
             const sessionId = browserSessionId(context.request)
