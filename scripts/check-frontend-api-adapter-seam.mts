@@ -18,8 +18,8 @@ interface FrontendContractBoundaryOptions {
 
 const frontendSourcePath = 'apps/frontend/src'
 const allowedAdapterPath = 'apps/frontend/src/api/'
-const contractImportPattern =
-  /(^|\n)\s*import\s+(?:type\s+)?(?:\{[\s\S]*?\}|\*\s+as\s+\w+|\w+(?:\s*,\s*\{[\s\S]*?\})?)\s+from\s+['"]@megiddo\/contracts['"]/g
+const forbiddenImportPattern =
+  /(^|\n)\s*import\s+(?:type\s+)?(?:\{[\s\S]*?\}|\*\s+as\s+\w+|\w+(?:\s*,\s*\{[\s\S]*?\})?)\s+from\s+['"](?:@megiddo\/contracts|@orpc\/client(?:\/fetch)?)['"]/g
 
 const toRepoPath = (path: string) => path.split(sep).join('/')
 
@@ -74,7 +74,7 @@ export const checkFrontendContractBoundaries = async ({
 
     const source = await readFile(file, 'utf8')
 
-    for (const match of source.matchAll(contractImportPattern)) {
+    for (const match of source.matchAll(forbiddenImportPattern)) {
       const importIndex = match.index + match[0].indexOf('import')
       violations.push({ path: repoPath, line: lineForIndex(source, importIndex) })
     }
@@ -82,7 +82,7 @@ export const checkFrontendContractBoundaries = async ({
 
   const details = violations.map(violation => `${violation.path}:${violation.line}`).join('\n')
   const message = [
-    'Frontend API Adapter seam rule: frontend UI files must not import contract Resource types directly or other raw contract details.',
+    'Frontend API Adapter seam rule: frontend UI files must not import contract Resource types, raw contract details, or raw oRPC clients directly.',
     'Move contract-to-UI mapping into apps/frontend/src/api/frontend-api-adapter.ts and depend on frontend-owned models instead.',
     details,
   ]

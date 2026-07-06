@@ -55,6 +55,16 @@ When running services manually for the local dummy workflow, set `MEGIDDO_AUTH_P
 
 ## Tests
 
+Run formatting and coding-standard compliance checks:
+
+```sh
+pnpm check
+```
+
+This runs Biome with fixes and a custom frontend API Adapter seam rule. The custom rule prevents frontend UI files from importing `@megiddo/contracts` or raw oRPC clients directly; contract-to-UI and oRPC mapping belongs in `apps/frontend/src/api/`.
+
+Run focused behavior and architecture tests:
+
 Focused tests stay fast and do not require real backend services:
 
 ```sh
