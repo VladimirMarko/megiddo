@@ -80,6 +80,26 @@ _Avoid_: Deep service import, implementation sharing.
 A shared package for cross-cutting infrastructure seams such as configuration, logging, cryptography interfaces, oRPC wiring, and test harness helpers.
 _Avoid_: Shared domain package, business logic package, service utility dump.
 
+**Service Env Contract**:
+The complete environment schema and accessor definition owned by one Service. It is composed from any needed Env Schema Fragments and validates only the variables that Service reads at runtime.
+_Avoid_: Global env object, repo-wide runtime configuration, validating unrelated service variables.
+
+**Script Env Contract**:
+The complete environment schema and accessor definition owned by one script. It is composed from any needed Env Schema Fragments and validates only the variables that script reads at runtime.
+_Avoid_: Global script env object, implicit process.env reads, validating service-only variables.
+
+**Runtime Env**:
+The concrete environment values supplied to a Service, frontend app, or script when it runs, such as `PORT=3001`.
+_Avoid_: Env schema, accessor definition, generated documentation.
+
+**Env Schema Fragment**:
+A reusable environment schema helper for repeated infrastructure concerns, such as ports, local auth profile, token codec selection, or telemetry flags.
+_Avoid_: Shared service configuration object, business setting bundle, mandatory global preset.
+
+**Env Catalog**:
+A human-facing inventory or check artifact collated from Service Env Contracts, Script Env Contracts, and frontend env contracts. Services do not import the Env Catalog at runtime.
+_Avoid_: Runtime env composition root, generated service dependency, hand-maintained env table.
+
 **Telemetry Span**:
 A timed OpenTelemetry operation emitted by a Service or frontend adapter, such as an oRPC client call or oRPC server handler.
 _Avoid_: Custom message hash, raw console message, unstructured request log.
