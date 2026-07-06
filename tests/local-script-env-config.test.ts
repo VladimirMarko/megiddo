@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import {
@@ -11,6 +12,14 @@ import {
 } from '../scripts/script-config-builder.mts'
 
 const workspaceRoot = '/repo'
+
+test('script env contracts are backed by T3 Env instead of a local Zod parser', () => {
+  const source = readFileSync(join(process.cwd(), 'scripts', 'script-env-contract.mts'), 'utf8')
+
+  assert.match(source, /@t3-oss\/env-core/)
+  assert.match(source, /createEnv\(/)
+  assert.doesNotMatch(source, /safeParse\(/)
+})
 
 test('local dev script env validates defaults from an explicit empty runtime env', () => {
   const env = createLocalDevScriptEnv({})

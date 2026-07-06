@@ -25,6 +25,7 @@
     "@megiddo/identity": "workspace:*",
     "@megiddo/platform": "workspace:*",
     "@megiddo/todo": "workspace:*",
+    "@t3-oss/env-core": "^0.13.11",
     "zod": "catalog:"
   },
   "devDependencies": {

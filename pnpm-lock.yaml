@@ -35,6 +35,9 @@ importers:
       '@megiddo/todo':
         specifier: workspace:*
         version: link:apps/todo
+      '@t3-oss/env-core':
+        specifier: ^0.13.11
+        version: 0.13.11(typescript@6.0.3)(zod@4.4.3)
       zod:
         specifier: 'catalog:'
         version: 4.4.3
