@@ -6,12 +6,13 @@ import { createApiGatewayEnv } from './env-contract'
 
 const env = createApiGatewayEnv(process.env)
 const config = createApiGatewayServiceConfig(env)
+const apiGatewayApp = createApiGatewayApp({ config })
 
 await configureLocalTelemetry()
 
 serve({
   port: config.port,
-  fetch: createApiGatewayApp({ config }).fetch,
+  fetch: apiGatewayApp.fetch,
 })
 
 console.log(`API Gateway listening on http://localhost:${config.port}`)
