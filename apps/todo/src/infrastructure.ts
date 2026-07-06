@@ -3,8 +3,8 @@ import {
   createJwtJwsIdentityTokenCodec,
   type IdentityTokenVerifier,
 } from '@megiddo/platform'
+import type { TodoServiceConfig } from './config-builder'
 import { createEmbeddedTodoRepository, type EmbeddedTodoRepository } from './embedded-todo-repository'
-import type { TodoServiceConfig } from './env'
 
 export interface TodoServiceInfrastructure {
   close(): void

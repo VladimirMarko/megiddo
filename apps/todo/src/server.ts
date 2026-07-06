@@ -1,7 +1,8 @@
 import { serve } from '@hono/node-server'
 import { configureLocalTelemetry } from '@megiddo/platform/local-telemetry'
 import { createTodoApp } from './app'
-import { createTodoEnv, createTodoServiceConfig } from './env'
+import { createTodoServiceConfig } from './config-builder'
+import { createTodoEnv } from './env-contract'
 import { createTodoServiceInfrastructure } from './infrastructure'
 
 const env = createTodoEnv(process.env)
