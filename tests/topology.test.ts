@@ -7,6 +7,7 @@ import { createLocalDevProcessDefinitions } from '../scripts/local-dev-topology.
 const root = process.cwd()
 
 const readJson = (path: string) => JSON.parse(readFileSync(join(root, path), 'utf8')) as Record<string, unknown>
+const readPackageScripts = (path: string) => readJson(path).scripts as Record<string, string>
 
 const removedPackagePaths = ['apps/web/package.json', 'packages/shared/package.json']
 
@@ -126,26 +127,26 @@ test('root dev injects best-effort local OpenTelemetry defaults for services', (
 
 test('Node env-file policy is documented and package scripts do not hide env-file loading', () => {
   const readme = readFileSync(join(root, 'README.md'), 'utf8')
-  const envAdr = readFileSync(join(root, 'docs/adr/0025-use-owned-env-contracts-and-derived-config.md'), 'utf8')
-  const packageJson = readJson('package.json')
-  const api = readJson('apps/api/package.json')
-  const identity = readJson('apps/identity/package.json')
-  const todo = readJson('apps/todo/package.json')
-  const frontend = readJson('apps/frontend/package.json')
-  const nodeScripts = [packageJson.scripts, api.scripts, identity.scripts, todo.scripts].flatMap(scripts =>
-    Object.values(scripts as Record<string, string>),
-  )
+  const envContractAdr = readFileSync(join(root, 'docs/adr/0025-use-owned-env-contracts-and-derived-config.md'), 'utf8')
+  const nodePackageScriptPaths = [
+    'package.json',
+    'apps/api/package.json',
+    'apps/identity/package.json',
+    'apps/todo/package.json',
+  ]
+  const nodeScripts = nodePackageScriptPaths.flatMap(path => Object.values(readPackageScripts(path)))
+  const frontendScripts = readPackageScripts('apps/frontend/package.json')
 
   assert.match(readme, /Node services and scripts do not load `.env` files themselves/)
-  assert.match(envAdr, /Node services and scripts do not perform implicit `.env` loading/)
-  assert.match(envAdr, /Frontend Vite commands keep Vite's built-in `.env` loading/)
+  assert.match(envContractAdr, /Node services and scripts do not perform implicit `.env` loading/)
+  assert.match(envContractAdr, /Frontend Vite commands keep Vite's built-in `.env` loading/)
 
   for (const script of nodeScripts) {
     assert.doesNotMatch(script, /(?:--env-file|dotenv)/, `${script} should not load env files implicitly`)
   }
 
-  assert.match((frontend.scripts as Record<string, string>).dev, /^vite\b/)
-  assert.match((frontend.scripts as Record<string, string>).build, /^vite build\b/)
+  assert.match(frontendScripts.dev, /^vite\b/)
+  assert.match(frontendScripts.build, /^vite build\b/)
 })
 
 test('service packages do not depend on another service implementation package', () => {
