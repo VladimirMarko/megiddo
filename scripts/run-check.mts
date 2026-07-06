@@ -17,6 +17,12 @@ const steps: CheckStep[] = [
     name: 'frontend API Adapter seam',
   },
   {
+    args: ['scripts/check-raw-env-access.mts'],
+    command: 'tsx',
+    forwardsPaths: true,
+    name: 'raw env access seam',
+  },
+  {
     args: ['biome', 'check', '--write'],
     command: 'pnpm',
     forwardsPaths: true,

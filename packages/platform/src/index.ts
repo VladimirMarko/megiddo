@@ -257,7 +257,7 @@ interface JwtJwsIdentityTokenClaims {
   sub: string
 }
 
-const readJwtJwsIdentityTokenKeyPair = (env: NodeJS.ProcessEnv = process.env): JwtJwsIdentityTokenCodecOptions => {
+const readJwtJwsIdentityTokenKeyPair = (env: NodeJS.ProcessEnv = {}): JwtJwsIdentityTokenCodecOptions => {
   const privateKeyPemBase64 = env[privateKeyEnvName]
   const publicKeyPemBase64 = env[publicKeyEnvName]
 
