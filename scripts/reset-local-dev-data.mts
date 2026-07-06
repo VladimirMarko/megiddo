@@ -1,8 +1,8 @@
 import { rmSync } from 'node:fs'
-import { createLocalDevResetScriptConfig, createLocalDevScriptEnv } from './script-config-builder.mjs'
+import { createLocalDevResetScriptConfig, createLocalDevResetScriptEnv } from './script-config-builder.mjs'
 
 const workspaceRoot = new URL('..', import.meta.url).pathname
-const config = createLocalDevResetScriptConfig(createLocalDevScriptEnv(process.env), { workspaceRoot })
+const config = createLocalDevResetScriptConfig(createLocalDevResetScriptEnv(process.env), { workspaceRoot })
 
 if (!config.dataDirectoryWasConfigured && !config.dataDirectory.startsWith(`${config.workspaceDataRoot}/`)) {
   throw new Error(

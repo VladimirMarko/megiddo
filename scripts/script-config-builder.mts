@@ -1,13 +1,15 @@
 import { join, resolve } from 'node:path'
 import {
+  createLocalDevResetScriptEnv,
   createLocalDevScriptEnv,
   createTelemetryViewerScriptEnv,
+  type LocalDevResetScriptEnv,
   type LocalDevScriptEnv,
   type ScriptRuntimeEnv,
   type TelemetryViewerScriptEnv,
 } from './script-env-contract.mjs'
 
-export { createLocalDevScriptEnv, createTelemetryViewerScriptEnv }
+export { createLocalDevResetScriptEnv, createLocalDevScriptEnv, createTelemetryViewerScriptEnv }
 
 export interface ScriptConfigOptions {
   workspaceRoot: string
@@ -46,7 +48,7 @@ export const createLocalDevScriptConfig = (
 })
 
 export const createLocalDevResetScriptConfig = (
-  env: LocalDevScriptEnv,
+  env: LocalDevResetScriptEnv,
   { workspaceRoot }: ScriptConfigOptions,
 ): LocalDevResetScriptConfig => {
   const defaultDataDirectory = join(workspaceRoot, '.data', 'local-dev')
@@ -64,4 +66,4 @@ export const createTelemetryViewerScriptConfig = (env: TelemetryViewerScriptEnv)
   viewerBinary: env.OTEL_GUI_BIN ?? 'otel-gui',
 })
 
-export type { LocalDevScriptEnv, ScriptRuntimeEnv, TelemetryViewerScriptEnv }
+export type { LocalDevResetScriptEnv, LocalDevScriptEnv, ScriptRuntimeEnv, TelemetryViewerScriptEnv }

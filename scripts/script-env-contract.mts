@@ -22,6 +22,10 @@ const localDevScriptEnvSchema = z.object({
   TODO_PORT: tcpPortSchema.default(3001),
 })
 
+const localDevResetScriptEnvSchema = z.object({
+  MEGIDDO_LOCAL_DATA_DIR: z.string().min(1).optional(),
+})
+
 const telemetryViewerScriptEnvSchema = z.object({
   OTEL_GUI_BIN: z.string().min(1).optional(),
   OTEL_GUI_PORT: tcpPortSchema.optional(),
@@ -33,6 +37,11 @@ export const createLocalDevScriptEnv = (runtimeEnv: ScriptRuntimeEnv) => ({
   ...parseScriptEnv(localDevScriptEnvSchema, runtimeEnv),
 })
 
+export const createLocalDevResetScriptEnv = (runtimeEnv: ScriptRuntimeEnv) => ({
+  MEGIDDO_LOCAL_DATA_DIR: undefined,
+  ...parseScriptEnv(localDevResetScriptEnvSchema, runtimeEnv),
+})
+
 export const createTelemetryViewerScriptEnv = (runtimeEnv: ScriptRuntimeEnv) => ({
   OTEL_GUI_BIN: undefined,
   OTEL_GUI_PORT: undefined,
@@ -40,5 +49,6 @@ export const createTelemetryViewerScriptEnv = (runtimeEnv: ScriptRuntimeEnv) => 
   ...parseScriptEnv(telemetryViewerScriptEnvSchema, runtimeEnv),
 })
 
+export type LocalDevResetScriptEnv = ReturnType<typeof createLocalDevResetScriptEnv>
 export type LocalDevScriptEnv = ReturnType<typeof createLocalDevScriptEnv>
 export type TelemetryViewerScriptEnv = ReturnType<typeof createTelemetryViewerScriptEnv>

@@ -3,6 +3,7 @@ import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import {
   createLocalDevResetScriptConfig,
+  createLocalDevResetScriptEnv,
   createLocalDevScriptConfig,
   createLocalDevScriptEnv,
   createTelemetryViewerScriptConfig,
@@ -51,14 +52,14 @@ test('local dev script config derives the default local data directory from work
 })
 
 test('local dev reset script config derives resolved data directory safety inputs', () => {
-  assert.deepEqual(createLocalDevResetScriptConfig(createLocalDevScriptEnv({}), { workspaceRoot }), {
+  assert.deepEqual(createLocalDevResetScriptConfig(createLocalDevResetScriptEnv({}), { workspaceRoot }), {
     dataDirectory: join(workspaceRoot, '.data', 'local-dev'),
     dataDirectoryWasConfigured: false,
     workspaceDataRoot: join(workspaceRoot, '.data'),
   })
 
   assert.deepEqual(
-    createLocalDevResetScriptConfig(createLocalDevScriptEnv({ MEGIDDO_LOCAL_DATA_DIR: '../custom-data' }), {
+    createLocalDevResetScriptConfig(createLocalDevResetScriptEnv({ MEGIDDO_LOCAL_DATA_DIR: '../custom-data' }), {
       workspaceRoot,
     }),
     {
@@ -67,6 +68,12 @@ test('local dev reset script config derives resolved data directory safety input
       workspaceDataRoot: join(workspaceRoot, '.data'),
     },
   )
+})
+
+test('local dev reset script env ignores unrelated local dev port variables', () => {
+  const env = createLocalDevResetScriptEnv({ API_PORT: 'not-a-port' })
+
+  assert.deepEqual(env, { MEGIDDO_LOCAL_DATA_DIR: undefined })
 })
 
 test('local dev script env rejects invalid port values', () => {
