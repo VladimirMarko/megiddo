@@ -1,7 +1,6 @@
 import { type ChildProcess, spawn } from 'node:child_process'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { createDevelopmentIdentityTokenKeyPairEnv } from '@megiddo/platform'
 import { createLocalDevProcessDefinitions } from './local-dev-topology.mjs'
 
 const workspaceRoot = new URL('..', import.meta.url).pathname
@@ -11,7 +10,6 @@ const todoPort = process.env.TODO_PORT ?? '3001'
 const identityPort = process.env.IDENTITY_PORT ?? '3002'
 const frontendPort = process.env.FRONTEND_PORT ?? '5173'
 
-const tokenEnv = await createDevelopmentIdentityTokenKeyPairEnv()
 const children: ChildProcess[] = []
 
 mkdirSync(dataDirectory, { recursive: true })
@@ -19,7 +17,7 @@ mkdirSync(dataDirectory, { recursive: true })
 const start = (packageName: string, env: NodeJS.ProcessEnv, args: string[] = []) => {
   const child = spawn('pnpm', ['--filter', packageName, 'dev', ...args], {
     cwd: workspaceRoot,
-    env: { ...process.env, ...tokenEnv, ...env },
+    env: { ...process.env, ...env },
     stdio: 'inherit',
   })
 

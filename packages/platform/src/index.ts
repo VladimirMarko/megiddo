@@ -1,4 +1,8 @@
-import type { IdentityTokenAudienceV1, IdentityTokenClaimsV1 } from '@megiddo/contracts'
+import {
+  type IdentityTokenAudienceV1,
+  IdentityTokenClaimsSchemaV1,
+  type IdentityTokenClaimsV1,
+} from '@megiddo/contracts'
 import { context, propagation, type Span, SpanKind, SpanStatusCode, trace } from '@opentelemetry/api'
 
 export const apiGatewayRpcMountPath = '/rpc'
@@ -158,6 +162,51 @@ export interface IdentityTokenVerifier {
 
 const base64UrlEncode = (input: Buffer | string) => Buffer.from(input).toString('base64url')
 const base64UrlDecode = (input: string) => Buffer.from(input, 'base64url')
+
+export const createDummyIdentityTokenCodec = (): IdentityTokenSigner & IdentityTokenVerifier => ({
+  async issueIdentityToken(claims) {
+    return `dummy.${base64UrlEncode(JSON.stringify({ ...claims, issuedAt: Date.now() }))}`
+  },
+  async verifyIdentityToken({ identityToken, audience }) {
+    const [prefix, payload, extra] = identityToken.split('.')
+
+    if (prefix !== 'dummy' || !payload || extra) {
+      throw new Error('Invalid dummy Identity Token format')
+    }
+
+    let decodedClaims: unknown
+    try {
+      decodedClaims = JSON.parse(base64UrlDecode(payload).toString('utf8'))
+    } catch {
+      throw new Error('Invalid dummy Identity Token claims')
+    }
+
+    const parsedClaims = IdentityTokenClaimsSchemaV1.safeParse(decodedClaims)
+    if (!parsedClaims.success) {
+      throw new Error('Invalid dummy Identity Token claims')
+    }
+
+    if (parsedClaims.data.audience.service !== audience.service) {
+      throw new Error(`Identity Token audience mismatch: expected ${audience.service}`)
+    }
+
+    const expiresAt =
+      decodedClaims && typeof decodedClaims === 'object' && 'expiresAt' in decodedClaims
+        ? decodedClaims.expiresAt
+        : undefined
+    if (expiresAt !== undefined) {
+      if (!Number.isInteger(expiresAt) || typeof expiresAt !== 'number') {
+        throw new Error('Invalid dummy Identity Token claims')
+      }
+
+      if (expiresAt <= Date.now()) {
+        throw new Error('Identity Token expired')
+      }
+    }
+
+    return parsedClaims.data
+  },
+})
 
 const generateDevelopmentIdentityTokenKeyPair = async (): Promise<DevelopmentIdentityTokenKeyPair> => {
   const { generateKeyPairSync } = await import('node:crypto')

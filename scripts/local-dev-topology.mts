@@ -40,6 +40,7 @@ export const createLocalDevProcessDefinitions = ({
   {
     env: {
       ...createLocalTelemetryEnv('todo'),
+      MEGIDDO_AUTH_PROFILE: 'local-dummy',
       PORT: todoPort,
       TODO_DATABASE_PATH: join(dataDirectory, 'todo.sqlite'),
     },

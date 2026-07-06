@@ -128,6 +128,7 @@ test('root dev injects best-effort local OpenTelemetry defaults for services', (
   }
 
   assert.equal(processDefinitions[0]?.env.MEGIDDO_AUTH_PROFILE, 'local-dummy')
+  assert.equal(processDefinitions[1]?.env.MEGIDDO_AUTH_PROFILE, 'local-dummy')
 })
 
 test('service packages do not depend on another service implementation package', () => {

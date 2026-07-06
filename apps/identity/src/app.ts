@@ -1,5 +1,5 @@
 import {
-  createDevelopmentIdentityTokenCodec,
+  createDummyIdentityTokenCodec,
   defaultInternalServiceAuthSecret,
   handleInstrumentedOrpcServerRequest,
   type IdentityTokenSigner,
@@ -38,7 +38,7 @@ const createAuthProviderForMode = ({ authProvider }: IdentityModeConfig) => {
 
 const createTokenSignerForMode = ({ tokenCodec }: IdentityModeConfig) => {
   if (tokenCodec === 'dummy') {
-    return createDevelopmentIdentityTokenCodec()
+    return createDummyIdentityTokenCodec()
   }
 
   throw new Error('IDENTITY_TOKEN_CODEC=jwt-jws is not implemented yet')

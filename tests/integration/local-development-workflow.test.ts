@@ -5,7 +5,6 @@ import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { createDevelopmentIdentityTokenKeyPairEnv } from '@megiddo/platform'
 import { createFrontendApi } from '../../apps/frontend/src/api/frontend-api-adapter'
 import { createCookieJarFetch } from '../support/cookie-jar-fetch'
 
@@ -117,7 +116,6 @@ const stopService = (child: ChildProcessWithoutNullStreams) => {
 test('local development workflow runs real services over localhost for the authenticated todo path', async () => {
   const [apiPort, identityPort, todoPort] = await Promise.all([getFreePort(), getFreePort(), getFreePort()])
   const dataDirectory = await mkdtemp(join(tmpdir(), 'megiddo-local-dev-'))
-  const tokenEnv = await createDevelopmentIdentityTokenKeyPairEnv()
   const identityUrl = `http://127.0.0.1:${identityPort}`
   const todoUrl = `http://127.0.0.1:${todoPort}`
   const apiUrl = `http://127.0.0.1:${apiPort}`
@@ -127,7 +125,6 @@ test('local development workflow runs real services over localhost for the authe
     services.push(
       await startService({
         env: {
-          ...tokenEnv,
           IDENTITY_DATABASE_PATH: join(dataDirectory, 'identity.sqlite'),
           MEGIDDO_AUTH_PROFILE: 'local-dummy',
           PORT: String(identityPort),
@@ -138,7 +135,11 @@ test('local development workflow runs real services over localhost for the authe
     )
     services.push(
       await startService({
-        env: { ...tokenEnv, PORT: String(todoPort), TODO_DATABASE_PATH: join(dataDirectory, 'todo.sqlite') },
+        env: {
+          MEGIDDO_AUTH_PROFILE: 'local-dummy',
+          PORT: String(todoPort),
+          TODO_DATABASE_PATH: join(dataDirectory, 'todo.sqlite'),
+        },
         healthUrl: `${todoUrl}/health`,
         packageName: '@megiddo/todo',
       }),
@@ -146,7 +147,6 @@ test('local development workflow runs real services over localhost for the authe
     services.push(
       await startService({
         env: {
-          ...tokenEnv,
           IDENTITY_SERVICE_URL: identityUrl,
           PORT: String(apiPort),
           TODO_SERVICE_URL: todoUrl,

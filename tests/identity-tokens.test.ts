@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { createIdentityApp } from '@megiddo/identity'
 import {
   createDevelopmentIdentityTokenCodec,
+  createDummyIdentityTokenCodec,
   internalServiceHeader,
   internalServiceSecretHeader,
 } from '@megiddo/platform'
@@ -52,6 +53,8 @@ const postRpcWithHeaders = (
     method: 'POST',
   })
 
+const encodeDummyClaims = (claims: unknown) => `dummy.${Buffer.from(JSON.stringify(claims)).toString('base64url')}`
+
 test('Identity issues development Identity Tokens that Todo verifies for owner-only access', async () => {
   const codec = createDevelopmentIdentityTokenCodec()
   const identityApp = createIdentityApp({ tokenSigner: codec })
@@ -78,6 +81,67 @@ test('Identity issues development Identity Tokens that Todo verifies for owner-o
 
   const wrongAudienceResponse = await postRpc(todoApp, '/rpc/v1/todos/list', { identityToken: apiAudienceToken })
   assert.equal(wrongAudienceResponse.status, 401)
+})
+
+test('dummy Identity Token codec issues inspectable unsigned tokens and validates verifier inputs', async () => {
+  const codec = createDummyIdentityTokenCodec()
+  const identityToken = await codec.issueIdentityToken({
+    audience: { service: 'todo' },
+    contractVersion: 'v1',
+    subject: 'dummy:alice',
+  })
+
+  assert.match(identityToken, /^dummy\.[A-Za-z0-9_-]+$/)
+
+  const claims = await codec.verifyIdentityToken({ audience: { service: 'todo' }, identityToken })
+  assert.equal(claims.subject, 'dummy:alice')
+  assert.deepEqual(claims.audience, { service: 'todo' })
+  assert.equal(claims.contractVersion, 'v1')
+  assert.equal(typeof claims.issuedAt, 'number')
+
+  const decodedClaims = JSON.parse(Buffer.from(identityToken.slice('dummy.'.length), 'base64url').toString('utf8'))
+  assert.equal(decodedClaims.subject, 'dummy:alice')
+
+  await assert.rejects(
+    codec.verifyIdentityToken({ audience: { service: 'todo' }, identityToken: 'not-dummy.token' }),
+    /Invalid dummy Identity Token format/,
+  )
+  await assert.rejects(
+    codec.verifyIdentityToken({ audience: { service: 'api-gateway' }, identityToken }),
+    /Identity Token audience mismatch: expected api-gateway/,
+  )
+  await assert.rejects(
+    codec.verifyIdentityToken({
+      audience: { service: 'todo' },
+      identityToken: encodeDummyClaims({
+        audience: { service: 'todo' },
+        expiresAt: Date.now() - 1,
+        issuedAt: Date.now(),
+        subject: 'dummy:alice',
+      }),
+    }),
+    /Identity Token expired/,
+  )
+  await assert.rejects(
+    codec.verifyIdentityToken({
+      audience: { service: 'todo' },
+      identityToken: encodeDummyClaims({ audience: { service: 'todo' }, issuedAt: Date.now() }),
+    }),
+    /Invalid dummy Identity Token claims/,
+  )
+})
+
+test('IDENTITY_TOKEN_CODEC=dummy selects dummy tokens through Identity token issuance', async () => {
+  const identityApp = createIdentityApp({ env: { IDENTITY_TOKEN_CODEC: 'dummy' } })
+  const identityToken = await issueToken(identityApp, 'dummy:alice', 'todo')
+
+  assert.match(identityToken, /^dummy\./)
+
+  const claims = await createDummyIdentityTokenCodec().verifyIdentityToken({
+    audience: { service: 'todo' },
+    identityToken,
+  })
+  assert.equal(claims.subject, 'dummy:alice')
 })
 
 test('Identity protects browser-session service-token issuance for Gateway Todo calls', async () => {

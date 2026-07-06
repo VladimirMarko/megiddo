@@ -1,5 +1,6 @@
 import {
   createDevelopmentIdentityTokenCodec,
+  createDummyIdentityTokenCodec,
   handleInstrumentedOrpcServerRequest,
   type IdentityTokenVerifier,
   orpcProcedureFromRequest,
@@ -19,15 +20,25 @@ const requestWithoutTodoRpcMountPath = (request: Request) => {
 }
 
 interface TodoAppOptions {
+  env?: NodeJS.ProcessEnv
   repository?: TodoRepository
   serviceName?: string
   tokenVerifier?: IdentityTokenVerifier
 }
 
+const createDefaultTokenVerifier = (env: NodeJS.ProcessEnv) => {
+  if (env.IDENTITY_TOKEN_CODEC === 'dummy' || env.MEGIDDO_AUTH_PROFILE === 'local-dummy') {
+    return createDummyIdentityTokenCodec()
+  }
+
+  return createDevelopmentIdentityTokenCodec()
+}
+
 export const createTodoApp = ({
+  env = process.env,
   repository = createInMemoryTodoRepository(),
   serviceName = 'todo',
-  tokenVerifier = createDevelopmentIdentityTokenCodec(),
+  tokenVerifier = createDefaultTokenVerifier(env),
 }: TodoAppOptions = {}) => {
   const app = new Hono()
   const todos = createTodoUseCases({ repository })
