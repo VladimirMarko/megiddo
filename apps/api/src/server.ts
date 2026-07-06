@@ -1,14 +1,17 @@
 import { serve } from '@hono/node-server'
 import { configureLocalTelemetry } from '@megiddo/platform/local-telemetry'
 import { createApiGatewayApp } from './app'
+import { createApiGatewayServiceConfig } from './config-builder'
+import { createApiGatewayEnv } from './env-contract'
 
-const port = Number.parseInt(process.env.PORT ?? '3000', 10)
+const env = createApiGatewayEnv(process.env)
+const config = createApiGatewayServiceConfig(env)
 
 await configureLocalTelemetry()
 
 serve({
-  port,
-  fetch: createApiGatewayApp().fetch,
+  port: config.port,
+  fetch: createApiGatewayApp({ config }).fetch,
 })
 
-console.log(`API Gateway listening on http://localhost:${port}`)
+console.log(`API Gateway listening on http://localhost:${config.port}`)

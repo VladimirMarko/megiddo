@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/app.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "build": "tsc",
@@ -15,7 +15,9 @@
     "@megiddo/platform": "workspace:*",
     "@orpc/client": "^1.14.6",
     "@orpc/server": "^1.14.6",
-    "hono": "^4.12.27"
+    "@t3-oss/env-core": "^0.13.11",
+    "hono": "^4.12.27",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@total-typescript/tsconfig": "catalog:",

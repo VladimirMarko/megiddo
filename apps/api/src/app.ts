@@ -6,14 +6,11 @@ import {
 } from '@megiddo/platform'
 import { RPCHandler } from '@orpc/server/fetch'
 import { Hono } from 'hono'
+import { type ApiGatewayServiceConfig, createApiGatewayServiceConfig } from './config-builder'
+import { createApiGatewayEnv } from './env-contract'
 import { createIdentityServiceClient, type IdentityServiceClient } from './identity-service-client'
 import { createApiGatewayRouter } from './router'
 import { createTodoServiceClient, type TodoServiceClient } from './todo-service-client'
-
-export type { IdentityServiceClient } from './identity-service-client'
-export { createIdentityServiceClient } from './identity-service-client'
-export type { TodoServiceClient } from './todo-service-client'
-export { createTodoServiceClient } from './todo-service-client'
 
 const requestWithoutApiGatewayRpcMountPath = (request: Request) => {
   const url = new URL(request.url)
@@ -23,15 +20,20 @@ const requestWithoutApiGatewayRpcMountPath = (request: Request) => {
 }
 
 interface ApiGatewayAppOptions {
+  config?: ApiGatewayServiceConfig
   identityClient?: IdentityServiceClient
   serviceName?: string
   todoClient?: TodoServiceClient
 }
 
 export const createApiGatewayApp = ({
-  identityClient = createIdentityServiceClient({ baseUrl: process.env.IDENTITY_SERVICE_URL }),
+  config = createApiGatewayServiceConfig(createApiGatewayEnv({})),
+  identityClient = createIdentityServiceClient({
+    baseUrl: config.identityServiceUrl,
+    internalServiceAuthSecret: config.identityInternalServiceAuthSecret,
+  }),
   serviceName = 'api-gateway',
-  todoClient = createTodoServiceClient({ baseUrl: process.env.TODO_SERVICE_URL }),
+  todoClient = createTodoServiceClient({ baseUrl: config.todoServiceUrl }),
 }: ApiGatewayAppOptions = {}) => {
   const app = new Hono()
   const handler = new RPCHandler(createApiGatewayRouter({ identityClient, todoClient }))

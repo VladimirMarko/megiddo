@@ -44,7 +44,7 @@ interface InstrumentedIdentityClientOptions {
 export const createIdentityServiceClient = ({
   baseUrl = 'http://localhost:3002',
   fetch,
-  internalServiceAuthSecret = process.env.IDENTITY_INTERNAL_SERVICE_AUTH_SECRET ?? defaultInternalServiceAuthSecret,
+  internalServiceAuthSecret = defaultInternalServiceAuthSecret,
   serviceName = 'api-gateway',
 }: IdentityServiceClientOptions = {}): IdentityServiceClient => {
   const withInternalServiceAuth = (request: Request) => {
