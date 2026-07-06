@@ -10,6 +10,7 @@ import { createRoot } from 'react-dom/client'
 import { createFrontendApi, type FrontendTodo } from '../apps/frontend/src/api/frontend-api-adapter'
 import { createTodoApp as createFrontendTodoApp, type FrontendApi } from '../apps/frontend/src/todo-app'
 import { createCookieJarFetch } from './support/cookie-jar-fetch'
+import { identityServiceConfigFromEnv } from './support/identity-service-config'
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0))
 const getWindow = (element: Element) => {
@@ -746,10 +747,11 @@ test('production Frontend API Adapter signs up a dummy principal and can select 
 test('production Frontend API Adapter completes the Better Auth browser Todo flow', async () => {
   const codec = createJwtJwsIdentityTokenCodec()
   const identityApp = createIdentityApp({
-    env: {
+    serviceConfig: identityServiceConfigFromEnv({
       IDENTITY_AUTH_PROVIDER: 'better-auth',
+      IDENTITY_BETTER_AUTH_DATABASE_PATH: ':memory:',
       IDENTITY_TOKEN_CODEC: 'dummy',
-    },
+    }),
     tokenSigner: codec,
   })
   const todoApp = createTodoServiceApp({ tokenVerifier: codec })

@@ -1,34 +1,24 @@
 import { serve } from '@hono/node-server'
 import { configureLocalTelemetry } from '@megiddo/platform/local-telemetry'
 import { createIdentityApp } from './app'
-import { createEmbeddedBetterAuthProviderAdapter } from './embedded-better-auth-provider-adapter'
-import { createEmbeddedDevelopmentAuthProviderAdapter } from './embedded-development-auth-provider-adapter'
-import { resolveIdentityModeConfig } from './identity-mode-config'
+import { createIdentityServiceConfig } from './config-builder'
+import { createIdentityEnv } from './env-contract'
+import { createIdentityServiceInfrastructure } from './infrastructure'
 
-const port = Number(process.env.PORT ?? 3002)
-const identityModeConfig = resolveIdentityModeConfig()
-const createLocalAuthProvider = () => {
-  if (identityModeConfig.authProvider === 'dummy') {
-    return createEmbeddedDevelopmentAuthProviderAdapter({
-      databasePath: process.env.IDENTITY_DATABASE_PATH ?? '.data/identity/identity.sqlite',
-      seedDemoAccounts:
-        process.env.MEGIDDO_AUTH_PROFILE === 'local-dummy' ||
-        process.env.IDENTITY_DUMMY_AUTH_DEMO_ACCOUNTS === 'enabled',
-    })
-  }
-
-  return createEmbeddedBetterAuthProviderAdapter({
-    baseURL: process.env.BETTER_AUTH_URL ?? process.env.IDENTITY_BETTER_AUTH_BASE_URL,
-    databasePath: process.env.IDENTITY_BETTER_AUTH_DATABASE_PATH ?? '.data/identity/better-auth.sqlite',
-  })
-}
-const authProvider = createLocalAuthProvider()
-const closeAuthProvider = () => authProvider?.close()
+const env = createIdentityEnv(process.env)
+const config = createIdentityServiceConfig(env)
+const infrastructure = createIdentityServiceInfrastructure(config)
+const identityApp = createIdentityApp({
+  authProvider: infrastructure.authProvider,
+  serviceConfig: config,
+  tokenSigner: infrastructure.tokenSigner,
+})
+const closeInfrastructure = () => infrastructure.close()
 
 await configureLocalTelemetry()
 
-serve({ fetch: createIdentityApp({ authProvider }).fetch, port }, info => {
+serve({ fetch: identityApp.fetch, port: config.port }, info => {
   console.log(`Identity Service listening on http://localhost:${info.port}`)
 })
 
-process.on('exit', closeAuthProvider)
+process.on('exit', closeInfrastructure)

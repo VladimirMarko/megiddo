@@ -1,7 +1,4 @@
 import {
-  createDummyIdentityTokenCodec,
-  createJwtJwsIdentityTokenCodec,
-  defaultInternalServiceAuthSecret,
   handleInstrumentedOrpcServerRequest,
   type IdentityTokenSigner,
   identityRpcMountPath,
@@ -9,10 +6,12 @@ import {
 } from '@megiddo/platform'
 import { RPCHandler } from '@orpc/server/fetch'
 import { Hono } from 'hono'
+import { createIdentityServiceConfig, type IdentityServiceConfig } from './config-builder'
 import { createEmbeddedBetterAuthProviderAdapter } from './embedded-better-auth-provider-adapter'
-import { type IdentityModeConfig, resolveIdentityModeConfig } from './identity-mode-config'
+import { createIdentityEnv } from './env-contract'
 import type { AuthProviderAdapter } from './identity-use-cases'
 import { createDevelopmentAuthProviderAdapter, createIdentityUseCases } from './identity-use-cases'
+import { createIdentityTokenSigner } from './infrastructure'
 import { createIdentityRouter } from './router'
 
 const requestWithoutIdentityRpcMountPath = (request: Request) => {
@@ -24,41 +23,35 @@ const requestWithoutIdentityRpcMountPath = (request: Request) => {
 
 interface IdentityAppOptions {
   authProvider?: AuthProviderAdapter
-  env?: NodeJS.ProcessEnv
   internalServiceAuthSecret?: string
+  serviceConfig?: IdentityServiceConfig
   serviceName?: string
   tokenSigner?: IdentityTokenSigner
 }
 
-const createAuthProviderForMode = ({ authProvider }: IdentityModeConfig, env: NodeJS.ProcessEnv) => {
-  if (authProvider === 'dummy') {
+const defaultIdentityServiceConfig = () => createIdentityServiceConfig(createIdentityEnv({}))
+
+const createAuthProviderForConfig = (config: IdentityServiceConfig) => {
+  if (config.authProvider === 'dummy') {
     return createDevelopmentAuthProviderAdapter()
   }
 
   return createEmbeddedBetterAuthProviderAdapter({
-    baseURL: env.BETTER_AUTH_URL ?? env.IDENTITY_BETTER_AUTH_BASE_URL,
-    databasePath: env.IDENTITY_BETTER_AUTH_DATABASE_PATH,
+    baseURL: config.betterAuthBaseUrl,
+    databasePath: config.betterAuthDatabasePath,
   })
-}
-
-const createTokenSignerForMode = ({ tokenCodec }: IdentityModeConfig, env: NodeJS.ProcessEnv) => {
-  if (tokenCodec === 'dummy') {
-    return createDummyIdentityTokenCodec()
-  }
-
-  return createJwtJwsIdentityTokenCodec({ env })
 }
 
 export const createIdentityApp = ({
   authProvider,
-  env = process.env,
-  internalServiceAuthSecret = env.IDENTITY_INTERNAL_SERVICE_AUTH_SECRET ?? defaultInternalServiceAuthSecret,
+  internalServiceAuthSecret,
+  serviceConfig = defaultIdentityServiceConfig(),
   serviceName = 'identity',
   tokenSigner,
 }: IdentityAppOptions = {}) => {
-  const identityModeConfig = resolveIdentityModeConfig(env)
-  const resolvedAuthProvider = authProvider ?? createAuthProviderForMode(identityModeConfig, env)
-  const resolvedTokenSigner = tokenSigner ?? createTokenSignerForMode(identityModeConfig, env)
+  const resolvedAuthProvider = authProvider ?? createAuthProviderForConfig(serviceConfig)
+  const resolvedInternalServiceAuthSecret = internalServiceAuthSecret ?? serviceConfig.internalServiceAuthSecret
+  const resolvedTokenSigner = tokenSigner ?? createIdentityTokenSigner(serviceConfig)
   const app = new Hono()
   const identity = createIdentityUseCases({
     authProvider: resolvedAuthProvider,
@@ -69,8 +62,8 @@ export const createIdentityApp = ({
   app.get('/health', context =>
     context.json({
       identity: {
-        authProvider: identityModeConfig.authProvider,
-        tokenCodec: identityModeConfig.tokenCodec,
+        authProvider: serviceConfig.authProvider,
+        tokenCodec: serviceConfig.tokenCodec,
       },
       service: 'identity',
       message: 'identity service is running',
@@ -79,7 +72,8 @@ export const createIdentityApp = ({
   app.use(`${identityRpcMountPath}/*`, async (context, next) => {
     const request = requestWithoutIdentityRpcMountPath(context.req.raw)
     const { matched, response } = await handleInstrumentedOrpcServerRequest({
-      handle: () => handler.handle(request, { context: { internalServiceAuthSecret, request } }),
+      handle: () =>
+        handler.handle(request, { context: { internalServiceAuthSecret: resolvedInternalServiceAuthSecret, request } }),
       procedure: orpcProcedureFromRequest(request),
       request,
       serviceName,

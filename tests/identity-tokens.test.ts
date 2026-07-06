@@ -9,6 +9,7 @@ import {
   internalServiceSecretHeader,
 } from '@megiddo/platform'
 import { createTodoApp, createTodoEnv, createTodoServiceConfig, createTodoServiceInfrastructure } from '@megiddo/todo'
+import { identityServiceConfigFromEnv } from './support/identity-service-config'
 
 const postRpc = (
   app: { request: (path: string, init: RequestInit) => Promise<Response> },
@@ -189,7 +190,9 @@ test('JWT/JWS Identity Token codec signs standard JWT claims and validates verif
 })
 
 test('IDENTITY_TOKEN_CODEC=dummy selects dummy tokens through Identity token issuance', async () => {
-  const identityApp = createIdentityApp({ env: { IDENTITY_TOKEN_CODEC: 'dummy' } })
+  const identityApp = createIdentityApp({
+    serviceConfig: identityServiceConfigFromEnv({ IDENTITY_TOKEN_CODEC: 'dummy' }),
+  })
   const identityToken = await issueToken(identityApp, 'dummy:alice', 'todo')
 
   assert.match(identityToken, /^dummy\./)
@@ -203,7 +206,7 @@ test('IDENTITY_TOKEN_CODEC=dummy selects dummy tokens through Identity token iss
 
 test('IDENTITY_TOKEN_CODEC=jwt-jws selects JWT/JWS tokens through the Identity to Todo seam', async () => {
   const env = { ...(await createJwtJwsIdentityTokenKeyPairEnv()), IDENTITY_TOKEN_CODEC: 'jwt-jws' }
-  const identityApp = createIdentityApp({ env })
+  const identityApp = createIdentityApp({ serviceConfig: identityServiceConfigFromEnv(env) })
   const todoInfrastructure = createTodoServiceInfrastructure(createTodoServiceConfig(createTodoEnv(env)))
 
   try {
@@ -229,7 +232,7 @@ test('IDENTITY_TOKEN_CODEC=jwt-jws selects JWT/JWS tokens through the Identity t
 test('Identity protects browser-session service-token issuance for Gateway Todo calls', async () => {
   const codec = createJwtJwsIdentityTokenCodec()
   const identityApp = createIdentityApp({
-    env: { IDENTITY_INTERNAL_SERVICE_AUTH_SECRET: 'test-secret' },
+    serviceConfig: identityServiceConfigFromEnv({ IDENTITY_INTERNAL_SERVICE_AUTH_SECRET: 'test-secret' }),
     tokenSigner: codec,
   })
 

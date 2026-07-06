@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { type AuthProviderAdapter, createIdentityApp } from '@megiddo/identity'
 import type { IdentityTokenSigner } from '@megiddo/platform'
+import { identityServiceConfigFromEnv } from './support/identity-service-config'
 
 const authProvider: AuthProviderAdapter = {
   async listDummyAccounts() {
@@ -32,10 +33,10 @@ const identityHealth = async (app: ReturnType<typeof createIdentityApp>) => {
 test('Identity startup exposes explicit auth provider and token codec modes', async () => {
   const app = createIdentityApp({
     authProvider,
-    env: {
+    serviceConfig: identityServiceConfigFromEnv({
       IDENTITY_AUTH_PROVIDER: 'better-auth',
       IDENTITY_TOKEN_CODEC: 'jwt-jws',
-    },
+    }),
     tokenSigner,
   })
 
@@ -52,15 +53,15 @@ test('Identity startup exposes explicit auth provider and token codec modes', as
 test('MEGIDDO_AUTH_PROFILE=local-dummy expands to dummy Identity defaults with overrideable settings', async () => {
   const localDummyApp = createIdentityApp({
     authProvider,
-    env: { MEGIDDO_AUTH_PROFILE: 'local-dummy' },
+    serviceConfig: identityServiceConfigFromEnv({ MEGIDDO_AUTH_PROFILE: 'local-dummy' }),
     tokenSigner,
   })
   const overriddenApp = createIdentityApp({
     authProvider,
-    env: {
+    serviceConfig: identityServiceConfigFromEnv({
       IDENTITY_TOKEN_CODEC: 'jwt-jws',
       MEGIDDO_AUTH_PROFILE: 'local-dummy',
-    },
+    }),
     tokenSigner,
   })
 
@@ -77,40 +78,31 @@ test('MEGIDDO_AUTH_PROFILE=local-dummy expands to dummy Identity defaults with o
 test('Identity startup rejects unknown mode values', () => {
   assert.throws(
     () =>
-      createIdentityApp({
-        env: {
-          IDENTITY_AUTH_PROVIDER: 'oauth',
-          IDENTITY_TOKEN_CODEC: 'dummy',
-        },
-        tokenSigner,
+      identityServiceConfigFromEnv({
+        IDENTITY_AUTH_PROVIDER: 'oauth',
+        IDENTITY_TOKEN_CODEC: 'dummy',
       }),
-    /IDENTITY_AUTH_PROVIDER must be one of: dummy, better-auth/,
+    /Invalid environment variables/,
   )
 })
 
 test('Identity refuses dummy auth and dummy token codec in production startup', () => {
   assert.throws(
     () =>
-      createIdentityApp({
-        env: {
-          IDENTITY_AUTH_PROVIDER: 'dummy',
-          IDENTITY_TOKEN_CODEC: 'jwt-jws',
-          NODE_ENV: 'production',
-        },
-        tokenSigner,
+      identityServiceConfigFromEnv({
+        IDENTITY_AUTH_PROVIDER: 'dummy',
+        IDENTITY_TOKEN_CODEC: 'jwt-jws',
+        NODE_ENV: 'production',
       }),
     /IDENTITY_AUTH_PROVIDER=dummy is not allowed when NODE_ENV=production/,
   )
 
   assert.throws(
     () =>
-      createIdentityApp({
-        authProvider,
-        env: {
-          IDENTITY_AUTH_PROVIDER: 'better-auth',
-          IDENTITY_TOKEN_CODEC: 'dummy',
-          NODE_ENV: 'production',
-        },
+      identityServiceConfigFromEnv({
+        IDENTITY_AUTH_PROVIDER: 'better-auth',
+        IDENTITY_TOKEN_CODEC: 'dummy',
+        NODE_ENV: 'production',
       }),
     /IDENTITY_TOKEN_CODEC=dummy is not allowed when NODE_ENV=production/,
   )
