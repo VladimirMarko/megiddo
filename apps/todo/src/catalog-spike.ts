@@ -2,27 +2,33 @@
 // Owner column first in env catalog
 // ses_0c26d6788ffeSgdo8l8VcDtNlg
 
-import { createEnv } from '@t3-oss/env-core'
-import { mapValues, prop } from 'remeda'
+import { createEnv, type StandardSchemaV1 } from '@t3-oss/env-core'
+import { evolve, mapValues, prop } from 'remeda'
 import { z } from 'zod'
 
-type SchemaEntry<TSchema> = {
+type SchemaEntry = {
   description: string
-  schema: TSchema
+  schema: StandardSchemaV1
 }
 
-type EnvContract<TSchema = unknown> = {
-  client?: Record<string, SchemaEntry<TSchema>>
-  server?: Record<string, SchemaEntry<TSchema>>
+type EnvContract =
+  | {
+      clientPrefix: string
+      client: Record<string, SchemaEntry>
+    }
+  | {
+      server: Record<string, SchemaEntry>
+    }
+
+type Pluck<T, Promote extends PropertyKey> = {
+  [K in keyof T]: Promote extends keyof T[K] ? T[K][Promote] : never
 }
 
-type StripSchemaMetadata<TContract extends EnvContract> = {
-  [TSection in keyof TContract]: TContract[TSection] extends Record<string, SchemaEntry<unknown>>
-    ? { [TKey in keyof TContract[TSection]]: TContract[TSection][TKey]['schema'] }
-    : never
+type CollapseToSchemaUnderClientOrServer<T, Modify extends PropertyKey, Promote extends PropertyKey> = {
+  [K in keyof T]: K extends Modify ? Pluck<T[K], Promote> : T[K]
 }
 
-const envContract = {
+const envContract: EnvContract = {
   server: {
     DATABASE_URL: {
       description: 'The URL of the database to connect to.',
@@ -33,16 +39,14 @@ const envContract = {
       schema: z.string().min(1),
     },
   },
-} satisfies EnvContract<z.ZodType>
-
-const contractToOptionsFragment = <TContract extends EnvContract>(contract: TContract): StripSchemaMetadata<TContract> => {
-  return {
-    ...(contract.server ? { server: mapValues(contract.server, prop('schema')) } : {}),
-    ...(contract.client ? { client: mapValues(contract.client, prop('schema')) } : {}),
-  } as StripSchemaMetadata<TContract>
 }
 
-const derivedEnvOptionsFragment = contractToOptionsFragment(envContract)
+const serverContractToOptionsFragment: (
+  contract: EnvContract,
+) => CollapseToSchemaUnderClientOrServer<EnvContract, 'client' | 'server', 'schema'> = evolve({
+  server: mapValues(prop('schema')),
+  client: mapValues(prop('schema')),
+})
 
 // const derivedEnvOptionsFragment = {
 //   server: {
@@ -55,9 +59,13 @@ const definedEnvOptionsFragment = {
   runtimeEnv: process.env,
 }
 
-const envOptions = {
-  ...derivedEnvOptionsFragment,
-  ...definedEnvOptionsFragment,
-}
+function buildEnv<const TContract extends EnvContract>(envContract: TContract) {
+  const derivedEnvOptionsFragment = serverContractToOptionsFragment(envContract)
 
-export const env = createEnv(envOptions)
+  const envOptions = {
+    ...derivedEnvOptionsFragment,
+    ...definedEnvOptionsFragment,
+  }
+
+  return createEnv(envOptions)
+}
