@@ -3,7 +3,7 @@
 // ses_0c26d6788ffeSgdo8l8VcDtNlg
 
 import { createEnv, type StandardSchemaV1 } from '@t3-oss/env-core'
-import { evolve, mapValues, prop } from 'remeda'
+import { mapValues, prop } from 'remeda'
 import { z } from 'zod'
 
 type SchemaEntry = {
@@ -20,15 +20,18 @@ type EnvContract =
       server: Record<string, SchemaEntry>
     }
 
+type ClientEnvContract = Extract<EnvContract, { client: Record<string, SchemaEntry> }>
+type ServerEnvContract = Extract<EnvContract, { server: Record<string, SchemaEntry> }>
+
 type Pluck<T, Promote extends PropertyKey> = {
   [K in keyof T]: Promote extends keyof T[K] ? T[K][Promote] : never
 }
 
-type CollapseToSchemaUnderClientOrServer<T, Modify extends PropertyKey, Promote extends PropertyKey> = {
+type NestedPluck<T, Modify extends PropertyKey, Promote extends PropertyKey> = {
   [K in keyof T]: K extends Modify ? Pluck<T[K], Promote> : T[K]
 }
 
-const envContract: EnvContract = {
+const envContract = {
   server: {
     DATABASE_URL: {
       description: 'The URL of the database to connect to.',
@@ -39,14 +42,28 @@ const envContract: EnvContract = {
       schema: z.string().min(1),
     },
   },
-}
+} satisfies EnvContract
 
-const serverContractToOptionsFragment: (
+function contractToOptionsFragment<TContract extends ClientEnvContract>(
+  contract: TContract,
+): NestedPluck<TContract, 'client', 'schema'>
+function contractToOptionsFragment<TContract extends ServerEnvContract>(
+  contract: TContract,
+): NestedPluck<TContract, 'server', 'schema'>
+function contractToOptionsFragment(
   contract: EnvContract,
-) => CollapseToSchemaUnderClientOrServer<EnvContract, 'client' | 'server', 'schema'> = evolve({
-  server: mapValues(prop('schema')),
-  client: mapValues(prop('schema')),
-})
+): NestedPluck<ClientEnvContract, 'client', 'schema'> | NestedPluck<ServerEnvContract, 'server', 'schema'> {
+  if ('server' in contract) {
+    return {
+      server: mapValues(contract.server, prop('schema')),
+    }
+  }
+
+  return {
+    clientPrefix: contract.clientPrefix,
+    client: mapValues(contract.client, prop('schema')),
+  }
+}
 
 // const derivedEnvOptionsFragment = {
 //   server: {
@@ -59,13 +76,20 @@ const definedEnvOptionsFragment = {
   runtimeEnv: process.env,
 }
 
-function buildEnv<const TContract extends EnvContract>(envContract: TContract) {
-  const derivedEnvOptionsFragment = serverContractToOptionsFragment(envContract)
-
-  const envOptions = {
-    ...derivedEnvOptionsFragment,
-    ...definedEnvOptionsFragment,
+function buildEnv<const TContract extends ClientEnvContract>(envContract: TContract): ReturnType<typeof createEnv>
+function buildEnv<const TContract extends ServerEnvContract>(envContract: TContract): ReturnType<typeof createEnv>
+function buildEnv(envContract: EnvContract) {
+  if ('server' in envContract) {
+    return createEnv({
+      ...contractToOptionsFragment(envContract),
+      ...definedEnvOptionsFragment,
+    })
   }
 
-  return createEnv(envOptions)
+  return createEnv({
+    ...contractToOptionsFragment(envContract),
+    ...definedEnvOptionsFragment,
+  })
 }
+
+export const env = buildEnv(envContract)
