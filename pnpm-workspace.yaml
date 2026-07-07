@@ -7,4 +7,4 @@ catalog:
   typescript: ^6.0.3
   "@total-typescript/tsconfig": ^1.0.4
   zod: ^4.4.3
-  remeda": ^2.39.0
+  remeda: ^2.39.0

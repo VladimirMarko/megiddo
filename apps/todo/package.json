@@ -16,6 +16,7 @@
     "@orpc/server": "^1.14.6",
     "@t3-oss/env-core": "^0.13.11",
     "hono": "^4.12.27",
+    "remeda": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

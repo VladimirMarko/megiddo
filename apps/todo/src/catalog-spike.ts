@@ -3,17 +3,21 @@
 // ses_0c26d6788ffeSgdo8l8VcDtNlg
 
 import { createEnv } from '@t3-oss/env-core'
+import { mapValues, prop } from 'remeda'
 import { z } from 'zod'
 
-type ContractSchema = z.ZodType
+type SchemaEntry<TSchema> = {
+  description: string
+  schema: TSchema
+}
 
-type EnvContract = {
-  client?: Record<string, { description: string; schema: ContractSchema }>
-  server?: Record<string, { description: string; schema: ContractSchema }>
+type EnvContract<TSchema = unknown> = {
+  client?: Record<string, SchemaEntry<TSchema>>
+  server?: Record<string, SchemaEntry<TSchema>>
 }
 
 type StripSchemaMetadata<TContract extends EnvContract> = {
-  [TSection in keyof TContract]: TContract[TSection] extends Record<string, { schema: ContractSchema }>
+  [TSection in keyof TContract]: TContract[TSection] extends Record<string, SchemaEntry<unknown>>
     ? { [TKey in keyof TContract[TSection]]: TContract[TSection][TKey]['schema'] }
     : never
 }
@@ -29,26 +33,13 @@ const envContract = {
       schema: z.string().min(1),
     },
   },
-} satisfies EnvContract
-
-const stripSectionMetadata = <TSection extends Record<string, { schema: ContractSchema }>>(section: TSection) => {
-  return Object.fromEntries(Object.entries(section).map(([key, entry]) => [key, entry.schema])) as {
-    [TKey in keyof TSection]: TSection[TKey]['schema']
-  }
-}
+} satisfies EnvContract<z.ZodType>
 
 const contractToOptionsFragment = <TContract extends EnvContract>(contract: TContract): StripSchemaMetadata<TContract> => {
-  const options: Partial<Record<keyof EnvContract, Record<string, ContractSchema>>> = {}
-
-  if (contract.server) {
-    options.server = stripSectionMetadata(contract.server)
-  }
-
-  if (contract.client) {
-    options.client = stripSectionMetadata(contract.client)
-  }
-
-  return options as StripSchemaMetadata<TContract>
+  return {
+    ...(contract.server ? { server: mapValues(contract.server, prop('schema')) } : {}),
+    ...(contract.client ? { client: mapValues(contract.client, prop('schema')) } : {}),
+  } as StripSchemaMetadata<TContract>
 }
 
 const derivedEnvOptionsFragment = contractToOptionsFragment(envContract)
