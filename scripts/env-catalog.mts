@@ -100,13 +100,13 @@ export const renderEnvCatalogMarkdown = (catalog: EnvCatalogEntry[]): string => 
     '',
     'Generated from env metadata adjacent to service, script, frontend, and platform env owners. This file is documentation/check tooling only; services must keep validating their own runtime env through owned Env Contracts.',
     '',
-    '| Variable | Owner | Surface | Allowed values | Default | Description |',
+    '| Owner | Variable | Surface | Allowed values | Default | Description |',
     '| --- | --- | --- | --- | --- | --- |',
   ]
 
   for (const entry of catalog) {
     lines.push(
-      `| \`${escapeMarkdownTableCell(entry.variable)}\` | ${escapeMarkdownTableCell(entry.owner)} | ${escapeMarkdownTableCell(entry.surface)} | ${escapeMarkdownTableCell(entry.allowedValues)} | ${escapeMarkdownTableCell(entry.defaultValue)} | ${escapeMarkdownTableCell(entry.description)} |`,
+      `| ${escapeMarkdownTableCell(entry.owner)} | \`${escapeMarkdownTableCell(entry.variable)}\` | ${escapeMarkdownTableCell(entry.surface)} | ${escapeMarkdownTableCell(entry.allowedValues)} | ${escapeMarkdownTableCell(entry.defaultValue)} | ${escapeMarkdownTableCell(entry.description)} |`,
     )
   }
 
