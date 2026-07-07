@@ -228,6 +228,9 @@ importers:
       hono:
         specifier: ^4.12.27
         version: 4.12.27
+      remeda:
+        specifier: ^2.39.0
+        version: 2.39.0
       zod:
         specifier: 'catalog:'
         version: 4.4.3
@@ -1350,6 +1353,10 @@ packages:
     resolution: {integrity: sha512-HNe9WslTbXmFK8o8cmwgAeJFSBvt1bPdHCVKtaaV+WlAN36mpT4hcRpwbf3fY56ar2oIXzsBpOAiIRHAdY0OlQ==}
     engines: {node: '>=0.10.0'}
 
+  remeda@2.39.0:
+    resolution: {integrity: sha512-3Ki8dU1o3OVu4dwIQ2Pj+yiuP7OnEbmWAGmJ3yDRqopily5jsj8NWzPvbS89H85d6UdONKEcUnrfuHY6jN9vyw==}
+    engines: {node: '>=18.0.0'}
+
   require-from-string@2.0.2:
     resolution: {integrity: sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw==}
     engines: {node: '>=0.10.0'}
@@ -2350,6 +2357,8 @@ snapshots:
       scheduler: 0.27.0
 
   react@19.2.7: {}
+
+  remeda@2.39.0: {}
 
   require-from-string@2.0.2: {}
 
