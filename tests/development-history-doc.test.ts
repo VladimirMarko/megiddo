@@ -50,3 +50,20 @@ test('development history narrative skeleton only links to local files that exis
     await assert.doesNotReject(access(resolvedTargetPath), `local link should exist: ${target}`)
   }
 })
+
+test('development history guide documents service topology and boundary rationale', async () => {
+  const doc = await readFile(docPath, 'utf8')
+
+  assert.match(doc, /Issue: #53\. Parent PRD: #49\./)
+  assert.match(
+    doc,
+    /thin end-to-end path through the frontend, API Gateway, Identity Service, Todo Service, contracts, and platform seams/i,
+  )
+  assert.match(doc, /frontend talks to the API Gateway rather than directly to the Identity Service or Todo Service/i)
+  assert.match(doc, /Frontend API Adapter.*instead of raw oRPC clients or published contracts/is)
+  assert.match(doc, /services verify Identity Tokens at their own boundary/i)
+  assert.match(doc, /token cryptography.*behind.*seam/is)
+  assert.match(doc, /real service processes in local development/i)
+  assert.match(doc, /fakes in focused tests/i)
+  assert.match(doc, /inferred rationale/i)
+})
