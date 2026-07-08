@@ -1,0 +1,27 @@
+app = "megiddo-staging-api"
+primary_region = "iad"
+
+[build]
+dockerfile = "deploy/containers/api.Dockerfile"
+
+[env]
+PORT = "3000"
+IDENTITY_SERVICE_URL = "http://megiddo-staging-identity.internal:3002"
+TODO_SERVICE_URL = "http://megiddo-staging-todo.internal:3001"
+
+# Set with `fly secrets set --app megiddo-staging-api`:
+# IDENTITY_INTERNAL_SERVICE_AUTH_SECRET
+
+[http_service]
+internal_port = 3000
+force_https = true
+auto_stop_machines = false
+auto_start_machines = true
+min_machines_running = 1
+
+[[http_service.checks]]
+interval = "10s"
+timeout = "3s"
+grace_period = "10s"
+method = "GET"
+path = "/health"

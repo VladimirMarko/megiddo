@@ -1,0 +1,26 @@
+app = "megiddo-staging-todo"
+primary_region = "iad"
+
+[build]
+dockerfile = "deploy/containers/todo.Dockerfile"
+
+[env]
+PORT = "3001"
+IDENTITY_TOKEN_CODEC = "jwt-jws"
+TODO_DATABASE_PATH = "/data/todo.sqlite"
+
+# Set with `fly secrets set --app megiddo-staging-todo`:
+# MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64
+
+[[mounts]]
+source = "megiddo_staging_todo_data"
+destination = "/data"
+
+[checks.health]
+type = "http"
+port = 3001
+interval = "10s"
+timeout = "3s"
+grace_period = "10s"
+method = "GET"
+path = "/health"
