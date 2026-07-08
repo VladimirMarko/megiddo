@@ -16,6 +16,14 @@
     "description": "Legacy unprefixed shortcut flag from the inventory snapshot; Vite does not expose it to browser code by default."
   },
   {
+    "variable": "VITE_API_GATEWAY_BASE_URL",
+    "owner": "Frontend",
+    "surface": "frontend",
+    "allowedValues": "URL",
+    "defaultValue": "http://localhost:3000",
+    "description": "Vite-exposed browser-safe base URL used by the frontend API adapter to call the API Gateway."
+  },
+  {
     "variable": "VITE_UI_DUMMY_AUTH_LOGIN_SHORTCUT",
     "owner": "Frontend",
     "surface": "frontend",

@@ -47,14 +47,11 @@ export interface FrontendApi {
 }
 
 interface FrontendApiOptions {
-  baseUrl?: string
+  baseUrl: string
   fetch?: (request: Request) => Promise<Response>
 }
 
-export const createFrontendApi = ({
-  baseUrl = 'http://localhost:3000',
-  fetch,
-}: FrontendApiOptions = {}): FrontendApi => {
+export const createFrontendApi = ({ baseUrl, fetch }: FrontendApiOptions): FrontendApi => {
   const fetchWithSession = async (request: Request) =>
     (fetch ?? globalThis.fetch)(new Request(request, { credentials: 'include' }))
   const link = new RPCLink({ fetch: fetchWithSession, url: apiGatewayRpcUrl(baseUrl) })

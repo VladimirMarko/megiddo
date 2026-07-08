@@ -6,6 +6,7 @@ Generated from env metadata adjacent to service, script, frontend, and platform 
 | --- | --- | --- | --- | --- | --- |
 | Frontend | `PORT` | frontend | TCP port string | 5173 in pnpm dev topology | Vite development server port passed by the local dev topology. |
 | Frontend | `UI_DUMMY_AUTH_LOGIN_SHORTCUT` | frontend | enabled | disabled | Legacy unprefixed shortcut flag from the inventory snapshot; Vite does not expose it to browser code by default. |
+| Frontend | `VITE_API_GATEWAY_BASE_URL` | frontend | URL | http://localhost:3000 | Vite-exposed browser-safe base URL used by the frontend API adapter to call the API Gateway. |
 | Frontend | `VITE_UI_DUMMY_AUTH_LOGIN_SHORTCUT` | frontend | enabled | disabled | Vite-exposed shortcut flag that enables dummy auth login helpers in the browser UI. |
 | Platform Local Telemetry | `OTEL_EXPORTER_OTLP_ENDPOINT` | platform | URL | http://localhost:4318 in pnpm dev topology | OTLP HTTP endpoint injected for local service telemetry. |
 | Platform Local Telemetry | `OTEL_EXPORTER_OTLP_PROTOCOL` | platform | http/protobuf for local telemetry | http/protobuf in pnpm dev topology | OTLP exporter protocol injected for local service telemetry. |
