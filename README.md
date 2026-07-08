@@ -2,6 +2,8 @@
 
 Megiddo is a TypeScript Turborepo that demonstrates clean service boundaries with a React frontend, API Gateway, Identity Service, Todo Service, public oRPC contracts, and platform seams.
 
+For the development history and rationale behind Megiddo's architecture choices, see [Development History And Architecture Rationale](docs/reference/development-history-and-architecture-rationale.md).
+
 ## Local Development
 
 Run the full local topology without Docker Compose:
