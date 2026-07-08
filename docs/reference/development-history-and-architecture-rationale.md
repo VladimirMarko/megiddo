@@ -1,8 +1,8 @@
 # Development History And Architecture Rationale
 
-Issue: #51. Parent PRD: #49.
+Issue: #52. Parent PRD: #49.
 
-This document is the primary development-history and architecture-rationale guide for Megiddo. It is intentionally a skeleton for the first narrative slice: it fixes the document's durable frame, source rules, timeline shape, theme placeholders, and maintenance contract so later slices can fill in richer prose without changing the role of the document.
+This document is the primary development-history and architecture-rationale guide for Megiddo. It explains the current architecture by tying each major claim back to existing ADRs, reports, README sections, generated docs, repository vocabulary, or issue clusters. It is not a complete implementation walkthrough.
 
 ## Purpose
 
@@ -40,7 +40,7 @@ The development history uses supported source ordering, not a commit-by-commit r
 
 ## Architecture Themes
 
-Later slices should turn these theme anchors into fuller narrative sections. Until then, each anchor records the claim boundary and canonical starting points.
+These themes summarize the current direction supported by existing sources. Each section keeps ADRs as the canonical decisions and uses reports, README material, the Env Catalog, and issue clusters as supporting evidence or historical context.
 
 ### Tracer-Bullet Strategy
 
@@ -52,19 +52,37 @@ The API Gateway is the frontend-facing API surface and composition boundary. [`A
 
 ### Frontend Architecture
 
-The frontend uses React, Vite, TanStack, and Jotai per [`ADR-0017`](../adr/0017-use-react-vite-tanstack-and-jotai-for-frontend.md). The Frontend API Adapter seam is canonicalized by [`ADR-0006`](../adr/0006-use-frontend-api-adapter-above-orpc.md). This guide should not invent deeper stack rationale than the ADRs and supported issue history provide.
+The frontend uses React, Vite, TanStack, and Jotai per [`ADR-0017`](../adr/0017-use-react-vite-tanstack-and-jotai-for-frontend.md). The source-backed rationale is deliberately narrow: React is the UI rendering foundation, Vite owns frontend development and browser env loading, TanStack provides router/form structure, and Jotai provides focused client state. The [`Architecture History Source Inventory`](architecture-history-source-inventory.md) cautions that ADR-0017 is brief, so this guide should not add deeper stack motivations unless a later ADR or issue records them.
+
+The frontend does not bind components directly to raw oRPC clients or published backend contracts. [`ADR-0006`](../adr/0006-use-frontend-api-adapter-above-orpc.md) makes the Frontend API Adapter the UI seam above oRPC, and the [`README`](../../README.md) testing guidance treats that seam as the place for focused frontend fakes. That keeps UI tests from needing Identity, Better Auth, service databases, or networked contract clients for every component path.
 
 ### Contract Evolution
 
-Published contract versions are append-only after stabilization, contract builders are versioned as contract-visible concerns, and runtime behavior can address contract versions explicitly. Start from [`ADR-0001`](../adr/0001-version-published-contracts-append-only.md), [`ADR-0007`](../adr/0007-version-contract-surfaces-and-builders.md), [`ADR-0008`](../adr/0008-version-contract-builders-by-contract-visible-concern.md), [`ADR-0009`](../adr/0009-support-multiple-live-contract-versions.md), [`ADR-0013`](../adr/0013-make-contract-versions-runtime-addressable.md), and [`ADR-0014`](../adr/0014-use-contract-smoke-tests-for-runtime-conformance.md).
+Megiddo treats contracts as published public boundaries rather than internal service APIs. [`ADR-0001`](../adr/0001-version-published-contracts-append-only.md) establishes append-only published contract versions once a version is stable: compatible additions can extend a version, but breaking changes require a new version instead of rewriting existing consumers. [`ADR-0007`](../adr/0007-version-contract-surfaces-and-builders.md) narrows that rule to versioned contract surfaces such as gateway, service, or operational surfaces, so different caller relationships can evolve independently instead of being tied to one global contract object.
+
+Contract helpers are also part of the public surface when they generate public shapes. [`ADR-0008`](../adr/0008-version-contract-builders-by-contract-visible-concern.md) records that contract builders are versioned by contract-visible concern, because changing a builder can alter every surface that uses it. [`CONTEXT.md`](../../CONTEXT.md) reinforces this vocabulary with Contract Surface, Contract Builder, Resource Schema, and Resource Schema Version.
+
+Versioning is runtime behavior, not only TypeScript organization. [`ADR-0009`](../adr/0009-support-multiple-live-contract-versions.md) requires support for multiple live contract versions so older and newer clients can coexist during migration. [`ADR-0013`](../adr/0013-make-contract-versions-runtime-addressable.md) makes runtime-addressable contract versions explicit, so a caller or token can identify the intended version without relying on package import paths alone. The [`Architecture History Source Inventory`](architecture-history-source-inventory.md) cautions that these ADRs establish policy; this guide should not claim a specific service currently serves multiple versions unless current routes or tests prove it.
+
+Contract smoke tests sit beside this versioning model. [`ADR-0014`](../adr/0014-use-contract-smoke-tests-for-runtime-conformance.md) and the [`README`](../../README.md) define them as thin runtime-conformance tests. Their job is to prove that runtime routing, validation, auth/error mapping, and representative success paths match the published contract; they are not a second copy of the TypeScript type system.
 
 ### Identity And Auth
 
-Identity owns user-token issuance, auth-provider integration, token-codec choices, and browser-session concerns. Services verify Identity Tokens at their own boundary. Start from [`ADR-0003`](../adr/0003-identity-issues-asymmetric-user-tokens.md), [`ADR-0004`](../adr/0004-keep-token-cryptography-behind-a-seam.md), [`ADR-0012`](../adr/0012-services-verify-identity-tokens-at-their-boundary.md), [`ADR-0019`](../adr/0019-start-with-dev-identity-provider-behind-auth-adapter.md), and [`ADR-0024`](../adr/0024-separate-identity-auth-provider-token-codec-and-browser-session-concerns.md). Dummy auth and dummy tokens are local-development concerns and must not be described as production security.
+Identity owns authentication integration and Identity Token issuance, but those are separate concerns. [`ADR-0024`](../adr/0024-separate-identity-auth-provider-token-codec-and-browser-session-concerns.md) distinguishes the Auth Provider Adapter, the Identity Token codec, and the browser session. The Auth Provider Adapter wraps an auth library or dummy provider inside Identity. The Identity Token codec issues and verifies service-facing token wire formats. The browser session proves a browser is signed in, normally through Identity-owned session cookies routed through the API Gateway rather than exposing service tokens to browser code. [`CONTEXT.md`](../../CONTEXT.md) defines the same terms as Auth Provider Adapter, Token Codec, Identity Token, Token Verifier, and Browser Session.
+
+Services still make authorization local at their boundary. [`ADR-0003`](../adr/0003-identity-issues-asymmetric-user-tokens.md) records Identity-issued user tokens, [`ADR-0004`](../adr/0004-keep-token-cryptography-behind-a-seam.md) keeps token cryptography behind a swappable seam, and [`ADR-0012`](../adr/0012-services-verify-identity-tokens-at-their-boundary.md) requires services to verify Identity Tokens rather than trusting an upstream gateway assertion. That keeps the Todo Service responsible for validating the credential it accepts for Todo operations.
+
+Dummy auth and dummy tokens are local-development conveniences, not production security. [`ADR-0019`](../adr/0019-start-with-dev-identity-provider-behind-auth-adapter.md) starts with a development identity provider behind the Auth Provider Adapter, while [`ADR-0024`](../adr/0024-separate-identity-auth-provider-token-codec-and-browser-session-concerns.md) continues the design with explicit dummy and `jwt-jws` token-codec directions. The [`README`](../../README.md) describes `pnpm dev` as starting the local dummy auth profile with inspectable dummy Identity Tokens, and the [`Env Catalog`](env-catalog.md) records that dummy auth and dummy token modes are rejected in production. Therefore dummy credentials must not be accepted in production.
+
+Several identity sources are historical context, not current architecture. The [`Identity Service current-state report`](../reports/2026-07-06-identity-service-current-state.md) explicitly says issue #34 replaced the transitional custom compact token codec with the `jwt-jws` direction. Its browser-held gateway token path, public development token issuance, and compact format should be read as baseline and gap analysis before later identity slices, not as the current architecture.
 
 ### Persistence
 
-Persistence starts behind service-owned adapters so local development can use embedded persistence without binding service logic to a shared database. Use [`ADR-0005`](../adr/0005-use-embedded-local-persistence-behind-adapters.md), [`ADR-0015`](../adr/0015-services-own-test-and-dev-persistence-lifecycle.md), and [`ADR-0020`](../adr/0020-start-tracer-bullet-with-in-memory-repositories.md). Distinguish focused-test in-memory persistence from current local-dev file-backed persistence.
+Megiddo uses embedded local persistence behind adapters so early development can have durable local data without committing service logic to a shared database. [`ADR-0005`](../adr/0005-use-embedded-local-persistence-behind-adapters.md) records the adapter boundary: each service owns its Persistence Adapter and can change local embedded storage or later deployment storage without exposing a repo-wide data layer. [`CONTEXT.md`](../../CONTEXT.md) defines this as a service-owned boundary around durable storage.
+
+The lifecycle is also service-owned. [`ADR-0015`](../adr/0015-services-own-test-and-dev-persistence-lifecycle.md) establishes a service-owned test and development persistence lifecycle, so each service is responsible for creating, seeding, resetting, and isolating its own dev/test data. The [`README`](../../README.md) points local users to the current local data workflow instead of making them infer data locations from implementation files.
+
+[`ADR-0020`](../adr/0020-start-tracer-bullet-with-in-memory-repositories.md) is transitional. It records the first tracer-bullet decision to start with in-memory repositories, which was appropriate for proving a thin vertical slice. Current local development should be described as file-backed embedded persistence behind adapters, while in-memory persistence remains a focused-test tool. Treating ADR-0020 this way prevents the first-slice shortcut from being mistaken for the current persistence direction.
 
 ### Local Development And Testing
 
@@ -72,11 +90,19 @@ Local development runs real service processes for representative integration whi
 
 ### Telemetry And Developer Observability
 
-Local observability is based on OpenTelemetry spans and best-effort export. Use [`ADR-0021`](../adr/0021-use-opentelemetry-spans-for-local-developer-observability.md), [`ADR-0022`](../adr/0022-use-best-effort-local-telemetry-export.md), [`ADR-0023`](../adr/0023-evaluate-existing-local-opentelemetry-viewers-before-building-devtools-ui.md), and the [`local viewer evaluation report`](../reports/2026-07-05-local-opentelemetry-viewers.md). The selected viewer is supporting workflow evidence; failed viewer candidates are historical evaluation context.
+Local observability is based on OpenTelemetry rather than a custom Megiddo trace format. [`ADR-0021`](../adr/0021-use-opentelemetry-spans-for-local-developer-observability.md) records OpenTelemetry spans as the local developer observability model, and [`CONTEXT.md`](../../CONTEXT.md) defines Telemetry Span and Service Name for that vocabulary.
+
+Export is deliberately best effort. [`ADR-0022`](../adr/0022-use-best-effort-local-telemetry-export.md) and the [`README`](../../README.md) say local Services attempt best-effort local OpenTelemetry export without making the viewer part of service startup or serving requirements. This means a missing local viewer should reduce observability, not stop the API Gateway, Identity Service, or Todo Service from starting.
+
+Megiddo evaluated existing local OpenTelemetry viewers before building custom tooling. [`ADR-0023`](../adr/0023-evaluate-existing-local-opentelemetry-viewers-before-building-devtools-ui.md) records the policy, and the [`local OpenTelemetry viewer evaluation report`](../reports/2026-07-05-local-opentelemetry-viewers.md) records the evidence for selecting `otel-gui` after trying existing options against Megiddo traces. Rejected candidates in that report are historical evaluation context. A custom Developer Log View remains a possible future product choice, not the default first response.
 
 ### Environment Configuration
 
-Services and scripts own Env Contracts and derive Config objects from validated runtime env inputs. Use [`ADR-0025`](../adr/0025-use-owned-env-contracts-and-derived-config.md), the [`Env Catalog`](env-catalog.md), and the [`environment variables report`](../reports/2026-07-06-environment-variables.md). The report is a pre-migration snapshot; the catalog and ADR are the current sources.
+Environment handling follows owned Env Contracts and derived Config objects. [`ADR-0025`](../adr/0025-use-owned-env-contracts-and-derived-config.md) records the current rule: each service or script owns the complete Env Contract for the variables it reads, validates a supplied runtime environment, and then derives a Service Config or Script Config for application wiring. [`CONTEXT.md`](../../CONTEXT.md) defines Service Env Contract, Script Env Contract, Service Config, Script Config, Runtime Env, and Env Schema Fragment with the same boundary.
+
+The Env Catalog is a documentation and checking artifact rather than a runtime import surface. The generated [`Env Catalog`](env-catalog.md) says it is documentation/check tooling only, and services must keep validating their own runtime env through owned Env Contracts. The [`README`](../../README.md) complements that rule by explaining that Node services and scripts do not load `.env` files themselves; they validate the runtime environment the process receives. Vite remains the frontend-specific exception because it owns browser env loading.
+
+The [`environment variables report`](../reports/2026-07-06-environment-variables.md) is historical context, not current architecture. It preserves the pre-migration inventory and explains why Env Contracts and generated catalog collation were needed. For current behavior, use [`ADR-0025`](../adr/0025-use-owned-env-contracts-and-derived-config.md), the [`Env Catalog`](env-catalog.md), and the [`README`](../../README.md) env-loading section.
 
 ## Decision Index
 
