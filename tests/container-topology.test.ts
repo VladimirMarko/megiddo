@@ -6,6 +6,9 @@ import { test } from 'node:test'
 const root = process.cwd()
 const read = (path: string) => readFileSync(join(root, path), 'utf8')
 const regexEscape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const assertIncludes = (content: string, expected: string) => {
+  assert.match(content, new RegExp(regexEscape(expected)))
+}
 
 const serviceDockerfiles = [
   {
@@ -45,24 +48,48 @@ const flyStagingApps = [
     appName: 'megiddo-staging-frontend',
     dockerfilePath: 'deploy/containers/frontend.Dockerfile',
     flyTomlPath: 'deploy/fly/staging/frontend.fly.toml',
+    expectedSettings: ['VITE_API_GATEWAY_BASE_URL = "https://megiddo-staging-api.fly.dev"'],
     publicService: true,
   },
   {
     appName: 'megiddo-staging-api',
     dockerfilePath: 'deploy/containers/api.Dockerfile',
     flyTomlPath: 'deploy/fly/staging/api.fly.toml',
+    expectedSettings: [
+      'IDENTITY_SERVICE_URL = "http://megiddo-staging-identity.internal:3002"',
+      'TODO_SERVICE_URL = "http://megiddo-staging-todo.internal:3001"',
+      'IDENTITY_INTERNAL_SERVICE_AUTH_SECRET',
+    ],
     publicService: true,
   },
   {
     appName: 'megiddo-staging-identity',
     dockerfilePath: 'deploy/containers/identity.Dockerfile',
     flyTomlPath: 'deploy/fly/staging/identity.fly.toml',
+    expectedSettings: [
+      'IDENTITY_AUTH_PROVIDER = "better-auth"',
+      'IDENTITY_TOKEN_CODEC = "jwt-jws"',
+      'IDENTITY_INTERNAL_SERVICE_AUTH_SECRET',
+      'MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64',
+      'MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64',
+      'IDENTITY_DATABASE_PATH = "/data/identity.sqlite"',
+      'IDENTITY_BETTER_AUTH_DATABASE_PATH = "/data/better-auth.sqlite"',
+      'source = "megiddo_staging_identity_data"',
+      'destination = "/data"',
+    ],
     publicService: false,
   },
   {
     appName: 'megiddo-staging-todo',
     dockerfilePath: 'deploy/containers/todo.Dockerfile',
     flyTomlPath: 'deploy/fly/staging/todo.fly.toml',
+    expectedSettings: [
+      'IDENTITY_TOKEN_CODEC = "jwt-jws"',
+      'MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64',
+      'TODO_DATABASE_PATH = "/data/todo.sqlite"',
+      'source = "megiddo_staging_todo_data"',
+      'destination = "/data"',
+    ],
     publicService: false,
   },
 ] as const
@@ -119,16 +146,20 @@ test('package scripts expose a local container image smoke build', () => {
 })
 
 test('Fly staging manifests describe canonical app boundaries and runtime configuration', () => {
-  for (const { appName, dockerfilePath, flyTomlPath, publicService } of flyStagingApps) {
+  for (const { appName, dockerfilePath, expectedSettings, flyTomlPath, publicService } of flyStagingApps) {
     assert.equal(existsSync(join(root, flyTomlPath)), true, `${flyTomlPath} should exist`)
 
     const manifest = read(flyTomlPath)
 
-    assert.match(manifest, new RegExp(`app = "${regexEscape(appName)}"`))
-    assert.match(manifest, new RegExp(`dockerfile = "${regexEscape(dockerfilePath)}"`))
-    assert.match(manifest, /path = "\/health"/)
+    assertIncludes(manifest, `app = "${appName}"`)
+    assertIncludes(manifest, `dockerfile = "${dockerfilePath}"`)
+    assertIncludes(manifest, 'path = "/health"')
     assert.doesNotMatch(manifest, /compose-rehearsal-missing-secret/)
     assert.doesNotMatch(manifest, /(?:SECRET|KEY[^\n]*) = "/)
+
+    for (const expectedSetting of expectedSettings) {
+      assertIncludes(manifest, expectedSetting)
+    }
 
     if (publicService) {
       assert.match(manifest, /\[http_service\]/)
@@ -138,30 +169,4 @@ test('Fly staging manifests describe canonical app boundaries and runtime config
       assert.doesNotMatch(manifest, /\[\[services\.ports\]\]/)
     }
   }
-
-  const frontend = read('deploy/fly/staging/frontend.fly.toml')
-  assert.match(frontend, /VITE_API_GATEWAY_BASE_URL = "https:\/\/megiddo-staging-api\.fly\.dev"/)
-
-  const api = read('deploy/fly/staging/api.fly.toml')
-  assert.match(api, /IDENTITY_SERVICE_URL = "http:\/\/megiddo-staging-identity\.internal:3002"/)
-  assert.match(api, /TODO_SERVICE_URL = "http:\/\/megiddo-staging-todo\.internal:3001"/)
-  assert.match(api, /IDENTITY_INTERNAL_SERVICE_AUTH_SECRET/)
-
-  const identity = read('deploy/fly/staging/identity.fly.toml')
-  assert.match(identity, /IDENTITY_AUTH_PROVIDER = "better-auth"/)
-  assert.match(identity, /IDENTITY_TOKEN_CODEC = "jwt-jws"/)
-  assert.match(identity, /IDENTITY_INTERNAL_SERVICE_AUTH_SECRET/)
-  assert.match(identity, /MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64/)
-  assert.match(identity, /MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64/)
-  assert.match(identity, /IDENTITY_DATABASE_PATH = "\/data\/identity\.sqlite"/)
-  assert.match(identity, /IDENTITY_BETTER_AUTH_DATABASE_PATH = "\/data\/better-auth\.sqlite"/)
-  assert.match(identity, /source = "megiddo_staging_identity_data"/)
-  assert.match(identity, /destination = "\/data"/)
-
-  const todo = read('deploy/fly/staging/todo.fly.toml')
-  assert.match(todo, /IDENTITY_TOKEN_CODEC = "jwt-jws"/)
-  assert.match(todo, /MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64/)
-  assert.match(todo, /TODO_DATABASE_PATH = "\/data\/todo\.sqlite"/)
-  assert.match(todo, /source = "megiddo_staging_todo_data"/)
-  assert.match(todo, /destination = "\/data"/)
 })
