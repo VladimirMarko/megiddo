@@ -3,6 +3,8 @@ import { spawn } from 'node:child_process'
 import { createDeploymentSecretsEnv, deploymentSecretEnvNames } from './generate-deployment-secrets.mts'
 
 const composeUpDisplay = 'docker compose up --build --wait --detach'
+const healthCheckExpression = (url: string) =>
+  `fetch('${url}').then(response => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))`
 
 interface CommandStep {
   args: string[]
@@ -35,24 +37,29 @@ const runCommand = async ({ args, command, name }: CommandStep, env: NodeJS.Proc
 }
 
 const publicHealthCheck = (url: string): CommandStep => ({
-  args: ['-e', `fetch('${url}').then(response => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))`],
+  args: ['-e', healthCheckExpression(url)],
   command: 'node',
   name: `verify ${url}`,
 })
 
 const privateHealthCheck = (url: string): CommandStep => ({
-  args: [
-    'compose',
-    'exec',
-    '-T',
-    'api',
-    'node',
-    '-e',
-    `fetch('${url}').then(response => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))`,
-  ],
+  args: ['compose', 'exec', '-T', 'api', 'node', '-e', healthCheckExpression(url)],
   command: 'docker',
   name: `verify private ${url}`,
 })
+
+const composeUpStep: CommandStep = {
+  args: ['compose', 'up', '--build', '--wait', '--detach'],
+  command: 'docker',
+  name: composeUpDisplay,
+}
+
+const healthCheckSteps = [
+  publicHealthCheck('http://localhost:5173/health'),
+  publicHealthCheck('http://localhost:3000/health'),
+  privateHealthCheck('http://identity:3002/health'),
+  privateHealthCheck('http://todo:3001/health'),
+]
 
 const createRehearsalEnv = () => {
   const generatedSecrets = createDeploymentSecretsEnv()
@@ -75,21 +82,9 @@ if (generatedNames.length > 0) {
   console.log(`Generated ephemeral Compose rehearsal secrets for: ${generatedNames.join(', ')}`)
 }
 
-await runCommand(
-  {
-    args: ['compose', 'up', '--build', '--wait', '--detach'],
-    command: 'docker',
-    name: composeUpDisplay,
-  },
-  env,
-)
+await runCommand(composeUpStep, env)
 
-for (const step of [
-  publicHealthCheck('http://localhost:5173/health'),
-  publicHealthCheck('http://localhost:3000/health'),
-  privateHealthCheck('http://identity:3002/health'),
-  privateHealthCheck('http://todo:3001/health'),
-]) {
+for (const step of healthCheckSteps) {
   await runCommand(step, env)
 }
 
