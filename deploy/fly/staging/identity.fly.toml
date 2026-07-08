@@ -1,0 +1,32 @@
+app = "megiddo-staging-identity"
+primary_region = "iad"
+
+[build]
+dockerfile = "deploy/containers/identity.Dockerfile"
+
+[env]
+NODE_ENV = "production"
+PORT = "3002"
+IDENTITY_AUTH_PROVIDER = "better-auth"
+IDENTITY_TOKEN_CODEC = "jwt-jws"
+IDENTITY_DATABASE_PATH = "/data/identity.sqlite"
+IDENTITY_BETTER_AUTH_DATABASE_PATH = "/data/better-auth.sqlite"
+IDENTITY_BETTER_AUTH_BASE_URL = "https://megiddo-staging-api.fly.dev"
+
+# Set with `fly secrets set --app megiddo-staging-identity`:
+# IDENTITY_INTERNAL_SERVICE_AUTH_SECRET
+# MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64
+# MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64
+
+[[mounts]]
+source = "megiddo_staging_identity_data"
+destination = "/data"
+
+[checks.health]
+type = "http"
+port = 3002
+interval = "10s"
+timeout = "3s"
+grace_period = "10s"
+method = "GET"
+path = "/health"

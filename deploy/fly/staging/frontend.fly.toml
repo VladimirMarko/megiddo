@@ -1,0 +1,22 @@
+app = "megiddo-staging-frontend"
+primary_region = "iad"
+
+[build]
+dockerfile = "deploy/containers/frontend.Dockerfile"
+
+[build.args]
+VITE_API_GATEWAY_BASE_URL = "https://megiddo-staging-api.fly.dev"
+
+[http_service]
+internal_port = 80
+force_https = true
+auto_stop_machines = false
+auto_start_machines = true
+min_machines_running = 1
+
+[[http_service.checks]]
+interval = "10s"
+timeout = "3s"
+grace_period = "10s"
+method = "GET"
+path = "/health"
