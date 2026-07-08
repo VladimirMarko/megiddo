@@ -1,4 +1,3 @@
-import { gatewayStatus } from '@megiddo/contracts'
 import {
   apiGatewayRpcMountPath,
   handleInstrumentedOrpcServerRequest,
@@ -9,7 +8,7 @@ import { Hono } from 'hono'
 import { type ApiGatewayServiceConfig, createApiGatewayServiceConfig } from './config-builder'
 import { createApiGatewayEnv } from './env-contract'
 import { createIdentityServiceClient, type IdentityServiceClient } from './identity-service-client'
-import { createApiGatewayRouter } from './router'
+import { createApiGatewayOperationalHealth, createApiGatewayRouter } from './router'
 import { createTodoServiceClient, type TodoServiceClient } from './todo-service-client'
 
 const requestWithoutApiGatewayRpcMountPath = (request: Request) => {
@@ -38,7 +37,11 @@ export const createApiGatewayApp = ({
   const app = new Hono()
   const handler = new RPCHandler(createApiGatewayRouter({ identityClient, todoClient }))
 
-  app.get('/health', context => context.json(gatewayStatus))
+  app.get('/health', async context => {
+    const health = await createApiGatewayOperationalHealth({ identityClient, todoClient })
+
+    return context.json(health, health.status === 'ready' ? 200 : 503)
+  })
   app.use(`${apiGatewayRpcMountPath}/*`, async (context, next) => {
     const request = requestWithoutApiGatewayRpcMountPath(context.req.raw)
     const responseHeaders = new Headers()

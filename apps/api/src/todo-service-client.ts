@@ -1,5 +1,6 @@
 import type {
   AuthenticatedTodoInputV1,
+  OperationalHealthResourceV1,
   TodoByIdInputV1,
   TodoContractClientV1,
   TodoCreateInputV1,
@@ -11,6 +12,7 @@ import { createORPCClient } from '@orpc/client'
 import { RPCLink } from '@orpc/client/fetch'
 
 export interface TodoServiceClient {
+  getOperationalHealth(): Promise<OperationalHealthResourceV1>
   listTodos(input: AuthenticatedTodoInputV1): Promise<TodoResourceV1[]>
   createTodo(input: TodoCreateInputV1): Promise<TodoResourceV1>
   completeTodo(input: TodoByIdInputV1): Promise<TodoResourceV1>
@@ -39,10 +41,14 @@ export const createTodoServiceClient = ({
   const listClient = createInstrumentedTodoClient('v1.todos.list')
   const createTodoClient = createInstrumentedTodoClient('v1.todos.create')
   const completeClient = createInstrumentedTodoClient('v1.todos.complete')
+  const operationalHealthClient = createInstrumentedTodoClient('v1.operational.health')
   const reopenClient = createInstrumentedTodoClient('v1.todos.reopen')
   const renameClient = createInstrumentedTodoClient('v1.todos.rename')
 
   return {
+    getOperationalHealth() {
+      return operationalHealthClient.v1.operational.health()
+    },
     listTodos(input) {
       return listClient.v1.todos.list(input)
     },

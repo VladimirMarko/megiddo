@@ -4,6 +4,7 @@ import {
   apiGatewayOperationalHealthV1,
   type BrowserSessionIssueOutputV1,
   gatewayStatus,
+  type OperationalHealthResourceV1,
   todoServiceAudienceV1,
 } from '@megiddo/contracts'
 import { implement, ORPCError } from '@orpc/server'
@@ -72,6 +73,47 @@ const requireBrowserSessionId = (request: Request) => {
   return sessionId
 }
 
+const dependencyHealthReason = (service: 'identity' | 'todo', health: OperationalHealthResourceV1) => {
+  if (health.status === 'ready') {
+    return undefined
+  }
+
+  return `${service} health returned ${health.status}: ${health.reasons.join('; ')}`
+}
+
+const unreachableDependencyHealthReason = (service: 'identity' | 'todo', error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error)
+
+  return `${service} health unavailable: ${message}`
+}
+
+export const createApiGatewayOperationalHealth = async ({
+  identityClient,
+  todoClient,
+}: {
+  identityClient: IdentityServiceClient
+  todoClient: TodoServiceClient
+}): Promise<OperationalHealthResourceV1> => {
+  const [identityHealth, todoHealth] = await Promise.allSettled([
+    identityClient.getOperationalHealth(),
+    todoClient.getOperationalHealth(),
+  ])
+  const reasons = [
+    identityHealth.status === 'fulfilled'
+      ? dependencyHealthReason('identity', identityHealth.value)
+      : unreachableDependencyHealthReason('identity', identityHealth.reason),
+    todoHealth.status === 'fulfilled'
+      ? dependencyHealthReason('todo', todoHealth.value)
+      : unreachableDependencyHealthReason('todo', todoHealth.reason),
+  ].filter((reason): reason is string => reason !== undefined)
+
+  if (reasons.length > 0) {
+    return { reasons: reasons as [string, ...string[]], service: 'api-gateway', status: 'degraded' }
+  }
+
+  return apiGatewayOperationalHealthV1
+}
+
 const issueTodoIdentityToken = async (identityClient: IdentityServiceClient, sessionId: string) =>
   (
     await identityClient.issueBrowserSessionIdentityToken({
@@ -108,7 +150,9 @@ export const createApiGatewayRouter = ({
         status: apiGatewayV1.v1.gateway.status.handler(() => gatewayStatus),
       },
       operational: {
-        health: apiGatewayV1.v1.operational.health.handler(() => apiGatewayOperationalHealthV1),
+        health: apiGatewayV1.v1.operational.health.handler(() =>
+          createApiGatewayOperationalHealth({ identityClient, todoClient }),
+        ),
       },
       viewer: {
         session: {
