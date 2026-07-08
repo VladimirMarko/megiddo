@@ -25,6 +25,14 @@ Local service data is stored under `.data/local-dev` by default. Set `MEGIDDO_LO
 
 Node services and scripts do not load `.env` files themselves. T3 Env validates the runtime environment object the process receives; values should come from the shell, a process manager, package-script invocation, CI secret injection, or the `pnpm dev` local runner. The local runner injects service URLs, ports, local dummy auth, data paths, and local telemetry defaults directly into child process environments.
 
+Generate production-mode staging or Compose rehearsal secrets with:
+
+```sh
+pnpm secrets:deployment
+```
+
+The command prints `IDENTITY_INTERNAL_SERVICE_AUTH_SECRET`, `MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64`, and `MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64` as shell-style env assignments. It writes nothing by default; send the values to your deployment platform secret store rather than committing them.
+
 Frontend commands are different because Vite owns browser env loading. Vite may read its normal `.env`, `.env.local`, `.env.[mode]`, and `.env.[mode].local` files, but browser-visible values still need the `VITE_` prefix and explicit frontend env contract wiring.
 
 ### Local Telemetry Viewer

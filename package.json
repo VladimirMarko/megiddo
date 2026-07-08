@@ -15,6 +15,7 @@
     "dev:turbo": "turbo dev",
     "sandcastle": "tsx .sandcastle/main.mts",
     "sandcastle:build-image": "sandcastle docker build-image --image-name sandcastle:megiddo",
+    "secrets:deployment": "tsx scripts/generate-deployment-secrets.mts",
     "telemetry:viewer": "tsx scripts/run-telemetry-viewer.mts",
     "test": "node --import tsx --test tests/*.test.ts",
     "test:integration:local": "node --import tsx --test tests/integration/local-development-workflow.test.ts"
