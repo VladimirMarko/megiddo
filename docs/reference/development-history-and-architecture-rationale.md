@@ -1,6 +1,6 @@
 # Development History And Architecture Rationale
 
-Issue: #54. Parent PRD: #49.
+Last updated: 2026-07-08.
 
 This document is the primary development-history and architecture-rationale guide for Megiddo. It explains the current architecture by tying each major claim back to existing ADRs, reports, README sections, generated docs, repository vocabulary, or issue clusters. It is not a complete implementation walkthrough.
 

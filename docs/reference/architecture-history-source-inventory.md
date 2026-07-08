@@ -1,8 +1,8 @@
 # Architecture History Source Inventory
 
-Issue: #50. Parent PRD: #49.
+Last updated: 2026-07-08.
 
-This inventory maps existing source material to the development-history and architecture-rationale narrative requested by PRD #49. It is not the final narrative. Use it to decide which claims are supported, which sources are canonical, and which historical notes are transitional.
+This inventory maps existing source material to Megiddo's development-history and architecture-rationale narrative. It is not the final narrative. Use it to decide which claims are supported, which sources are canonical, and which historical notes are transitional.
 
 ADRs remain the canonical source for individual architecture decisions. Reports, README sections, the env catalog, and issue history provide supporting context and implementation chronology.
 
