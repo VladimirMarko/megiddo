@@ -2,36 +2,56 @@
 // Owner column first in env catalog
 // ses_0c26d6788ffeSgdo8l8VcDtNlg
 
-import { createEnv, type StandardSchemaV1 } from '@t3-oss/env-core'
+import { createEnv, type StandardSchemaDictionary, type StandardSchemaV1 } from '@t3-oss/env-core'
 import { mapValues, prop } from 'remeda'
 import { z } from 'zod'
 
-type SchemaEntry = {
+type EnvCatalogMetadata = {
   description: string
-  schema: StandardSchemaV1
 }
 
-type EnvContract =
-  | {
-      clientPrefix: string
-      client: Record<string, SchemaEntry>
+type SchemaEntry<TSchema> = EnvCatalogMetadata & {
+  schema: TSchema
+}
+
+type BloomSchemaDictionary<TSchemaDictionary extends StandardSchemaDictionary> = {
+  [TKey in keyof TSchemaDictionary]: SchemaEntry<TSchemaDictionary[TKey]>
+}
+
+type ServerCreateEnvOptions<TServer extends StandardSchemaDictionary> = {
+  runtimeEnv: Record<string, boolean | number | string | undefined>
+  server: TServer
+}
+
+type BloomServerCreateEnvOptions<TOptions extends ServerCreateEnvOptions<StandardSchemaDictionary>> = Omit<
+  TOptions,
+  'server'
+> & {
+  server: BloomSchemaDictionary<TOptions['server']>
+}
+
+type StripServerCatalogMetadata<TOptions extends BloomServerCreateEnvOptions<ServerCreateEnvOptions<StandardSchemaDictionary>>> =
+  Omit<TOptions, 'server'> & {
+    server: {
+      [TKey in keyof TOptions['server']]: TOptions['server'][TKey]['schema']
     }
-  | {
-      server: Record<string, SchemaEntry>
-    }
+  }
 
-type ClientEnvContract = Extract<EnvContract, { client: Record<string, SchemaEntry> }>
-type ServerEnvContract = Extract<EnvContract, { server: Record<string, SchemaEntry> }>
+const defineCatalogEnvOptions = <const TOptions extends BloomServerCreateEnvOptions<ServerCreateEnvOptions<StandardSchemaDictionary>>>(
+  options: TOptions,
+) => options
 
-type Pluck<T, Promote extends PropertyKey> = {
-  [K in keyof T]: Promote extends keyof T[K] ? T[K][Promote] : never
+const stripCatalogMetadata = <const TOptions extends BloomServerCreateEnvOptions<ServerCreateEnvOptions<StandardSchemaDictionary>>>(
+  options: TOptions,
+): StripServerCatalogMetadata<TOptions> => {
+  return {
+    ...options,
+    server: mapValues(options.server, prop('schema')),
+  } as StripServerCatalogMetadata<TOptions>
 }
 
-type NestedPluck<T, Modify extends PropertyKey, Promote extends PropertyKey> = {
-  [K in keyof T]: K extends Modify ? Pluck<T[K], Promote> : T[K]
-}
-
-const envContract = {
+const envOptions = defineCatalogEnvOptions({
+  runtimeEnv: process.env,
   server: {
     DATABASE_URL: {
       description: 'The URL of the database to connect to.',
@@ -42,54 +62,13 @@ const envContract = {
       schema: z.string().min(1),
     },
   },
-} satisfies EnvContract
+})
 
-function contractToOptionsFragment<TContract extends ClientEnvContract>(
-  contract: TContract,
-): NestedPluck<TContract, 'client', 'schema'>
-function contractToOptionsFragment<TContract extends ServerEnvContract>(
-  contract: TContract,
-): NestedPluck<TContract, 'server', 'schema'>
-function contractToOptionsFragment(
-  contract: EnvContract,
-): NestedPluck<ClientEnvContract, 'client', 'schema'> | NestedPluck<ServerEnvContract, 'server', 'schema'> {
-  if ('server' in contract) {
-    return {
-      server: mapValues(contract.server, prop('schema')),
-    }
-  }
+const createServerEnv = <TServer extends StandardSchemaDictionary>(options: ServerCreateEnvOptions<TServer>) =>
+  createEnv<undefined, TServer>(options)
 
-  return {
-    clientPrefix: contract.clientPrefix,
-    client: mapValues(contract.client, prop('schema')),
-  }
-}
+const createEnvOptions = stripCatalogMetadata(envOptions)
 
-// const derivedEnvOptionsFragment = {
-//   server: {
-//     DATABASE_URL: z.url(),
-//     OPEN_AI_API_KEY: z.string().min(1),
-//   },
-// }
+export const env = createServerEnv(createEnvOptions)
 
-const definedEnvOptionsFragment = {
-  runtimeEnv: process.env,
-}
-
-function buildEnv<const TContract extends ClientEnvContract>(envContract: TContract): ReturnType<typeof createEnv>
-function buildEnv<const TContract extends ServerEnvContract>(envContract: TContract): ReturnType<typeof createEnv>
-function buildEnv(envContract: EnvContract) {
-  if ('server' in envContract) {
-    return createEnv({
-      ...contractToOptionsFragment(envContract),
-      ...definedEnvOptionsFragment,
-    })
-  }
-
-  return createEnv({
-    ...contractToOptionsFragment(envContract),
-    ...definedEnvOptionsFragment,
-  })
-}
-
-export const env = buildEnv(envContract)
+const _schemaCompatibilityCheck: StandardSchemaV1 = createEnvOptions.server.DATABASE_URL
