@@ -93,6 +93,9 @@ const requiredArchitectureClaims = [
   { label: 'historical context boundary', pattern: /historical context, not current architecture/i },
 ]
 
+const localMarkdownLinkTargets = (markdown: string) =>
+  [...markdown.matchAll(/\[[^\]]+\]\((?!https?:|#)([^)]+)\)/g)].map(match => match[1])
+
 const githubHeadingSlug = (heading: string) =>
   heading
     .trim()
@@ -103,8 +106,8 @@ const githubHeadingSlug = (heading: string) =>
     .trim()
     .replace(/\s+/g, '-')
 
-const markdownHeadingAnchors = async (path: string) => {
-  const markdown = await readFile(path, 'utf8')
+const markdownHeadingAnchors = async (filePath: string) => {
+  const markdown = await readFile(filePath, 'utf8')
   const anchors = new Set<string>()
 
   for (const line of markdown.split('\n')) {
@@ -135,7 +138,8 @@ test('development history narrative skeleton exposes the required reader frame',
 
 test('development history narrative skeleton only links to local files that exist', async () => {
   const doc = await readFile(docPath, 'utf8')
-  const localLinkTargets = [...doc.matchAll(/\[[^\]]+\]\((?!https?:|#)([^)]+)\)/g)].map(match => match[1])
+  const localLinkTargets = localMarkdownLinkTargets(doc)
+  const anchorsByPath = new Map<string, Set<string>>()
 
   assert.ok(localLinkTargets.length > 0)
 
@@ -147,7 +151,12 @@ test('development history narrative skeleton only links to local files that exis
     await assert.doesNotReject(access(resolvedTargetPath), `local link should exist: ${target}`)
 
     if (anchor) {
-      const anchors = await markdownHeadingAnchors(resolvedTargetPath)
+      let anchors = anchorsByPath.get(resolvedTargetPath)
+      if (!anchors) {
+        anchors = await markdownHeadingAnchors(resolvedTargetPath)
+        anchorsByPath.set(resolvedTargetPath, anchors)
+      }
+
       assert.ok(anchors.has(anchor), `local link anchor should exist: ${target}`)
     }
   }
