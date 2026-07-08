@@ -43,6 +43,7 @@ test('Identity env validates defaults from an explicit empty runtime env', () =>
   const env = createIdentityEnv({})
 
   assert.deepEqual(env, {
+    BETTER_AUTH_SECRET: undefined,
     BETTER_AUTH_URL: undefined,
     IDENTITY_AUTH_PROVIDER: undefined,
     IDENTITY_BETTER_AUTH_BASE_URL: undefined,
@@ -72,6 +73,7 @@ test('Identity service config derives modes and service-facing values', () => {
     authProvider: 'dummy',
     betterAuthBaseUrl: undefined,
     betterAuthDatabasePath: '.data/identity/better-auth.sqlite',
+    betterAuthSecret: undefined,
     developmentAuthDatabasePath: '.data/identity/identity.sqlite',
     internalServiceAuthSecret: defaultInternalServiceAuthSecret,
     seedDemoAccounts: true,
@@ -85,6 +87,7 @@ test('Identity service config derives modes and service-facing values', () => {
     createIdentityServiceConfig(
       createIdentityEnv({
         BETTER_AUTH_URL: 'http://localhost:4000',
+        BETTER_AUTH_SECRET: 'better-auth-secret',
         IDENTITY_AUTH_PROVIDER: 'better-auth',
         IDENTITY_BETTER_AUTH_BASE_URL: 'http://localhost:5000',
         IDENTITY_BETTER_AUTH_DATABASE_PATH: '/tmp/better-auth.sqlite',
@@ -101,6 +104,7 @@ test('Identity service config derives modes and service-facing values', () => {
       authProvider: 'better-auth',
       betterAuthBaseUrl: 'http://localhost:4000',
       betterAuthDatabasePath: '/tmp/better-auth.sqlite',
+      betterAuthSecret: 'better-auth-secret',
       developmentAuthDatabasePath: '/tmp/identity.sqlite',
       internalServiceAuthSecret: 'secret',
       seedDemoAccounts: true,

@@ -35,10 +35,12 @@ test('deployment secret generator emits runtime env compatible with production-m
 
     const env = parseEnvOutput(stdout)
     assert.deepEqual(Object.keys(env).toSorted(), [
+      'BETTER_AUTH_SECRET',
       'IDENTITY_INTERNAL_SERVICE_AUTH_SECRET',
       'MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64',
       'MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64',
     ])
+    assert.match(env.BETTER_AUTH_SECRET, /^[A-Za-z0-9_-]{43}$/)
     assert.match(env.IDENTITY_INTERNAL_SERVICE_AUTH_SECRET, /^[A-Za-z0-9_-]{43}$/)
 
     const privateKeyPem = Buffer.from(env.MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64, 'base64url').toString('utf8')

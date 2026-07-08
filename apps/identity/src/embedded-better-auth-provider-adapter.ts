@@ -10,6 +10,7 @@ import { PasswordAuthError } from './identity-use-cases'
 export interface EmbeddedBetterAuthProviderAdapterOptions {
   baseURL?: string
   databasePath?: string
+  secret?: string
 }
 
 export interface EmbeddedBetterAuthProviderAdapter extends AuthProviderAdapter {
@@ -58,6 +59,7 @@ const toPasswordAuthError = (error: unknown) => {
 export const createEmbeddedBetterAuthProviderAdapter = ({
   baseURL = 'http://localhost:3002',
   databasePath = ':memory:',
+  secret,
 }: EmbeddedBetterAuthProviderAdapterOptions = {}): EmbeddedBetterAuthProviderAdapter => {
   if (databasePath !== ':memory:') {
     mkdirSync(dirname(databasePath), { recursive: true })
@@ -69,6 +71,7 @@ export const createEmbeddedBetterAuthProviderAdapter = ({
     baseURL,
     database,
     emailAndPassword: { enabled: true },
+    secret,
   }
   const auth = betterAuth(options)
   let migration: Promise<void> | undefined

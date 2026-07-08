@@ -4,6 +4,7 @@ export interface IdentityServiceConfig {
   authProvider: IdentityAuthProviderMode
   betterAuthBaseUrl?: string
   betterAuthDatabasePath: string
+  betterAuthSecret?: string
   developmentAuthDatabasePath: string
   internalServiceAuthSecret: string
   port: number
@@ -33,6 +34,7 @@ export const createIdentityServiceConfig = (env: IdentityEnv): IdentityServiceCo
     authProvider,
     betterAuthBaseUrl: env.BETTER_AUTH_URL ?? env.IDENTITY_BETTER_AUTH_BASE_URL,
     betterAuthDatabasePath: env.IDENTITY_BETTER_AUTH_DATABASE_PATH,
+    betterAuthSecret: env.BETTER_AUTH_SECRET,
     developmentAuthDatabasePath: env.IDENTITY_DATABASE_PATH,
     internalServiceAuthSecret: env.IDENTITY_INTERNAL_SERVICE_AUTH_SECRET,
     port: env.PORT,

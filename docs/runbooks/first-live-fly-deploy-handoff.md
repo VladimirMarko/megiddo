@@ -38,7 +38,7 @@ Record completion, timestamps, and notes for each step that requires operator cr
 | Create Identity volume | `fly volumes create megiddo_staging_identity_data --app megiddo-staging-identity --region iad --size 1` |  |  |
 | Create Todo volume | `fly volumes create megiddo_staging_todo_data --app megiddo-staging-todo --region iad --size 1` |  |  |
 | Set API Gateway secrets | `fly secrets set --app megiddo-staging-api IDENTITY_INTERNAL_SERVICE_AUTH_SECRET="$IDENTITY_INTERNAL_SERVICE_AUTH_SECRET"` |  |  |
-| Set Identity secrets | `fly secrets set --app megiddo-staging-identity IDENTITY_INTERNAL_SERVICE_AUTH_SECRET="$IDENTITY_INTERNAL_SERVICE_AUTH_SECRET" MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64="$MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64" MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64="$MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64"` |  |  |
+| Set Identity secrets | `fly secrets set --app megiddo-staging-identity BETTER_AUTH_SECRET="$BETTER_AUTH_SECRET" IDENTITY_INTERNAL_SERVICE_AUTH_SECRET="$IDENTITY_INTERNAL_SERVICE_AUTH_SECRET" MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64="$MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64" MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64="$MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64"` |  |  |
 | Set Todo secrets | `fly secrets set --app megiddo-staging-todo MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64="$MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64"` |  |  |
 | Deploy Identity | `fly deploy --config deploy/fly/staging/identity.fly.toml` |  |  |
 | Deploy Todo | `fly deploy --config deploy/fly/staging/todo.fly.toml` |  |  |

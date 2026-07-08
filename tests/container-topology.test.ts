@@ -69,6 +69,7 @@ const flyStagingApps = [
     expectedSettings: [
       'IDENTITY_AUTH_PROVIDER = "better-auth"',
       'IDENTITY_TOKEN_CODEC = "jwt-jws"',
+      'BETTER_AUTH_SECRET',
       'IDENTITY_INTERNAL_SERVICE_AUTH_SECRET',
       'MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64',
       'MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64',
@@ -206,6 +207,7 @@ test('Compose rehearsal wires production-shaped split Services and persistent SQ
   assert.match(compose, /IDENTITY_TOKEN_CODEC: jwt-jws/)
   assert.match(compose, /IDENTITY_DATABASE_PATH: \/data\/identity\.sqlite/)
   assert.match(compose, /IDENTITY_BETTER_AUTH_DATABASE_PATH: \/data\/better-auth\.sqlite/)
+  assert.match(compose, /BETTER_AUTH_SECRET:/)
   assert.match(compose, /TODO_DATABASE_PATH: \/data\/todo\.sqlite/)
   assert.match(compose, /MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64:/)
   assert.match(compose, /MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64:/)

@@ -19,7 +19,7 @@ services:
       - "5173:80"
     healthcheck:
       <<: *healthcheck-defaults
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1/health"]
 
   api:
     build:
@@ -53,6 +53,7 @@ services:
       IDENTITY_DATABASE_PATH: /data/identity.sqlite
       IDENTITY_BETTER_AUTH_DATABASE_PATH: /data/better-auth.sqlite
       IDENTITY_BETTER_AUTH_BASE_URL: http://localhost:3000
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-compose-rehearsal-missing-better-auth-secret}
       IDENTITY_INTERNAL_SERVICE_AUTH_SECRET: ${IDENTITY_INTERNAL_SERVICE_AUTH_SECRET:-compose-rehearsal-missing-secret}
       MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64: ${MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64:-}
       MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64: ${MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64:-}

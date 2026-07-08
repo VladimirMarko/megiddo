@@ -33,6 +33,7 @@ const createIdentityAuthProvider = (
   return createEmbeddedBetterAuthProviderAdapter({
     baseURL: config.betterAuthBaseUrl,
     databasePath: config.betterAuthDatabasePath,
+    secret: config.betterAuthSecret,
   })
 }
 

@@ -1,7 +1,7 @@
 FROM node:26-slim AS builder
 
 WORKDIR /app
-RUN corepack enable
+RUN npm install --global pnpm@11.9.0
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.json ./
 COPY apps ./apps

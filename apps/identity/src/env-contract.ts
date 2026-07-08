@@ -21,6 +21,7 @@ export const createIdentityEnv = (runtimeEnv: IdentityRuntimeEnv) =>
     runtimeEnv,
     server: {
       BETTER_AUTH_URL: z.string().optional(),
+      BETTER_AUTH_SECRET: z.string().min(1).optional(),
       IDENTITY_AUTH_PROVIDER: identityAuthProviderSchema.optional(),
       IDENTITY_BETTER_AUTH_BASE_URL: z.string().optional(),
       IDENTITY_BETTER_AUTH_DATABASE_PATH: z.string().min(1).default('.data/identity/better-auth.sqlite'),

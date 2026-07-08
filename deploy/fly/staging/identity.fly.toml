@@ -14,6 +14,7 @@ IDENTITY_BETTER_AUTH_DATABASE_PATH = "/data/better-auth.sqlite"
 IDENTITY_BETTER_AUTH_BASE_URL = "https://megiddo-staging-api.fly.dev"
 
 # Set with `fly secrets set --app megiddo-staging-identity`:
+# BETTER_AUTH_SECRET
 # IDENTITY_INTERNAL_SERVICE_AUTH_SECRET
 # MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64
 # MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64
