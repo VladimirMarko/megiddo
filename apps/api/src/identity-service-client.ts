@@ -9,6 +9,7 @@ import type {
   IdentityContractClientV1,
   IdentityTokenIssueInputV1,
   IdentityTokenIssueOutputV1,
+  OperationalHealthResourceV1,
 } from '@megiddo/contracts'
 import {
   createInstrumentedOrpcClientFetch,
@@ -21,6 +22,7 @@ import { createORPCClient } from '@orpc/client'
 import { RPCLink } from '@orpc/client/fetch'
 
 export interface IdentityServiceClient {
+  getOperationalHealth(): Promise<OperationalHealthResourceV1>
   getAuthCapabilities(): Promise<AuthCapabilitiesResourceV1>
   createBrowserSession(input: AuthSignInInputV1): Promise<BrowserSessionIssueOutputV1>
   createBrowserSessionForSignUp(input: AuthSignUpInputV1): Promise<BrowserSessionIssueOutputV1>
@@ -74,6 +76,7 @@ export const createIdentityServiceClient = ({
   }
 
   const authCapabilitiesClient = createInstrumentedIdentityClient('v1.auth.capabilities')
+  const operationalHealthClient = createInstrumentedIdentityClient('v1.operational.health')
   const currentClient = createInstrumentedIdentityClient('v1.auth.current')
   const signInClient = createInstrumentedIdentityClient('v1.auth.signIn')
   const signUpClient = createInstrumentedIdentityClient('v1.auth.signUp')
@@ -87,6 +90,9 @@ export const createIdentityServiceClient = ({
   )
 
   return {
+    getOperationalHealth() {
+      return operationalHealthClient.v1.operational.health()
+    },
     getAuthCapabilities() {
       return authCapabilitiesClient.v1.auth.capabilities()
     },

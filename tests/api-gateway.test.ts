@@ -6,7 +6,13 @@ import {
   createTodoServiceClient,
   type TodoServiceClient,
 } from '@megiddo/api'
-import { apiGatewayContractV1, gatewayStatus, type TodoResourceV1 } from '@megiddo/contracts'
+import {
+  apiGatewayContractV1,
+  gatewayStatus,
+  identityOperationalHealthV1,
+  type TodoResourceV1,
+  todoOperationalHealthV1,
+} from '@megiddo/contracts'
 import { createIdentityApp } from '@megiddo/identity'
 import { createJwtJwsIdentityTokenCodec } from '@megiddo/platform'
 import { createTodoApp } from '@megiddo/todo'
@@ -52,6 +58,9 @@ test('API Gateway composes frontend-shaped todo procedures through a Todo client
   const createdTodo: TodoResourceV1 = { id: 'todo-from-fake', title: 'Compose through Gateway', completed: false }
   const completedTodo: TodoResourceV1 = { ...createdTodo, completed: true }
   const identityClient = {
+    async getOperationalHealth() {
+      return identityOperationalHealthV1
+    },
     async getAuthCapabilities() {
       return { signInMethods: [], signUpMethods: [] }
     },
@@ -79,6 +88,9 @@ test('API Gateway composes frontend-shaped todo procedures through a Todo client
     },
   }
   const todoClient: TodoServiceClient = {
+    async getOperationalHealth() {
+      return todoOperationalHealthV1
+    },
     async listTodos(input) {
       calls.push('listTodos')
       assert.equal(input.identityToken, 'fake-token')
@@ -167,6 +179,9 @@ const postRpcWithCookie = (app: ReturnType<typeof createApiGatewayApp>, path: st
 test('API Gateway browser auth uses Identity-owned sessions without returning service tokens', async () => {
   const calls: string[] = []
   const identityClient = {
+    async getOperationalHealth() {
+      return identityOperationalHealthV1
+    },
     async getAuthCapabilities() {
       return { signInMethods: ['dummy' as const], signUpMethods: ['dummy' as const] }
     },
@@ -200,6 +215,9 @@ test('API Gateway browser auth uses Identity-owned sessions without returning se
     },
   }
   const todoClient: TodoServiceClient = {
+    async getOperationalHealth() {
+      return todoOperationalHealthV1
+    },
     async listTodos(input) {
       assert.equal(input.identityToken, 'todo-token-for-alice')
       return []

@@ -4,6 +4,7 @@ import {
   apiGatewayOperationalHealthV1,
   type BrowserSessionIssueOutputV1,
   gatewayStatus,
+  type OperationalHealthResourceV1,
   todoServiceAudienceV1,
 } from '@megiddo/contracts'
 import { implement, ORPCError } from '@orpc/server'
@@ -72,6 +73,57 @@ const requireBrowserSessionId = (request: Request) => {
   return sessionId
 }
 
+type ApiGatewayDependencyService = 'identity' | 'todo'
+
+const dependencyHealthReason = (service: ApiGatewayDependencyService, health: OperationalHealthResourceV1) => {
+  if (health.status === 'ready') {
+    return undefined
+  }
+
+  return `${service} health returned ${health.status}: ${health.reasons.join('; ')}`
+}
+
+const unreachableDependencyHealthReason = (service: ApiGatewayDependencyService, error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error)
+
+  return `${service} health unavailable: ${message}`
+}
+
+const dependencyHealthResultReason = (
+  service: ApiGatewayDependencyService,
+  result: PromiseSettledResult<OperationalHealthResourceV1>,
+) => {
+  if (result.status === 'fulfilled') {
+    return dependencyHealthReason(service, result.value)
+  }
+
+  return unreachableDependencyHealthReason(service, result.reason)
+}
+
+export const createApiGatewayOperationalHealth = async ({
+  identityClient,
+  todoClient,
+}: {
+  identityClient: IdentityServiceClient
+  todoClient: TodoServiceClient
+}): Promise<OperationalHealthResourceV1> => {
+  const [identityHealth, todoHealth] = await Promise.allSettled([
+    identityClient.getOperationalHealth(),
+    todoClient.getOperationalHealth(),
+  ])
+  const reasons = [
+    dependencyHealthResultReason('identity', identityHealth),
+    dependencyHealthResultReason('todo', todoHealth),
+  ].filter((reason): reason is string => reason !== undefined)
+  const [firstReason, ...otherReasons] = reasons
+
+  if (firstReason) {
+    return { reasons: [firstReason, ...otherReasons], service: 'api-gateway', status: 'degraded' }
+  }
+
+  return apiGatewayOperationalHealthV1
+}
+
 const issueTodoIdentityToken = async (identityClient: IdentityServiceClient, sessionId: string) =>
   (
     await identityClient.issueBrowserSessionIdentityToken({
@@ -108,7 +160,9 @@ export const createApiGatewayRouter = ({
         status: apiGatewayV1.v1.gateway.status.handler(() => gatewayStatus),
       },
       operational: {
-        health: apiGatewayV1.v1.operational.health.handler(() => apiGatewayOperationalHealthV1),
+        health: apiGatewayV1.v1.operational.health.handler(() =>
+          createApiGatewayOperationalHealth({ identityClient, todoClient }),
+        ),
       },
       viewer: {
         session: {
