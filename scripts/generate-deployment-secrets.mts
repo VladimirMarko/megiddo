@@ -2,9 +2,13 @@
 import { generateKeyPairSync, randomBytes } from 'node:crypto'
 import { pathToFileURL } from 'node:url'
 
-const secretEnvName = 'IDENTITY_INTERNAL_SERVICE_AUTH_SECRET'
-const privateKeyEnvName = 'MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64'
-const publicKeyEnvName = 'MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64'
+export const deploymentSecretEnvNames = [
+  'IDENTITY_INTERNAL_SERVICE_AUTH_SECRET',
+  'MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64',
+  'MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64',
+] as const
+
+const [internalServiceAuthSecretEnvName, privateKeyEnvName, publicKeyEnvName] = deploymentSecretEnvNames
 
 export const createDeploymentSecretsEnv = () => {
   const { privateKey, publicKey } = generateKeyPairSync('ed25519')
@@ -12,14 +16,14 @@ export const createDeploymentSecretsEnv = () => {
   const publicKeyPem = publicKey.export({ format: 'pem', type: 'spki' }).toString()
 
   return {
-    [secretEnvName]: randomBytes(32).toString('base64url'),
+    [internalServiceAuthSecretEnvName]: randomBytes(32).toString('base64url'),
     [privateKeyEnvName]: Buffer.from(privateKeyPem).toString('base64url'),
     [publicKeyEnvName]: Buffer.from(publicKeyPem).toString('base64url'),
   }
 }
 
-export const renderDeploymentSecretsEnv = (env: Record<string, string>) =>
-  [secretEnvName, privateKeyEnvName, publicKeyEnvName].map(name => `${name}=${env[name]}`).join('\n')
+export const renderDeploymentSecretsEnv = (env: Record<(typeof deploymentSecretEnvNames)[number], string>) =>
+  deploymentSecretEnvNames.map(name => `${name}=${env[name]}`).join('\n')
 
 const isMain = import.meta.url === pathToFileURL(process.argv[1] ?? '').href
 
