@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 const docPath = fileURLToPath(
   new URL('../docs/reference/development-history-and-architecture-rationale.md', import.meta.url),
 )
+const docDir = dirname(docPath)
 
 const requiredHeadings = [
   '# Development History And Architecture Rationale',
@@ -37,15 +38,15 @@ test('development history narrative skeleton exposes the required reader frame',
 
 test('development history narrative skeleton only links to local files that exist', async () => {
   const doc = await readFile(docPath, 'utf8')
-  const localMarkdownLinks = [...doc.matchAll(/\[[^\]]+\]\((?!https?:|#)([^)]+)\)/g)].map(match => match[1])
+  const localLinkTargets = [...doc.matchAll(/\[[^\]]+\]\((?!https?:|#)([^)]+)\)/g)].map(match => match[1])
 
-  assert.ok(localMarkdownLinks.length > 0)
+  assert.ok(localLinkTargets.length > 0)
 
-  for (const link of localMarkdownLinks) {
-    const [path] = link.split('#')
-    assert.ok(path, `link should include a path: ${link}`)
+  for (const target of localLinkTargets) {
+    const [targetPath] = target.split('#')
+    assert.ok(targetPath, `link should include a path: ${target}`)
 
-    const targetPath = normalize(join(dirname(docPath), decodeURIComponent(path)))
-    await access(targetPath)
+    const resolvedTargetPath = normalize(join(docDir, decodeURIComponent(targetPath)))
+    await assert.doesNotReject(access(resolvedTargetPath), `local link should exist: ${target}`)
   }
 })
