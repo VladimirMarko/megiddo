@@ -1,0 +1,3 @@
+# Configure Frontend API URL Through Frontend Env Contract
+
+The frontend remains a separate deployable service from the API Gateway, and the browser-facing API Gateway base URL is configured through the frontend-owned env contract rather than hardcoded in the Frontend API Adapter. This preserves the existing service boundary while making cloud deployments explicit: local development can keep `http://localhost:3000`, and staging can supply the public API Gateway URL with a `VITE_` client variable. We are not folding static frontend serving into the API Gateway yet because that would add gateway responsibilities only to avoid configuration.

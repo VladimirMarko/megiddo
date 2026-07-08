@@ -1,0 +1,3 @@
+# Use Fly For The First Production-Shaped Staging Deployment
+
+The first production-shaped staging deployment targets Fly.io because its separate apps, private networking, containers, and durable volumes match Megiddo's current service topology and SQLite-backed Persistence Adapters with little application code change. This is a temporary deployment target decision for learning and staging, not a permanent cloud-provider commitment. Provider-specific configuration should stay in deployment files and runtime environment values so the application code remains portable if staging later moves to another provider or a managed database platform.

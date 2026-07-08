@@ -1,0 +1,3 @@
+# Defer Database Migrations For First Staging Deployment
+
+The first production-shaped staging deployment will use the services' current startup-time SQLite initialization instead of adding a migration framework. This keeps the initial deployment focused on container boundaries, service networking, production-mode auth, and durable volumes rather than persistence lifecycle design. The tradeoff is that staging schema evolution is weak until a later migration story is added, so first staging should be treated as fresh-volume deployment data rather than data that must survive arbitrary schema changes.
