@@ -90,3 +90,15 @@ test('package scripts expose a local container image smoke build', () => {
 
   assert.equal(packageJson.scripts['containers:build'], 'docker compose build')
 })
+
+test('package scripts expose the mandatory local Compose deployment rehearsal', () => {
+  const packageJson = JSON.parse(read('package.json')) as { scripts: Record<string, string> }
+  const rehearsalScript = read('scripts/rehearse-compose-deployment.mts')
+
+  assert.equal(packageJson.scripts['containers:rehearse'], 'tsx scripts/rehearse-compose-deployment.mts')
+  assert.match(rehearsalScript, /docker compose up --build --wait --detach/)
+  assert.match(rehearsalScript, /http:\/\/localhost:5173\/health/)
+  assert.match(rehearsalScript, /http:\/\/localhost:3000\/health/)
+  assert.match(rehearsalScript, /http:\/\/identity:3002\/health/)
+  assert.match(rehearsalScript, /http:\/\/todo:3001\/health/)
+})

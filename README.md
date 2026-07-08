@@ -39,9 +39,17 @@ Build the local container images for the split topology with:
 pnpm containers:build
 ```
 
+Run the mandatory local Compose deployment rehearsal before deploying staging changes:
+
+```sh
+pnpm containers:rehearse
+```
+
 `compose.yaml` defines separate Frontend, API Gateway, Identity, and Todo Services. Frontend and API Gateway publish local ports; Identity and Todo stay on the Compose network. Identity and Todo mount named volumes at `/data` for their SQLite files, and API Gateway calls them through `http://identity:3002` and `http://todo:3001`.
 
-Before running the Compose topology, export the values printed by `pnpm secrets:deployment`. Compose starts Identity with `NODE_ENV=production`, Better Auth, and JWT/JWS Identity Tokens, so missing signing keys fail at runtime instead of falling back to dummy auth.
+`pnpm containers:rehearse` builds and starts the Compose topology, waits for Service health checks, verifies Frontend and API Gateway over published localhost ports, and verifies private Identity and Todo health through Compose internal networking. It uses any exported values from `pnpm secrets:deployment`; if they are absent, it generates ephemeral rehearsal secrets without writing them to the repo.
+
+Compose starts Identity with `NODE_ENV=production`, Better Auth, and JWT/JWS Identity Tokens, so the rehearsal exercises the production-mode auth and token path instead of falling back to dummy auth.
 
 Frontend commands are different because Vite owns browser env loading. Vite may read its normal `.env`, `.env.local`, `.env.[mode]`, and `.env.[mode].local` files, but browser-visible values still need the `VITE_` prefix and explicit frontend env contract wiring.
 

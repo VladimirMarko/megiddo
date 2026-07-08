@@ -6,6 +6,7 @@
     "build": "turbo build",
     "check": "tsx scripts/run-check.mts",
     "containers:build": "docker compose build",
+    "containers:rehearse": "tsx scripts/rehearse-compose-deployment.mts",
     "dev": "tsx scripts/run-local-dev.mts",
     "dev:api": "pnpm --filter @megiddo/api dev",
     "dev:frontend": "pnpm --filter @megiddo/frontend dev",
