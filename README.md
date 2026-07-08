@@ -33,6 +33,8 @@ pnpm secrets:deployment
 
 The command prints `IDENTITY_INTERNAL_SERVICE_AUTH_SECRET`, `MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64`, and `MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64` as shell-style env assignments. It writes nothing by default; send the values to your deployment platform secret store rather than committing them.
 
+For the manual Fly staging deployment procedure, see the [Staging Deployment Runbook](docs/runbooks/staging-deployment.md).
+
 Build the local container images for the split topology with:
 
 ```sh
