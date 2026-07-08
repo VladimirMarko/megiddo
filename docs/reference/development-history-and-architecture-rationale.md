@@ -39,6 +39,7 @@ The development history uses supported source ordering, not a commit-by-commit r
 | 4 | Identity modes and auth boundaries | Issues #27 through #35; ADR-0010, ADR-0012, ADR-0019, ADR-0024; [`2026-07-06 identity report`](../reports/2026-07-06-identity-service-current-state.md) | Separates dummy auth, Better Auth, token codecs, browser sessions, and service-boundary token verification. |
 | 5 | Environment architecture | Issues #37 through #48; ADR-0025; [`2026-07-06 environment report`](../reports/2026-07-06-environment-variables.md); [`Env Catalog`](env-catalog.md) | Moves env handling toward owned Env Contracts, derived Config objects, explicit runtime env inputs, and generated documentation. |
 | 6 | Development-history documentation | Issues #49 through #54; [`Architecture History Source Inventory`](architecture-history-source-inventory.md) | Builds this guide in slices: source inventory, skeleton, theme narrative, topology and boundary rationale, and validation. |
+| 7 | Production-shaped staging deployment | Issues #56 through #64; ADR-0026 through ADR-0032; [`Staging Deployment Runbook`](../runbooks/staging-deployment.md); [`First Live Fly Deploy Handoff`](../runbooks/first-live-fly-deploy-handoff.md) | Preserves the split Service topology in a first cloud deployment shape on Fly, with mandatory Compose rehearsal, production-mode Identity, service-owned SQLite volumes, health checks, and explicit first-staging limitations. |
 
 ## Architecture Themes
 
@@ -130,6 +131,20 @@ The Env Catalog is a documentation and checking artifact rather than a runtime i
 
 The [`environment variables report`](../reports/2026-07-06-environment-variables.md) is historical context, not current architecture. It preserves the pre-migration inventory and explains why Env Contracts and generated catalog collation were needed. For current behavior, use [`ADR-0025`](../adr/0025-use-owned-env-contracts-and-derived-config.md), the [`Env Catalog`](env-catalog.md), and the [`README`](../../README.md#local-development) env-loading section.
 
+### Production-Shaped Staging Deployment
+
+Megiddo's first cloud deployment target is production-shaped staging, not full production. [`ADR-0026`](../adr/0026-use-production-shaped-staging-on-fly-with-service-owned-sqlite-volumes.md) records the deployment shape: Frontend, API Gateway, Identity, and Todo remain separate deployable Services; private service networking is exercised; real token signing is used; and Identity and Todo keep service-owned SQLite files on durable volumes for the first staging slice. The supported rationale is to expose deployment, networking, auth, and persistence integration problems earlier than local pnpm development can, while deliberately avoiding the full burden of production uptime, backups, migrations, and horizontal scaling.
+
+Fly is the first staging provider, not a permanent platform commitment. [`ADR-0028`](../adr/0028-use-fly-for-the-first-production-shaped-staging-deployment.md) chooses Fly because separate apps, private networking, containers, and durable volumes fit the existing Service topology and Persistence Adapter shape with little application-code change. Provider-specific choices should stay in deployment files and runtime environment values so application code remains portable.
+
+The staging topology preserves the existing browser and backend boundaries. [`ADR-0027`](../adr/0027-configure-frontend-api-url-through-frontend-env-contract.md) keeps the frontend as a separate deployable Service and configures the browser-facing API Gateway URL through the frontend-owned Env Contract instead of hardcoding localhost or folding static frontend serving into the API Gateway. The PRD and runbook preserve the public/private split: Frontend and API Gateway are public; Identity and Todo are private-only unless a Better Auth browser-flow constraint forces a documented boundary change.
+
+Staging Identity is intentionally production-mode. [`ADR-0029`](../adr/0029-use-production-mode-identity-in-staging.md) says staging uses Better Auth and JWT/JWS Identity Tokens, with signing material and internal service secrets supplied through the deployment platform secret store. This prevents staging from succeeding only because local dummy auth or dummy token codecs were enabled.
+
+Local Compose is the mandatory deployment rehearsal for this topology, not a replacement for `pnpm dev`. [`ADR-0031`](../adr/0031-rehearse-staging-topology-with-local-compose.md) requires Compose to exercise container builds, service separation, internal networking, mounted persistence, frontend-to-API configuration, and production-mode Identity. The [`README`](../../README.md#local-development) points to the current rehearsal commands and the [`Staging Deployment Runbook`](../runbooks/staging-deployment.md) is the canonical operator procedure.
+
+First staging keeps observability and persistence lifecycle deliberately small. [`ADR-0030`](../adr/0030-start-staging-observability-with-platform-logs-and-health-checks.md) starts with platform logs and HTTP health checks rather than hosted OpenTelemetry. [`ADR-0032`](../adr/0032-defer-database-migrations-for-first-staging-deployment.md) defers database migrations and treats first staging data as fresh-volume deployment data. The tradeoff is explicit: first staging is useful for topology proof, but it is not production-ready data operations.
+
 ## Decision Index
 
 | Theme | Canonical decisions | Supporting sources |
@@ -143,6 +158,7 @@ The [`environment variables report`](../reports/2026-07-06-environment-variables
 | Local development and testing | [`ADR-0006`](../adr/0006-use-frontend-api-adapter-above-orpc.md), [`ADR-0011`](../adr/0011-use-real-service-processes-in-dev-and-fakes-in-focused-tests.md), [`ADR-0014`](../adr/0014-use-contract-smoke-tests-for-runtime-conformance.md), [`ADR-0015`](../adr/0015-services-own-test-and-dev-persistence-lifecycle.md) | [`README`](../../README.md#local-development), [`README` tests section](../../README.md#tests) |
 | Telemetry | [`ADR-0021`](../adr/0021-use-opentelemetry-spans-for-local-developer-observability.md), [`ADR-0022`](../adr/0022-use-best-effort-local-telemetry-export.md), [`ADR-0023`](../adr/0023-evaluate-existing-local-opentelemetry-viewers-before-building-devtools-ui.md) | [`local viewer evaluation report`](../reports/2026-07-05-local-opentelemetry-viewers.md), [`Local Telemetry Viewer`](../../README.md#local-telemetry-viewer) |
 | Environment configuration | [`ADR-0025`](../adr/0025-use-owned-env-contracts-and-derived-config.md) | [`Env Catalog`](env-catalog.md), [`environment variables report`](../reports/2026-07-06-environment-variables.md), [`README`](../../README.md#local-development) |
+| Production-shaped staging deployment | [`ADR-0026`](../adr/0026-use-production-shaped-staging-on-fly-with-service-owned-sqlite-volumes.md), [`ADR-0027`](../adr/0027-configure-frontend-api-url-through-frontend-env-contract.md), [`ADR-0028`](../adr/0028-use-fly-for-the-first-production-shaped-staging-deployment.md), [`ADR-0029`](../adr/0029-use-production-mode-identity-in-staging.md), [`ADR-0030`](../adr/0030-start-staging-observability-with-platform-logs-and-health-checks.md), [`ADR-0031`](../adr/0031-rehearse-staging-topology-with-local-compose.md), [`ADR-0032`](../adr/0032-defer-database-migrations-for-first-staging-deployment.md) | [`Staging Deployment Runbook`](../runbooks/staging-deployment.md), [`First Live Fly Deploy Handoff`](../runbooks/first-live-fly-deploy-handoff.md), [`README`](../../README.md#local-development) |
 
 ## Supporting Sources
 
@@ -155,6 +171,8 @@ The [`environment variables report`](../reports/2026-07-06-environment-variables
 - [`2026-07-05 local OpenTelemetry viewers report`](../reports/2026-07-05-local-opentelemetry-viewers.md): evidence for selecting an existing telemetry viewer before custom devtools.
 - [`2026-07-06 Identity Service current-state report`](../reports/2026-07-06-identity-service-current-state.md): historical baseline and gap analysis before later identity slices.
 - [`2026-07-06 environment variables report`](../reports/2026-07-06-environment-variables.md): pre-Env-Contract snapshot and migration rationale.
+- [`Staging Deployment Runbook`](../runbooks/staging-deployment.md): canonical manual procedure for Compose rehearsal, secret generation, Fly setup, deploy commands, verification, and known limitations.
+- [`First Live Fly Deploy Handoff`](../runbooks/first-live-fly-deploy-handoff.md): operator checklist and evidence template for credentialed first live Fly deployment.
 
 ## Known Transitional Decisions
 
@@ -163,6 +181,8 @@ The [`environment variables report`](../reports/2026-07-06-environment-variables
 - The [`Identity Service current-state report`](../reports/2026-07-06-identity-service-current-state.md) is historical. Its custom compact token format, browser-held gateway token path, and public development token issuance should be described as prior state or gap analysis, not current architecture.
 - The [`environment variables report`](../reports/2026-07-06-environment-variables.md) is historical. It is a pre-migration snapshot; use [`ADR-0025`](../adr/0025-use-owned-env-contracts-and-derived-config.md) and the [`Env Catalog`](env-catalog.md) for current env architecture.
 - The [`local OpenTelemetry viewers report`](../reports/2026-07-05-local-opentelemetry-viewers.md) contains rejected viewer candidates. Those failures are evaluation evidence, not current runtime architecture.
+- [`ADR-0028`](../adr/0028-use-fly-for-the-first-production-shaped-staging-deployment.md) is a temporary first-provider choice, not a permanent cloud-platform commitment.
+- The first staging deployment deliberately defers production concerns: hosted telemetry, database migrations, backups, custom domains, CI/CD, and horizontal scaling for stateful Services. Do not describe the staging deployment as full production readiness.
 
 ## Validation Note
 

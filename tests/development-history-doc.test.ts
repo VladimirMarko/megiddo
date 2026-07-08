@@ -23,8 +23,8 @@ const requiredHeadings = [
 
 const requiredTopologyClaims = [
   {
-    name: 'issue and parent PRD context',
-    pattern: /Issue: #54\. Parent PRD: #49\./,
+    name: 'standalone last-updated context',
+    pattern: /Last updated: 2026-07-08\./,
   },
   {
     name: 'thin end-to-end tracer-bullet path',
@@ -90,6 +90,11 @@ const requiredArchitectureClaims = [
     label: 'env catalog role',
     pattern: /documentation and checking artifact rather than a runtime import surface/i,
   },
+  { label: 'production-shaped staging', pattern: /production-shaped staging/i },
+  { label: 'temporary Fly provider choice', pattern: /temporary.*provider/i },
+  { label: 'Compose deployment rehearsal', pattern: /mandatory deployment rehearsal/i },
+  { label: 'production-mode staging identity', pattern: /Staging Identity.*production-mode/is },
+  { label: 'first-staging limitations', pattern: /not production-ready data operations/i },
   { label: 'historical context boundary', pattern: /historical context, not current architecture/i },
 ]
 
