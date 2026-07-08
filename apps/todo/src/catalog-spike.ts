@@ -18,40 +18,54 @@ type BloomSchemaDictionary<TSchemaDictionary extends StandardSchemaDictionary> =
   [TKey in keyof TSchemaDictionary]: SchemaEntry<TSchemaDictionary[TKey]>
 }
 
-type ServerCreateEnvOptions<TServer extends StandardSchemaDictionary> = {
+type CatalogSection = 'client' | 'server' | 'shared'
+
+type BloomCatalogSections<TOptions> = Omit<TOptions, CatalogSection> & {
+  [TSection in Extract<keyof TOptions, CatalogSection>]: TOptions[TSection] extends StandardSchemaDictionary
+    ? BloomSchemaDictionary<TOptions[TSection]>
+    : TOptions[TSection]
+}
+
+type StripCatalogSections<TOptions> = Omit<TOptions, CatalogSection> & {
+  [TSection in Extract<keyof TOptions, CatalogSection>]: TOptions[TSection] extends Record<string, SchemaEntry<unknown>>
+    ? { [TKey in keyof TOptions[TSection]]: TOptions[TSection][TKey]['schema'] }
+    : TOptions[TSection]
+}
+
+type ServerClientCreateEnvOptions<
+  TPrefix extends string | undefined,
+  TServer extends StandardSchemaDictionary,
+  TClient extends StandardSchemaDictionary,
+> = {
   runtimeEnv: Record<string, boolean | number | string | undefined>
+  clientPrefix: TPrefix
+  client: TClient
   server: TServer
 }
 
-type BloomServerCreateEnvOptions<TOptions extends ServerCreateEnvOptions<StandardSchemaDictionary>> = Omit<
-  TOptions,
-  'server'
-> & {
-  server: BloomSchemaDictionary<TOptions['server']>
-}
+type CatalogCreateEnvOptions = BloomCatalogSections<
+  ServerClientCreateEnvOptions<string, StandardSchemaDictionary, StandardSchemaDictionary>
+>
 
-type StripServerCatalogMetadata<TOptions extends BloomServerCreateEnvOptions<ServerCreateEnvOptions<StandardSchemaDictionary>>> =
-  Omit<TOptions, 'server'> & {
-    server: {
-      [TKey in keyof TOptions['server']]: TOptions['server'][TKey]['schema']
-    }
-  }
+const defineCatalogEnvOptions = <const TOptions extends CatalogCreateEnvOptions>(options: TOptions) => options
 
-const defineCatalogEnvOptions = <const TOptions extends BloomServerCreateEnvOptions<ServerCreateEnvOptions<StandardSchemaDictionary>>>(
-  options: TOptions,
-) => options
-
-const stripCatalogMetadata = <const TOptions extends BloomServerCreateEnvOptions<ServerCreateEnvOptions<StandardSchemaDictionary>>>(
-  options: TOptions,
-): StripServerCatalogMetadata<TOptions> => {
+const stripCatalogMetadata = <const TOptions extends CatalogCreateEnvOptions>(options: TOptions): StripCatalogSections<TOptions> => {
   return {
     ...options,
+    client: mapValues(options.client, prop('schema')),
     server: mapValues(options.server, prop('schema')),
-  } as StripServerCatalogMetadata<TOptions>
+  } as StripCatalogSections<TOptions>
 }
 
 const envOptions = defineCatalogEnvOptions({
+  clientPrefix: 'PUBLIC_',
   runtimeEnv: process.env,
+  client: {
+    PUBLIC_ENABLE_EXPERIMENT: {
+      description: 'Enables the public experiment UI.',
+      schema: z.enum(['true', 'false']).optional(),
+    },
+  },
   server: {
     DATABASE_URL: {
       description: 'The URL of the database to connect to.',
@@ -64,11 +78,9 @@ const envOptions = defineCatalogEnvOptions({
   },
 })
 
-const createServerEnv = <TServer extends StandardSchemaDictionary>(options: ServerCreateEnvOptions<TServer>) =>
-  createEnv<undefined, TServer>(options)
-
 const createEnvOptions = stripCatalogMetadata(envOptions)
 
-export const env = createServerEnv(createEnvOptions)
+export const env = createEnv(createEnvOptions)
 
 const _schemaCompatibilityCheck: StandardSchemaV1 = createEnvOptions.server.DATABASE_URL
+const _clientSchemaCompatibilityCheck: StandardSchemaV1 | undefined = createEnvOptions.client.PUBLIC_ENABLE_EXPERIMENT
