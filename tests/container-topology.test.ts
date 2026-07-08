@@ -95,6 +95,7 @@ const flyStagingApps = [
 ] as const
 
 const stagingDeploymentRunbookPath = 'docs/runbooks/staging-deployment.md'
+const firstLiveFlyDeployHandoffPath = 'docs/runbooks/first-live-fly-deploy-handoff.md'
 
 const stagingDeploymentRunbookRequiredContent = [
   'AFK-agent repo work',
@@ -125,6 +126,41 @@ const stagingDeploymentRunbookRequiredContent = [
   'no migrations',
   'basic observability only',
   'no CI/CD',
+] as const
+
+const firstLiveFlyDeployHandoffRequiredContent = [
+  'First Live Fly Deploy Operator Handoff',
+  'PRD #56',
+  'Issue #64',
+  'megiddo-staging-frontend',
+  'megiddo-staging-api',
+  'megiddo-staging-identity',
+  'megiddo-staging-todo',
+  'https://megiddo-staging-frontend.fly.dev',
+  'https://megiddo-staging-api.fly.dev',
+  'http://megiddo-staging-identity.internal:3002',
+  'http://megiddo-staging-todo.internal:3001',
+  'fly auth login',
+  'fly orgs list',
+  'pnpm containers:rehearse',
+  'pnpm secrets:deployment',
+  'fly apps create',
+  'fly volumes create',
+  'fly secrets set',
+  'fly deploy',
+  'fly ssh console --app megiddo-staging-api',
+  'Frontend evidence',
+  'API Gateway evidence',
+  'Identity evidence',
+  'Todo evidence',
+  'API Gateway-to-Identity connectivity evidence',
+  'API Gateway-to-Todo connectivity evidence',
+  'Fly app IDs/names',
+  'volume names',
+  'deployed versions',
+  'verification timestamps',
+  'Stop and Revisit',
+  'Better Auth browser flows require Identity to be public',
 ] as const
 
 test('split topology has one production container image definition per Service', () => {
@@ -230,5 +266,22 @@ test('staging deployment runbook is checked in and linked from the README', () =
 
   for (const expected of stagingDeploymentRunbookRequiredContent) {
     assertIncludes(runbook, expected)
+  }
+})
+
+test('first live Fly deploy handoff checklist captures operator evidence and stop conditions', () => {
+  const runbook = read(stagingDeploymentRunbookPath)
+
+  assert.equal(
+    existsSync(join(root, firstLiveFlyDeployHandoffPath)),
+    true,
+    `${firstLiveFlyDeployHandoffPath} should exist`,
+  )
+  assertIncludes(runbook, '[First Live Fly Deploy Operator Handoff](first-live-fly-deploy-handoff.md)')
+
+  const handoff = read(firstLiveFlyDeployHandoffPath)
+
+  for (const expected of firstLiveFlyDeployHandoffRequiredContent) {
+    assertIncludes(handoff, expected)
   }
 })
