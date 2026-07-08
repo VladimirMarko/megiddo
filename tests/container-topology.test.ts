@@ -5,46 +5,69 @@ import { test } from 'node:test'
 
 const root = process.cwd()
 const read = (path: string) => readFileSync(join(root, path), 'utf8')
+const regexEscape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 const serviceDockerfiles = [
-  { path: 'deploy/containers/frontend.Dockerfile', runtime: 'nginx:1.29-alpine', service: 'frontend' },
-  { path: 'deploy/containers/api.Dockerfile', runtime: 'node:26-slim', service: 'api' },
-  { path: 'deploy/containers/identity.Dockerfile', runtime: 'node:26-slim', service: 'identity' },
-  { path: 'deploy/containers/todo.Dockerfile', runtime: 'node:26-slim', service: 'todo' },
+  {
+    dockerfilePath: 'deploy/containers/frontend.Dockerfile',
+    packageName: '@megiddo/frontend',
+    runtimeImage: 'nginx:1.29-alpine',
+    serviceName: 'frontend',
+  },
+  {
+    dockerfilePath: 'deploy/containers/api.Dockerfile',
+    packageName: '@megiddo/api',
+    runtimeImage: 'node:26-slim',
+    serviceName: 'api',
+  },
+  {
+    dockerfilePath: 'deploy/containers/identity.Dockerfile',
+    packageName: '@megiddo/identity',
+    runtimeImage: 'node:26-slim',
+    serviceName: 'identity',
+  },
+  {
+    dockerfilePath: 'deploy/containers/todo.Dockerfile',
+    packageName: '@megiddo/todo',
+    runtimeImage: 'node:26-slim',
+    serviceName: 'todo',
+  },
+] as const
+
+const nodeEntrypoints = [
+  { command: ['node', 'apps/api/dist/server.js'], dockerfilePath: 'deploy/containers/api.Dockerfile' },
+  { command: ['node', 'apps/identity/dist/server.js'], dockerfilePath: 'deploy/containers/identity.Dockerfile' },
+  { command: ['node', 'apps/todo/dist/server.js'], dockerfilePath: 'deploy/containers/todo.Dockerfile' },
 ] as const
 
 test('split topology has one production container image definition per Service', () => {
-  for (const { path, runtime, service } of serviceDockerfiles) {
-    assert.equal(existsSync(join(root, path)), true, `${path} should exist`)
+  for (const { dockerfilePath, packageName, runtimeImage } of serviceDockerfiles) {
+    assert.equal(existsSync(join(root, dockerfilePath)), true, `${dockerfilePath} should exist`)
 
-    const dockerfile = read(path)
-    assert.match(dockerfile, new RegExp(`FROM ${runtime.replace('.', '\\.')}`))
+    const dockerfile = read(dockerfilePath)
+    assert.match(dockerfile, new RegExp(`FROM ${regexEscape(runtimeImage)}`))
     assert.match(dockerfile, /pnpm install --frozen-lockfile/)
-    assert.match(dockerfile, new RegExp(`pnpm --filter @megiddo/${service} build`))
+    assert.match(dockerfile, new RegExp(`pnpm --filter ${regexEscape(packageName)} build`))
     assert.doesNotMatch(dockerfile, /pnpm\s+dev|tsx\s+src\/server\.ts|vite\s+--host/)
   }
 })
 
 test('Node Service containers run built entrypoints on a node:sqlite-compatible runtime', () => {
-  const expectedCommands = new Map([
-    ['deploy/containers/api.Dockerfile', 'node apps/api/dist/server.js'],
-    ['deploy/containers/identity.Dockerfile', 'node apps/identity/dist/server.js'],
-    ['deploy/containers/todo.Dockerfile', 'node apps/todo/dist/server.js'],
-  ])
+  for (const { command, dockerfilePath } of nodeEntrypoints) {
+    const dockerfile = read(dockerfilePath)
+    const dockerCommand = `["${command.join('", "')}"]`
 
-  for (const [path, command] of expectedCommands) {
-    const dockerfile = read(path)
     assert.match(dockerfile, /FROM node:26-slim AS runtime/)
-    assert.match(dockerfile, new RegExp(`CMD \\["${command.split(' ').join('", "')}"\\]`))
+    assert.match(dockerfile, new RegExp(`CMD ${regexEscape(dockerCommand)}`))
   }
 })
 
 test('Compose rehearsal wires production-shaped split Services and persistent SQLite paths', () => {
   const compose = read('compose.yaml')
 
-  for (const service of ['frontend', 'api', 'identity', 'todo']) {
-    assert.match(compose, new RegExp(`^  ${service}:`, 'm'))
-    assert.match(compose, new RegExp(`dockerfile: deploy/containers/${service}\\.Dockerfile`))
+  for (const { dockerfilePath, serviceName } of serviceDockerfiles) {
+    assert.match(compose, new RegExp(`^  ${serviceName}:`, 'm'))
+    assert.match(compose, new RegExp(`dockerfile: ${regexEscape(dockerfilePath)}`))
   }
 
   assert.match(compose, /VITE_API_GATEWAY_BASE_URL: http:\/\/localhost:3000/)

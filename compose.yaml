@@ -1,5 +1,10 @@
 name: megiddo-staging-rehearsal
 
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 10s
+  timeout: 3s
+  retries: 5
+
 services:
   frontend:
     build:
@@ -13,10 +18,8 @@ services:
     ports:
       - "5173:80"
     healthcheck:
+      <<: *healthcheck-defaults
       test: ["CMD", "wget", "--spider", "-q", "http://localhost/health"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
 
   api:
     build:
@@ -35,10 +38,8 @@ services:
     ports:
       - "3000:3000"
     healthcheck:
+      <<: *healthcheck-defaults
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
 
   identity:
     build:
@@ -58,10 +59,8 @@ services:
     volumes:
       - identity-data:/data
     healthcheck:
+      <<: *healthcheck-defaults
       test: ["CMD", "node", "-e", "fetch('http://localhost:3002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
 
   todo:
     build:
@@ -75,10 +74,8 @@ services:
     volumes:
       - todo-data:/data
     healthcheck:
+      <<: *healthcheck-defaults
       test: ["CMD", "node", "-e", "fetch('http://localhost:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
 
 volumes:
   identity-data:
