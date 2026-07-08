@@ -94,6 +94,39 @@ const flyStagingApps = [
   },
 ] as const
 
+const stagingDeploymentRunbookPath = 'docs/runbooks/staging-deployment.md'
+
+const stagingDeploymentRunbookRequiredContent = [
+  'AFK-agent repo work',
+  'Operator steps',
+  'pnpm containers:rehearse',
+  'pnpm secrets:deployment',
+  'fly auth login',
+  'fly apps create megiddo-staging-frontend',
+  'fly apps create megiddo-staging-api',
+  'fly apps create megiddo-staging-identity',
+  'fly apps create megiddo-staging-todo',
+  'fly volumes create megiddo_staging_identity_data --app megiddo-staging-identity',
+  'fly volumes create megiddo_staging_todo_data --app megiddo-staging-todo',
+  'fly secrets set --app megiddo-staging-api',
+  'fly secrets set --app megiddo-staging-identity',
+  'fly secrets set --app megiddo-staging-todo',
+  'fly deploy --config deploy/fly/staging/frontend.fly.toml',
+  'fly deploy --config deploy/fly/staging/api.fly.toml',
+  'fly deploy --config deploy/fly/staging/identity.fly.toml',
+  'fly deploy --config deploy/fly/staging/todo.fly.toml',
+  'https://megiddo-staging-frontend.fly.dev/health',
+  'https://megiddo-staging-api.fly.dev/health',
+  'http://megiddo-staging-identity.internal:3002/health',
+  'http://megiddo-staging-todo.internal:3001/health',
+  'temporary Fly provider choice',
+  'single-instance stateful Services',
+  'no backups',
+  'no migrations',
+  'basic observability only',
+  'no CI/CD',
+] as const
+
 test('split topology has one production container image definition per Service', () => {
   for (const { dockerfilePath, packageName, runtimeImage } of serviceDockerfiles) {
     assert.equal(existsSync(join(root, dockerfilePath)), true, `${dockerfilePath} should exist`)
@@ -184,45 +217,18 @@ test('Fly staging manifests describe canonical app boundaries and runtime config
 })
 
 test('staging deployment runbook is checked in and linked from the README', () => {
-  const runbookPath = 'docs/runbooks/staging-deployment.md'
   const readme = read('README.md')
 
-  assert.equal(existsSync(join(root, runbookPath)), true, `${runbookPath} should exist`)
-  assertIncludes(readme, `[Staging Deployment Runbook](${runbookPath})`)
+  assert.equal(
+    existsSync(join(root, stagingDeploymentRunbookPath)),
+    true,
+    `${stagingDeploymentRunbookPath} should exist`,
+  )
+  assertIncludes(readme, `[Staging Deployment Runbook](${stagingDeploymentRunbookPath})`)
 
-  const runbook = read(runbookPath)
-  const requiredContent = [
-    'AFK-agent repo work',
-    'Operator steps',
-    'pnpm containers:rehearse',
-    'pnpm secrets:deployment',
-    'fly auth login',
-    'fly apps create megiddo-staging-frontend',
-    'fly apps create megiddo-staging-api',
-    'fly apps create megiddo-staging-identity',
-    'fly apps create megiddo-staging-todo',
-    'fly volumes create megiddo_staging_identity_data --app megiddo-staging-identity',
-    'fly volumes create megiddo_staging_todo_data --app megiddo-staging-todo',
-    'fly secrets set --app megiddo-staging-api',
-    'fly secrets set --app megiddo-staging-identity',
-    'fly secrets set --app megiddo-staging-todo',
-    'fly deploy --config deploy/fly/staging/frontend.fly.toml',
-    'fly deploy --config deploy/fly/staging/api.fly.toml',
-    'fly deploy --config deploy/fly/staging/identity.fly.toml',
-    'fly deploy --config deploy/fly/staging/todo.fly.toml',
-    'https://megiddo-staging-frontend.fly.dev/health',
-    'https://megiddo-staging-api.fly.dev/health',
-    'http://megiddo-staging-identity.internal:3002/health',
-    'http://megiddo-staging-todo.internal:3001/health',
-    'temporary Fly provider choice',
-    'single-instance stateful Services',
-    'no backups',
-    'no migrations',
-    'basic observability only',
-    'no CI/CD',
-  ]
+  const runbook = read(stagingDeploymentRunbookPath)
 
-  for (const expected of requiredContent) {
+  for (const expected of stagingDeploymentRunbookRequiredContent) {
     assertIncludes(runbook, expected)
   }
 })

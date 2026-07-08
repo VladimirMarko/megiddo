@@ -100,7 +100,7 @@ Do not scale Identity or Todo above one Machine while they use service-owned SQL
 
 ## 5. Set Fly Secrets
 
-Set secrets from the values printed by `pnpm secrets:deployment`. The examples show variable names only; replace the placeholder values in the operator shell and do not expose real secrets in command history if your shell persists it.
+Set secrets from the values printed by `pnpm secrets:deployment`. Export those values in the operator shell, then pass variable references to `fly secrets set` as shown so secret values are not written to shell history.
 
 ```sh
 fly secrets set --app megiddo-staging-api \
