@@ -33,6 +33,16 @@ pnpm secrets:deployment
 
 The command prints `IDENTITY_INTERNAL_SERVICE_AUTH_SECRET`, `MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64`, and `MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64` as shell-style env assignments. It writes nothing by default; send the values to your deployment platform secret store rather than committing them.
 
+Build the local container images for the split topology with:
+
+```sh
+pnpm containers:build
+```
+
+`compose.yaml` defines separate Frontend, API Gateway, Identity, and Todo Services. Frontend and API Gateway publish local ports; Identity and Todo stay on the Compose network. Identity and Todo mount named volumes at `/data` for their SQLite files, and API Gateway calls them through `http://identity:3002` and `http://todo:3001`.
+
+Before running the Compose topology, export the values printed by `pnpm secrets:deployment`. Compose starts Identity with `NODE_ENV=production`, Better Auth, and JWT/JWS Identity Tokens, so missing signing keys fail at runtime instead of falling back to dummy auth.
+
 Frontend commands are different because Vite owns browser env loading. Vite may read its normal `.env`, `.env.local`, `.env.[mode]`, and `.env.[mode].local` files, but browser-visible values still need the `VITE_` prefix and explicit frontend env contract wiring.
 
 ### Local Telemetry Viewer

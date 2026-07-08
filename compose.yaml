@@ -1,0 +1,85 @@
+name: megiddo-staging-rehearsal
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: deploy/containers/frontend.Dockerfile
+      args:
+        VITE_API_GATEWAY_BASE_URL: http://localhost:3000
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "5173:80"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/containers/api.Dockerfile
+    environment:
+      PORT: 3000
+      IDENTITY_SERVICE_URL: http://identity:3002
+      TODO_SERVICE_URL: http://todo:3001
+      IDENTITY_INTERNAL_SERVICE_AUTH_SECRET: ${IDENTITY_INTERNAL_SERVICE_AUTH_SECRET:-compose-rehearsal-missing-secret}
+    depends_on:
+      identity:
+        condition: service_healthy
+      todo:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  identity:
+    build:
+      context: .
+      dockerfile: deploy/containers/identity.Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      IDENTITY_AUTH_PROVIDER: better-auth
+      IDENTITY_TOKEN_CODEC: jwt-jws
+      IDENTITY_DATABASE_PATH: /data/identity.sqlite
+      IDENTITY_BETTER_AUTH_DATABASE_PATH: /data/better-auth.sqlite
+      IDENTITY_BETTER_AUTH_BASE_URL: http://localhost:3000
+      IDENTITY_INTERNAL_SERVICE_AUTH_SECRET: ${IDENTITY_INTERNAL_SERVICE_AUTH_SECRET:-compose-rehearsal-missing-secret}
+      MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64: ${MEGIDDO_IDENTITY_TOKEN_PRIVATE_KEY_PEM_BASE64:-}
+      MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64: ${MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64:-}
+    volumes:
+      - identity-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  todo:
+    build:
+      context: .
+      dockerfile: deploy/containers/todo.Dockerfile
+    environment:
+      PORT: 3001
+      IDENTITY_TOKEN_CODEC: jwt-jws
+      MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64: ${MEGIDDO_IDENTITY_TOKEN_PUBLIC_KEY_PEM_BASE64:-}
+      TODO_DATABASE_PATH: /data/todo.sqlite
+    volumes:
+      - todo-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  identity-data:
+  todo-data:

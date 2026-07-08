@@ -5,6 +5,7 @@
   "scripts": {
     "build": "turbo build",
     "check": "tsx scripts/run-check.mts",
+    "containers:build": "docker compose build",
     "dev": "tsx scripts/run-local-dev.mts",
     "dev:api": "pnpm --filter @megiddo/api dev",
     "dev:frontend": "pnpm --filter @megiddo/frontend dev",
@@ -40,6 +41,7 @@
     "@types/node": "^26.1.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "esbuild": "0.28.1",
     "jsdom": "^29.1.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
