@@ -73,7 +73,9 @@ const requireBrowserSessionId = (request: Request) => {
   return sessionId
 }
 
-const dependencyHealthReason = (service: 'identity' | 'todo', health: OperationalHealthResourceV1) => {
+type ApiGatewayDependencyService = 'identity' | 'todo'
+
+const dependencyHealthReason = (service: ApiGatewayDependencyService, health: OperationalHealthResourceV1) => {
   if (health.status === 'ready') {
     return undefined
   }
@@ -81,10 +83,21 @@ const dependencyHealthReason = (service: 'identity' | 'todo', health: Operationa
   return `${service} health returned ${health.status}: ${health.reasons.join('; ')}`
 }
 
-const unreachableDependencyHealthReason = (service: 'identity' | 'todo', error: unknown) => {
+const unreachableDependencyHealthReason = (service: ApiGatewayDependencyService, error: unknown) => {
   const message = error instanceof Error ? error.message : String(error)
 
   return `${service} health unavailable: ${message}`
+}
+
+const dependencyHealthResultReason = (
+  service: ApiGatewayDependencyService,
+  result: PromiseSettledResult<OperationalHealthResourceV1>,
+) => {
+  if (result.status === 'fulfilled') {
+    return dependencyHealthReason(service, result.value)
+  }
+
+  return unreachableDependencyHealthReason(service, result.reason)
 }
 
 export const createApiGatewayOperationalHealth = async ({
@@ -99,16 +112,13 @@ export const createApiGatewayOperationalHealth = async ({
     todoClient.getOperationalHealth(),
   ])
   const reasons = [
-    identityHealth.status === 'fulfilled'
-      ? dependencyHealthReason('identity', identityHealth.value)
-      : unreachableDependencyHealthReason('identity', identityHealth.reason),
-    todoHealth.status === 'fulfilled'
-      ? dependencyHealthReason('todo', todoHealth.value)
-      : unreachableDependencyHealthReason('todo', todoHealth.reason),
+    dependencyHealthResultReason('identity', identityHealth),
+    dependencyHealthResultReason('todo', todoHealth),
   ].filter((reason): reason is string => reason !== undefined)
+  const [firstReason, ...otherReasons] = reasons
 
-  if (reasons.length > 0) {
-    return { reasons: reasons as [string, ...string[]], service: 'api-gateway', status: 'degraded' }
+  if (firstReason) {
+    return { reasons: [firstReason, ...otherReasons], service: 'api-gateway', status: 'degraded' }
   }
 
   return apiGatewayOperationalHealthV1
