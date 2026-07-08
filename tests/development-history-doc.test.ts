@@ -21,6 +21,46 @@ const requiredHeadings = [
   '## Maintenance Guidance',
 ]
 
+const requiredTopologyClaims = [
+  {
+    name: 'issue and parent PRD context',
+    pattern: /Issue: #53\. Parent PRD: #49\./,
+  },
+  {
+    name: 'thin end-to-end tracer-bullet path',
+    pattern:
+      /thin end-to-end path through the frontend, API Gateway, Identity Service, Todo Service, contracts, and platform seams/i,
+  },
+  {
+    name: 'frontend-to-gateway boundary',
+    pattern: /frontend talks to the API Gateway rather than directly to the Identity Service or Todo Service/i,
+  },
+  {
+    name: 'Frontend API Adapter boundary',
+    pattern: /Frontend API Adapter.*instead of raw oRPC clients or published contracts/is,
+  },
+  {
+    name: 'service-boundary token verification',
+    pattern: /services verify Identity Tokens at their own boundary/i,
+  },
+  {
+    name: 'token cryptography seam',
+    pattern: /token cryptography.*behind.*seam/is,
+  },
+  {
+    name: 'real local service processes',
+    pattern: /real service processes in local development/i,
+  },
+  {
+    name: 'focused-test fakes',
+    pattern: /fakes in focused tests/i,
+  },
+  {
+    name: 'explicit inferred rationale labeling',
+    pattern: /inferred rationale/i,
+  },
+]
+
 test('development history narrative skeleton exposes the required reader frame', async () => {
   const doc = await readFile(docPath, 'utf8')
 
@@ -51,6 +91,7 @@ test('development history narrative skeleton only links to local files that exis
   }
 })
 
+<<<<<<< HEAD
 test('development history narrative documents issue 52 architecture rationale claims', async () => {
   const doc = await readFile(docPath, 'utf8')
 
@@ -88,5 +129,12 @@ test('development history narrative documents issue 52 architecture rationale cl
 
   for (const { label, pattern } of requiredClaims) {
     assert.match(doc, pattern, `${label} claim should be documented`)
+=======
+test('development history guide documents service topology and boundary rationale', async () => {
+  const doc = await readFile(docPath, 'utf8')
+
+  for (const claim of requiredTopologyClaims) {
+    assert.match(doc, claim.pattern, `${claim.name} should be documented`)
+>>>>>>> sandcastle/issue-53
   }
 })

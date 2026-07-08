@@ -1,8 +1,14 @@
 # Development History And Architecture Rationale
 
+<<<<<<< HEAD
 Issue: #52. Parent PRD: #49.
 
 This document is the primary development-history and architecture-rationale guide for Megiddo. It explains the current architecture by tying each major claim back to existing ADRs, reports, README sections, generated docs, repository vocabulary, or issue clusters. It is not a complete implementation walkthrough.
+=======
+Issue: #53. Parent PRD: #49.
+
+This document is the primary development-history and architecture-rationale guide for Megiddo. This slice fills the service topology and boundary rationale requested by issue #53 while preserving the source rules, timeline shape, decision index, and maintenance contract established by the first documentation slice.
+>>>>>>> sandcastle/issue-53
 
 ## Purpose
 
@@ -40,21 +46,45 @@ The development history uses supported source ordering, not a commit-by-commit r
 
 ## Architecture Themes
 
+<<<<<<< HEAD
 These themes summarize the current direction supported by existing sources. Each section keeps ADRs as the canonical decisions and uses reports, README material, the Env Catalog, and issue clusters as supporting evidence or historical context.
+=======
+These themes describe Megiddo's current high-level shape and the rationale that the existing sources support. ADRs remain canonical for the decisions themselves; this guide connects those decisions so a reader can understand the topology without reading the whole ADR directory first.
+>>>>>>> sandcastle/issue-53
 
 ### Tracer-Bullet Strategy
 
-Megiddo starts by proving thin end-to-end behavior before deepening internals. [`ADR-0018`](../adr/0018-start-with-a-thin-vertical-tracer-bullet.md) records the strategy, while [`ADR-0020`](../adr/0020-start-tracer-bullet-with-in-memory-repositories.md) records the initial in-memory repository choice for the first slice. Current prose must distinguish that first slice from later local-dev embedded persistence.
+Megiddo starts by proving a thin end-to-end path through the frontend, API Gateway, Identity Service, Todo Service, contracts, and platform seams before deepening internals. [`ADR-0018`](../adr/0018-start-with-a-thin-vertical-tracer-bullet.md) records this explicitly: the first slice should exercise the frontend API adapter, gateway, service contracts, identity token seam, and Todo use cases before adding deeper persistence, Better Auth, production token cryptography, or complete contract-versioning behavior.
+
+That choice shaped the initial topology. The project was not built as isolated packages that would later be wired together; it was built as thin but separately named parts of the final system so the first useful behavior crossed the same boundaries the architecture intended to keep. [`ADR-0020`](../adr/0020-start-tracer-bullet-with-in-memory-repositories.md) narrows the first persistence choice to in-memory repositories behind adapters, and the [`Architecture History Source Inventory`](architecture-history-source-inventory.md) marks that as historical for the first slice rather than current local-development persistence.
+
+The supported rationale is that early end-to-end pressure exposes boundary mistakes sooner than deepening one service in isolation. The inferred rationale is that this made the API Gateway, Frontend API Adapter, service-token seam, and contracts package hard to bypass because each one had to carry real behavior from the beginning. That inference is consistent with [`ADR-0018`](../adr/0018-start-with-a-thin-vertical-tracer-bullet.md), but the ADR does not state it as a separate principle.
 
 ### Service Boundaries And API Gateway
 
-The API Gateway is the frontend-facing API surface and composition boundary. [`ADR-0002`](../adr/0002-use-api-gateway-for-frontend-api-surface.md) is the starting point, with browser auth and session routing continued by [`ADR-0010`](../adr/0010-route-browser-auth-through-api-gateway.md) and [`ADR-0024`](../adr/0024-separate-identity-auth-provider-token-codec-and-browser-session-concerns.md). The guide should explain why browser code does not call every backend service directly.
+The frontend talks to the API Gateway rather than directly to the Identity Service or Todo Service. [`ADR-0002`](../adr/0002-use-api-gateway-for-frontend-api-surface.md) gives the direct rationale: the gateway exposes the collated oRPC API surface, composes calls to backend services, and provides a clear place for session handling, inter-service communication, and frontend-focused test doubles.
+
+This boundary also keeps browser auth from becoming service-specific browser integration. [`ADR-0010`](../adr/0010-route-browser-auth-through-api-gateway.md) says browser-facing auth flows go through the gateway so the frontend has one backend boundary, with explicit exceptions only when an auth callback cannot reasonably be handled there. [`ADR-0024`](../adr/0024-separate-identity-auth-provider-token-codec-and-browser-session-concerns.md) continues that direction: the normal browser path talks only to the API Gateway, while the gateway forwards browser session context to Identity and asks Identity for downstream service tokens server-side.
+
+The topology is still made of separately runnable services, not a monolithic backend hidden behind the gateway. [`ADR-0011`](../adr/0011-use-real-service-processes-in-dev-and-fakes-in-focused-tests.md) and the [`README`](../../README.md) both describe the local topology as real separate processes for Frontend, API Gateway, Todo Service, and Identity Service over localhost. [`ADR-0016`](../adr/0016-use-hono-for-service-http-runtime.md) supports the lightweight Hono runtime choice for those service HTTP boundaries.
+
+The documented rationale is composition and browser-boundary clarity. The inferred rationale is that a single frontend-facing API surface reduces pressure for frontend code to learn backend-service topology, service-token handling, or service-specific failure modes. That inference follows from [`ADR-0002`](../adr/0002-use-api-gateway-for-frontend-api-surface.md) and the `API Gateway` and `Frontend Procedure` vocabulary in [`CONTEXT.md`](../../CONTEXT.md), but the ADR does not list every avoided coupling explicitly.
 
 ### Frontend Architecture
 
+<<<<<<< HEAD
 The frontend uses React, Vite, TanStack, and Jotai per [`ADR-0017`](../adr/0017-use-react-vite-tanstack-and-jotai-for-frontend.md). The source-backed rationale is deliberately narrow: React is the UI rendering foundation, Vite owns frontend development and browser env loading, TanStack provides router/form structure, and Jotai provides focused client state. The [`Architecture History Source Inventory`](architecture-history-source-inventory.md) cautions that ADR-0017 is brief, so this guide should not add deeper stack motivations unless a later ADR or issue records them.
 
 The frontend does not bind components directly to raw oRPC clients or published backend contracts. [`ADR-0006`](../adr/0006-use-frontend-api-adapter-above-orpc.md) makes the Frontend API Adapter the UI seam above oRPC, and the [`README`](../../README.md) testing guidance treats that seam as the place for focused frontend fakes. That keeps UI tests from needing Identity, Better Auth, service databases, or networked contract clients for every component path.
+=======
+The frontend uses React, Vite, TanStack, and Jotai per [`ADR-0017`](../adr/0017-use-react-vite-tanstack-and-jotai-for-frontend.md). That ADR is brief, so this guide should not invent a deeper framework rationale than the source material provides.
+
+The stronger documented frontend boundary is the Frontend API Adapter. [`ADR-0006`](../adr/0006-use-frontend-api-adapter-above-orpc.md) says frontend components use the Frontend API Adapter instead of raw oRPC clients or published contracts. The contracts define the network boundary, but UI components receive frontend-owned models and callbacks from the adapter layer. The production adapter delegates to the API Gateway oRPC client, while tests and stories can replace it with fakes for logged-in, logged-out, and error states without running Identity, Better Auth, or service databases.
+
+The [`README`](../../README.md) turns that architecture choice into a maintained rule: the check command includes a custom seam rule that prevents frontend UI files from importing `@megiddo/contracts` or raw oRPC clients directly. [`CONTEXT.md`](../../CONTEXT.md) uses the same vocabulary and defines `Frontend API Adapter` as a frontend-owned boundary, not a thin import convenience.
+
+The rationale is partly documented and partly inferred. Documented: components stay focused, contract mapping belongs in the adapter, and focused frontend tests can use fake adapters. Inferred: keeping published contracts below the adapter gives the UI permission to use view-friendly names and models without forcing every component to track contract-version churn.
+>>>>>>> sandcastle/issue-53
 
 ### Contract Evolution
 
@@ -68,6 +98,7 @@ Contract smoke tests sit beside this versioning model. [`ADR-0014`](../adr/0014-
 
 ### Identity And Auth
 
+<<<<<<< HEAD
 Identity owns authentication integration and Identity Token issuance, but those are separate concerns. [`ADR-0024`](../adr/0024-separate-identity-auth-provider-token-codec-and-browser-session-concerns.md) distinguishes the Auth Provider Adapter, the Identity Token codec, and the browser session. The Auth Provider Adapter wraps an auth library or dummy provider inside Identity. The Identity Token codec issues and verifies service-facing token wire formats. The browser session proves a browser is signed in, normally through Identity-owned session cookies routed through the API Gateway rather than exposing service tokens to browser code. [`CONTEXT.md`](../../CONTEXT.md) defines the same terms as Auth Provider Adapter, Token Codec, Identity Token, Token Verifier, and Browser Session.
 
 Services still make authorization local at their boundary. [`ADR-0003`](../adr/0003-identity-issues-asymmetric-user-tokens.md) records Identity-issued user tokens, [`ADR-0004`](../adr/0004-keep-token-cryptography-behind-a-seam.md) keeps token cryptography behind a swappable seam, and [`ADR-0012`](../adr/0012-services-verify-identity-tokens-at-their-boundary.md) requires services to verify Identity Tokens rather than trusting an upstream gateway assertion. That keeps the Todo Service responsible for validating the credential it accepts for Todo operations.
@@ -75,6 +106,17 @@ Services still make authorization local at their boundary. [`ADR-0003`](../adr/0
 Dummy auth and dummy tokens are local-development conveniences, not production security. [`ADR-0019`](../adr/0019-start-with-dev-identity-provider-behind-auth-adapter.md) starts with a development identity provider behind the Auth Provider Adapter, while [`ADR-0024`](../adr/0024-separate-identity-auth-provider-token-codec-and-browser-session-concerns.md) continues the design with explicit dummy and `jwt-jws` token-codec directions. The [`README`](../../README.md) describes `pnpm dev` as starting the local dummy auth profile with inspectable dummy Identity Tokens, and the [`Env Catalog`](env-catalog.md) records that dummy auth and dummy token modes are rejected in production. Therefore dummy credentials must not be accepted in production.
 
 Several identity sources are historical context, not current architecture. The [`Identity Service current-state report`](../reports/2026-07-06-identity-service-current-state.md) explicitly says issue #34 replaced the transitional custom compact token codec with the `jwt-jws` direction. Its browser-held gateway token path, public development token issuance, and compact format should be read as baseline and gap analysis before later identity slices, not as the current architecture.
+=======
+Identity owns user-token issuance, auth-provider integration, token-codec choices, and browser-session concerns. [`ADR-0003`](../adr/0003-identity-issues-asymmetric-user-tokens.md) starts the token model, and [`ADR-0024`](../adr/0024-separate-identity-auth-provider-token-codec-and-browser-session-concerns.md) separates the Auth Provider Adapter, Identity Token codec, and browser session concerns so Better Auth, dummy auth, token signing, and frontend session behavior do not collapse into one implementation choice.
+
+Services verify Identity Tokens at their own boundary. [`ADR-0012`](../adr/0012-services-verify-identity-tokens-at-their-boundary.md) says backend services verify raw Identity Tokens for user-scoped operations rather than trusting the API Gateway to pass a normalized user context. The gateway may verify tokens for its own procedures, but each independently runnable service enforces its own authorization boundary using the Identity-issued token. The [`README`](../../README.md) reflects this in the local topology: Identity issues dummy Identity Tokens and Todo verifies those same tokens at its service boundary.
+
+Token cryptography and other platform concerns live behind seams. [`ADR-0004`](../adr/0004-keep-token-cryptography-behind-a-seam.md) keeps signing and verification behind a narrow cryptography seam so the repository can change algorithms or libraries without spreading that choice through services. [`ADR-0024`](../adr/0024-separate-identity-auth-provider-token-codec-and-browser-session-concerns.md) applies the same shape to dummy and JWT/JWS token codecs: `IDENTITY_TOKEN_CODEC=dummy | jwt-jws` selects the wire-format implementation, while `IDENTITY_AUTH_PROVIDER=dummy | better-auth` selects the auth-provider side.
+
+Dummy auth and dummy tokens are local-development concerns and must not be described as production security. [`ADR-0024`](../adr/0024-separate-identity-auth-provider-token-codec-and-browser-session-concerns.md) says dummy auth and dummy tokens are refused when `NODE_ENV=production`, and the [`Architecture History Source Inventory`](architecture-history-source-inventory.md) warns that the older compact token flow in the Identity report is historical after the later dummy/JWT/JWS direction.
+
+The documented rationale is local authorization and swappable infrastructure. The inferred rationale is defense against accidental gateway centralization: if Todo verifies the token itself, an API Gateway bug or test double cannot silently become Todo's authorization model. [`ADR-0012`](../adr/0012-services-verify-identity-tokens-at-their-boundary.md) supports that inference by naming the service boundary as the enforcement point.
+>>>>>>> sandcastle/issue-53
 
 ### Persistence
 
@@ -86,7 +128,13 @@ The lifecycle is also service-owned. [`ADR-0015`](../adr/0015-services-own-test-
 
 ### Local Development And Testing
 
-Local development runs real service processes for representative integration while focused tests use fakes. Use [`ADR-0011`](../adr/0011-use-real-service-processes-in-dev-and-fakes-in-focused-tests.md), [`ADR-0014`](../adr/0014-use-contract-smoke-tests-for-runtime-conformance.md), and the [`README`](../../README.md). This guide should link to the README for commands rather than copying them.
+Megiddo uses real service processes in local development and fakes in focused tests. [`ADR-0011`](../adr/0011-use-real-service-processes-in-dev-and-fakes-in-focused-tests.md) is the canonical decision: normal local development runs services as separate localhost processes so package and service boundaries are exercised, while focused unit and component tests may use in-process fakes or contract-compatible adapters. The [`README`](../../README.md) is the operational source for current commands and ports, so this guide links there rather than copying the command walkthrough.
+
+Use the real-process topology when the behavior being checked depends on process boundaries, service URLs, gateway-to-service oRPC calls, browser session routing, service-token issuance, persistence lifecycle, or local telemetry. The [`README`](../../README.md) describes the full local topology started by `pnpm dev`, and its integration-test section describes representative real Identity, Todo, and API service processes driving the authenticated frontend-facing todo path through the production Frontend API Adapter.
+
+Use focused fakes when the behavior belongs inside one boundary and the external service is not the subject of the test. [`ADR-0006`](../adr/0006-use-frontend-api-adapter-above-orpc.md) supports fake Frontend API Adapters for component tests and stories. [`ADR-0011`](../adr/0011-use-real-service-processes-in-dev-and-fakes-in-focused-tests.md) supports in-process fakes or contract-compatible adapters for focused tests. [`ADR-0014`](../adr/0014-use-contract-smoke-tests-for-runtime-conformance.md) keeps contract smoke tests thin so they prove runtime routing, validation, auth/error mapping, and representative success paths without duplicating type checks.
+
+The documented rationale is speed for focused tests and representative boundary coverage for local integration. The inferred rationale is that fakes are acceptable only when they preserve the boundary being tested rather than replacing the boundary with implementation sharing.
 
 ### Telemetry And Developer Observability
 
