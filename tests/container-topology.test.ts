@@ -94,6 +94,16 @@ const flyStagingApps = [
   },
 ] as const
 
+const flyStagingPublicUrls = [
+  'https://megiddo-staging-frontend.fly.dev',
+  'https://megiddo-staging-api.fly.dev',
+] as const
+
+const flyStagingPrivateServiceUrls = [
+  'http://megiddo-staging-identity.internal:3002',
+  'http://megiddo-staging-todo.internal:3001',
+] as const
+
 const stagingDeploymentRunbookPath = 'docs/runbooks/staging-deployment.md'
 const firstLiveFlyDeployHandoffPath = 'docs/runbooks/first-live-fly-deploy-handoff.md'
 
@@ -132,14 +142,9 @@ const firstLiveFlyDeployHandoffRequiredContent = [
   'First Live Fly Deploy Operator Handoff',
   'PRD #56',
   'Issue #64',
-  'megiddo-staging-frontend',
-  'megiddo-staging-api',
-  'megiddo-staging-identity',
-  'megiddo-staging-todo',
-  'https://megiddo-staging-frontend.fly.dev',
-  'https://megiddo-staging-api.fly.dev',
-  'http://megiddo-staging-identity.internal:3002',
-  'http://megiddo-staging-todo.internal:3001',
+  ...flyStagingApps.map(({ appName }) => appName),
+  ...flyStagingPublicUrls,
+  ...flyStagingPrivateServiceUrls,
   'fly auth login',
   'fly orgs list',
   'pnpm containers:rehearse',
