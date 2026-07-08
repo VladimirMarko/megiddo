@@ -7,6 +7,8 @@ This runbook deploys Megiddo's production-shaped `staging` topology to Fly.io fo
 - Identity: `megiddo-staging-identity`, private at `http://megiddo-staging-identity.internal:3002`
 - Todo: `megiddo-staging-todo`, private at `http://megiddo-staging-todo.internal:3001`
 
+Use the [First Live Fly Deploy Operator Handoff](first-live-fly-deploy-handoff.md) during the first credentialed deployment to record Fly resources, deployed versions, verification evidence, timestamps, and stop-and-revisit conditions.
+
 ## Responsibility Split
 
 AFK-agent repo work:
