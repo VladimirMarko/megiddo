@@ -29,5 +29,6 @@
   "json.schemaDownload.enable": true,
   "json.schemaDownload.trustedDomains": {
     "https://biomejs.dev": true
-  }
+  },
+  "git.blame.editorDecoration.enabled": true
 }
