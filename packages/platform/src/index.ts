@@ -28,7 +28,6 @@ interface OrpcSpanAttributesOptions {
 
 interface InstrumentedOrpcClientFetchOptions {
   fetch?: (request: Request) => Promise<Response>
-  procedure: string
   serviceName: string
 }
 
@@ -78,8 +77,9 @@ const finishOrpcSpan = (span: Span, startTime: number, status: OrpcStatus) => {
 }
 
 export const createInstrumentedOrpcClientFetch =
-  ({ fetch = request => globalThis.fetch(request), procedure, serviceName }: InstrumentedOrpcClientFetchOptions) =>
-  async (request: Request) => {
+  ({ fetch = request => globalThis.fetch(request), serviceName }: InstrumentedOrpcClientFetchOptions) =>
+  async (request: Request, _init: unknown, _options: unknown, path: readonly string[]) => {
+    const procedure = path.join('.')
     const startTime = Date.now()
     const role = 'client'
     const span = tracer.startSpan(spanName({ procedure, role, serviceName }), {

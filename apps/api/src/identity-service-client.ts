@@ -39,80 +39,50 @@ interface IdentityServiceClientOptions {
   serviceName?: string
 }
 
-interface InstrumentedIdentityClientOptions {
-  withInternalServiceAuth?: boolean
-}
-
 export const createIdentityServiceClient = ({
   baseUrl = 'http://localhost:3002',
   fetch,
   internalServiceAuthSecret = defaultInternalServiceAuthSecret,
   serviceName = 'api-gateway',
 }: IdentityServiceClientOptions = {}): IdentityServiceClient => {
-  const withInternalServiceAuth = (request: Request) => {
-    const headers = new Headers(request.headers)
-    headers.set(internalServiceHeader, serviceName)
-    headers.set(internalServiceSecretHeader, internalServiceAuthSecret)
-
-    return new Request(request, { headers })
-  }
-
-  const createInstrumentedIdentityClient = (
-    procedure: string,
-    { withInternalServiceAuth: shouldAuthenticateInternalService = false }: InstrumentedIdentityClientOptions = {},
-  ) => {
-    const instrumentedFetch = createInstrumentedOrpcClientFetch({ fetch, procedure, serviceName })
-
-    return createORPCClient<IdentityContractClientV1>(
-      new RPCLink({
-        fetch: request => {
-          const authenticatedRequest = shouldAuthenticateInternalService ? withInternalServiceAuth(request) : request
-
-          return instrumentedFetch(authenticatedRequest)
-        },
-        url: identityRpcUrl(baseUrl),
-      }),
-    )
-  }
-
-  const authCapabilitiesClient = createInstrumentedIdentityClient('v1.auth.capabilities')
-  const operationalHealthClient = createInstrumentedIdentityClient('v1.operational.health')
-  const currentClient = createInstrumentedIdentityClient('v1.auth.current')
-  const signInClient = createInstrumentedIdentityClient('v1.auth.signIn')
-  const signUpClient = createInstrumentedIdentityClient('v1.auth.signUp')
-  const signOutClient = createInstrumentedIdentityClient('v1.auth.signOut')
-  const developmentIdentityTokensClient = createInstrumentedIdentityClient('v1.development.identityTokens.issue', {
-    withInternalServiceAuth: true,
-  })
-  const browserSessionIdentityTokensClient = createInstrumentedIdentityClient(
-    'v1.internal.identityTokens.issueForBrowserSession',
-    { withInternalServiceAuth: true },
+  const instrumentedFetch = createInstrumentedOrpcClientFetch({ fetch, serviceName })
+  const url = identityRpcUrl(baseUrl)
+  const publicClient = createORPCClient<IdentityContractClientV1>(new RPCLink({ fetch: instrumentedFetch, url }))
+  const internalClient = createORPCClient<IdentityContractClientV1>(
+    new RPCLink({
+      fetch: instrumentedFetch,
+      headers: {
+        [internalServiceHeader]: serviceName,
+        [internalServiceSecretHeader]: internalServiceAuthSecret,
+      },
+      url,
+    }),
   )
 
   return {
     getOperationalHealth() {
-      return operationalHealthClient.v1.operational.health()
+      return publicClient.v1.operational.health()
     },
     getAuthCapabilities() {
-      return authCapabilitiesClient.v1.auth.capabilities()
+      return publicClient.v1.auth.capabilities()
     },
     createBrowserSession(input) {
-      return signInClient.v1.auth.signIn(input)
+      return publicClient.v1.auth.signIn(input)
     },
     createBrowserSessionForSignUp(input) {
-      return signUpClient.v1.auth.signUp(input)
+      return publicClient.v1.auth.signUp(input)
     },
     resolveBrowserSession(input) {
-      return currentClient.v1.auth.current(input)
+      return publicClient.v1.auth.current(input)
     },
     deleteBrowserSession(input) {
-      return signOutClient.v1.auth.signOut(input)
+      return publicClient.v1.auth.signOut(input)
     },
     issueDevelopmentIdentityToken(input) {
-      return developmentIdentityTokensClient.v1.development.identityTokens.issue(input)
+      return internalClient.v1.development.identityTokens.issue(input)
     },
     issueBrowserSessionIdentityToken(input) {
-      return browserSessionIdentityTokensClient.v1.internal.identityTokens.issueForBrowserSession(input)
+      return internalClient.v1.internal.identityTokens.issueForBrowserSession(input)
     },
   }
 }
